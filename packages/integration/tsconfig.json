@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "references": [
+    { "path": "../ontology" },
+    { "path": "../core" },
+    { "path": "../contradictions" },
+    { "path": "../extract-code-ts" },
+    { "path": "../extract-data" },
+    { "path": "../extract-contracts" },
+    { "path": "../extract-change" },
+    { "path": "../infer-join" },
+    { "path": "../align" }
+  ],
+  "exclude": [
+    "dist"
+  ]
+}

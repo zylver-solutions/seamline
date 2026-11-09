@@ -1,0 +1,86 @@
+
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS runs (
+  seq              INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id           TEXT NOT NULL UNIQUE,
+  repo             TEXT NOT NULL,
+  commit_sha       TEXT,
+  started_at       TEXT NOT NULL,
+  finished_at      TEXT,
+  ontology_version TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS extractor_results (
+  run_id      TEXT NOT NULL REFERENCES runs(run_id),
+  extractor   TEXT NOT NULL,
+  version     TEXT NOT NULL,
+  status      TEXT NOT NULL CHECK (status IN ('PASS', 'FAIL', 'UNAVAILABLE')),
+  node_count  INTEGER NOT NULL,
+  edge_count  INTEGER NOT NULL,
+  duration_ms INTEGER NOT NULL,
+  diagnostics TEXT NOT NULL,
+  PRIMARY KEY (run_id, extractor)
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS authoritative_scopes (
+  run_id    TEXT NOT NULL,
+  extractor TEXT NOT NULL,
+  scope     TEXT NOT NULL,
+  kinds     TEXT NOT NULL,
+  selector  TEXT,
+  PRIMARY KEY (run_id, extractor, scope),
+  FOREIGN KEY (run_id, extractor) REFERENCES extractor_results(run_id, extractor)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_scopes_scope ON authoritative_scopes(scope);
+
+CREATE TABLE IF NOT EXISTS nodes (
+  id             TEXT PRIMARY KEY,
+  repo           TEXT NOT NULL,
+  kind           TEXT NOT NULL CHECK (kind IN ('Repo', 'File', 'Module', 'Symbol', 'CodeField', 'Parameter', 'RouteHandler', 'DataSource', 'Schema', 'Table', 'Column', 'Migration', 'Contract', 'Operation', 'SchemaProperty', 'Entity', 'DomainProperty', 'TestCase', 'TestRun', 'CoverageRecord', 'Commit', 'Changeset', 'Owner', 'Run', 'Extractor', 'Contradiction', 'Alias', 'Lens', 'ThreatModel')),
+  name           TEXT NOT NULL,
+  path           TEXT,
+  sensitivity    TEXT NOT NULL CHECK (sensitivity IN ('public', 'internal', 'confidential', 'restricted')),
+  provenance     TEXT NOT NULL CHECK (provenance IN ('EXTRACTED', 'DECLARED', 'INFERRED', 'LLM_SUGGESTED')),
+  confidence     REAL NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
+  source_ref     TEXT,
+  untrusted      INTEGER NOT NULL DEFAULT 0 CHECK (untrusted IN (0, 1)),
+  props          TEXT NOT NULL,
+  run_id         TEXT NOT NULL REFERENCES runs(run_id),
+  first_seen_run TEXT NOT NULL,
+  last_seen_run  TEXT NOT NULL,
+  deleted_at     TEXT
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_nodes_kind_live ON nodes(kind, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_nodes_scope_sweep ON nodes(repo, kind, last_seen_run);
+CREATE INDEX IF NOT EXISTS idx_nodes_path ON nodes(path);
+
+CREATE TABLE IF NOT EXISTS edges (
+  scope          TEXT NOT NULL,
+  src_id         TEXT NOT NULL,
+  dst_id         TEXT NOT NULL,
+  kind           TEXT NOT NULL CHECK (kind IN ('CONTAINS', 'IMPORTS', 'EXPORTS', 'CALLS', 'EXTENDS', 'IMPLEMENTS', 'USES_TYPE', 'DECORATED_WITH', 'HANDLES_ROUTE', 'QUERIES', 'MIGRATED_BY', 'FK_TO', 'IMPLEMENTED_BY', 'MAPS_TO_FIELD', 'BACKED_BY', 'EXPOSED_AS', 'VALIDATED_BY', 'PERSISTED_IN', 'STORED_IN', 'TESTS', 'COVERS', 'TOUCHES', 'RENAMED_FROM', 'PRODUCED_BY', 'ALIAS_OF', 'OWNED_BY')),
+  src_file       TEXT,
+  dst_file       TEXT,
+  provenance     TEXT NOT NULL CHECK (provenance IN ('EXTRACTED', 'DECLARED', 'INFERRED', 'LLM_SUGGESTED')),
+  confidence     REAL NOT NULL CHECK (confidence >= 0.0 AND confidence <= 1.0),
+  source_ref     TEXT,
+  props          TEXT NOT NULL,
+  run_id         TEXT NOT NULL REFERENCES runs(run_id),
+  first_seen_run TEXT NOT NULL,
+  last_seen_run  TEXT NOT NULL,
+  deleted_at     TEXT,
+  CONSTRAINT edges_identity UNIQUE (scope, src_id, dst_id, kind)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS idx_edges_out ON edges(src_id, kind, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_edges_in ON edges(dst_id, kind, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_edges_scope_sweep ON edges(scope, last_seen_run);
+CREATE INDEX IF NOT EXISTS idx_edges_kind ON edges(kind, scope);
+CREATE INDEX IF NOT EXISTS idx_edges_src_file ON edges(src_file);
+CREATE INDEX IF NOT EXISTS idx_edges_dst_file ON edges(dst_file);

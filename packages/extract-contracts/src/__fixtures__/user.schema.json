@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/user.json",
+  "title": "User",
+  "type": "object",
+  "required": ["id", "email", "deletedAt"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "maxLength": 255,
+      "pattern": "^.+@.+$"
+    },
+    "deletedAt": { "type": ["string", "null"], "format": "date-time" },
+    "displayName": { "type": "string" },
+    "role": { "type": "string", "enum": ["member", "admin"] },
+    "loginCount": { "type": "integer", "minimum": 0 },
+    "balance": { "type": "number" },
+    "settings": {
+      "type": "object",
+      "properties": { "theme": { "type": "string" } }
+    },
+    "aliases": { "type": "array", "items": { "type": "string" } },
+    "avatar": {
+      "anyOf": [{ "type": "string", "format": "uri" }, { "type": "null" }]
+    }
+  },
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "required": ["city"],
+      "properties": {
+        "city": { "type": "string" },
+        "zip": { "type": "string" }
+      }
+    }
+  }
+}

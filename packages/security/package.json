@@ -1,0 +1,57 @@
+{
+  "name": "@seamline/security",
+  "version": "0.1.0",
+  "description": "Seamline's security primitives: the secret redactor, the untrusted-content delimiting for agent context, and a public injection corpus that tests both.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/security"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/security#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./corpus": {
+      "types": "./dist/corpus.d.ts",
+      "default": "./dist/corpus.js"
+    },
+    "./corpus/secrets.json": "./corpus/secrets.json",
+    "./corpus/injections.json": "./corpus/injections.json"
+  },
+  "files": [
+    "dist",
+    "corpus",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*"
+  }
+}

@@ -1,0 +1,32 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Org {
+  id      String   @id @db.Uuid
+  slug    String   @unique @db.VarChar(64)
+  members Member[]
+
+  @@map("orgs")
+}
+
+model Member {
+  id              String    @id @db.Uuid
+  orgId           String    @map("org_id") @db.Uuid
+  email           String    @db.VarChar(255)
+  /// Home postal address on file.
+  address         String?   @db.Text
+  age             Int?
+  balance         Decimal   @db.Decimal(12, 2)
+  isActive        Boolean   @map("is_active") @default(true)
+  createdAt       DateTime  @map("created_at") @default(now()) @db.Timestamptz(6)
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  org             Org       @relation(fields: [orgId], references: [id])
+
+  @@map("members")
+}

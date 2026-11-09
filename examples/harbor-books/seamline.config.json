@@ -1,0 +1,83 @@
+{
+  "exclude": [
+    "node_modules/**",
+    "dist/**",
+    ".git/**",
+    "seamline-out/**"
+  ],
+  "exportProfiles": {
+    "structure": {
+      "allow": [
+        [
+          "File",
+          "internal"
+        ],
+        [
+          "Module",
+          "internal"
+        ],
+        [
+          "Repo",
+          "internal"
+        ]
+      ],
+      "allowEdgeProps": {},
+      "allowEdges": [
+        "CONTAINS",
+        "IMPORTS"
+      ],
+      "allowFields": [
+        "id",
+        "kind",
+        "name",
+        "path",
+        "src",
+        "dst"
+      ],
+      "allowProps": {},
+      "allowProvenance": [
+        "EXTRACTED"
+      ],
+      "description": "Internal-level structure: repo, modules and files with their paths, and the import graph, extracted facts only. This reveals the file layout and dependencies of the repository; it is not a public artifact. Narrow or widen deliberately.",
+      "includeUntrusted": false,
+      "version": 1
+    }
+  },
+  "extractors": [
+    {
+      "enabled": true,
+      "name": "extract-code-ts",
+      "options": {}
+    },
+    {
+      "enabled": true,
+      "name": "extract-data",
+      "options": {}
+    },
+    {
+      "enabled": true,
+      "name": "extract-contracts",
+      "options": {}
+    },
+    {
+      "enabled": true,
+      "name": "extract-change",
+      "options": {}
+    },
+    {
+      "enabled": true,
+      "name": "infer-join",
+      "options": {}
+    }
+  ],
+  "include": [
+    "**/*"
+  ],
+  "limits": {
+    "maxDepth": 6,
+    "maxResults": 500
+  },
+  "outDir": "seamline-out",
+  "repo": "harbor-books",
+  "version": 1
+}

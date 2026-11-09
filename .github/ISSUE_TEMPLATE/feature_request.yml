@@ -1,0 +1,80 @@
+name: Feature request
+description: Propose new behaviour, or ask for a deferred feature to be undeferred.
+title: '[feature] '
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before writing this, please skim two documents. It will save you time,
+        and it will make your case much stronger if the feature is a good one.
+
+        - [`docs/design/v3.md`](../blob/main/docs/design/v3.md) section 9 lists
+          what is deliberately deferred and why. Each item is gated on a **named
+          consumer**: a real person or team with a real use case. If that is you,
+          say so, because that is exactly how the gate is designed to open.
+        - [`docs/audit/2026-08-29-council-review-v2.md`](../blob/main/docs/audit/2026-08-29-council-review-v2.md)
+          is the adversarial review that cut roughly 95% of an earlier design.
+          Quite a lot has already been argued and lost on the record.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What are you actually trying to do, and what happens today? Describe the
+        situation, not the feature. "I cannot tell which API fields are backed by
+        a nullable column" is a problem; "add a nullability lens" is a solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like Seamline to do
+      description: Include the command you would run and the output you would want.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deferred
+    attributes:
+      label: Is this on the deferred list?
+      description: See design v3 section 9.
+      options:
+        - 'No, I believe this is new'
+        - 'Yes, and I am a named consumer: I have a concrete use case, described below'
+        - 'Not sure'
+    validations:
+      required: true
+
+  - type: textarea
+    id: named-consumer
+    attributes:
+      label: If you are the named consumer, describe the use case
+      description: |
+        Who would use it, for what decision, and how often. A deferred feature is
+        undeferred by a real user with a real need, not by a vote count. Be
+        specific enough that the design work has something to aim at.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Other tools, a script you wrote, a manual process, or a workaround that nearly worked.
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Does this fit the project's constraints?
+      description: |
+        These are not bureaucracy. Each one exists because breaking it caused a
+        specific, documented failure. A proposal that needs one of them relaxed
+        is not automatically rejected, but it needs the design changed first.
+      options:
+        - label: It does not require a new network call from Seamline or from an extractor.
+        - label: It does not require a query language, an expression DSL, or a raw query tool.
+        - label: It does not widen what `export` emits by default.
+        - label: It does not depend on the user hand-writing annotations to produce value.
+        - label: It keeps extraction byte-reproducible.
+        - label: 'None of the above: this needs one of these relaxed, and I explain why above.'

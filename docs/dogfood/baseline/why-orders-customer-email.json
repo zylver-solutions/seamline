@@ -1,0 +1,132 @@
+{
+  "chains": [
+    {
+      "confidence": 0.9035,
+      "hops": [
+        {
+          "confidence": 0.9035,
+          "direction": "out",
+          "edge": "MAPS_TO_FIELD",
+          "provenance": "INFERRED",
+          "sourceRef": null,
+          "to": {
+            "id": "seamline:CodeField:seamline-monorepo#Order.customerEmail",
+            "kind": "CodeField",
+            "name": "customerEmail",
+            "path": "examples/harbor-books/src/models/order.ts"
+          }
+        }
+      ],
+      "weakestProvenance": "INFERRED"
+    }
+  ],
+  "container": {
+    "confidence": 1,
+    "deletedAt": null,
+    "firstSeenRun": "<run-id>",
+    "id": "seamline:Table:public.orders",
+    "kind": "Table",
+    "lastSeenRun": "<run-id>",
+    "name": "orders",
+    "path": "examples/harbor-books/db/migrations/0014_orders_shipping.sql",
+    "props": {
+      "checkConstraint": null,
+      "columnCount": 5,
+      "comment": null,
+      "dataSource": "default",
+      "declarations": 0,
+      "dialect": "postgres",
+      "insertTrigger": false,
+      "schema": "public",
+      "sourceKinds": "sql-migration",
+      "table": "orders"
+    },
+    "provenance": "EXTRACTED",
+    "sensitivity": "confidential",
+    "sourceRef": "examples/harbor-books/db/migrations/0014_orders_shipping.sql:5"
+  },
+  "contradictions": [],
+  "contradictionsAvailable": true,
+  "target": {
+    "confidence": 1,
+    "deletedAt": null,
+    "firstSeenRun": "<run-id>",
+    "id": "seamline:Column:public.orders.customer_email",
+    "kind": "Column",
+    "lastSeenRun": "<run-id>",
+    "name": "customer_email",
+    "path": "examples/harbor-books/db/migrations/0014_orders_shipping.sql",
+    "props": {
+      "checkConstraint": null,
+      "checkCount": 0,
+      "column": "customer_email",
+      "comment": null,
+      "dataSource": "default",
+      "declaredType": "text",
+      "defaultExpr": null,
+      "defaultSite": "none",
+      "dialect": "postgres",
+      "hasDefault": false,
+      "isArray": false,
+      "isPrimaryKey": false,
+      "isUnique": false,
+      "maxLength": null,
+      "nullable": false,
+      "numericPrecision": null,
+      "numericScale": null,
+      "ordinal": 2,
+      "pii": "email",
+      "piiConfidence": 0.75,
+      "piiEvidence": "column-name:customer_email",
+      "piiProvenance": "INFERRED",
+      "schema": "public",
+      "sourceKinds": "sql-migration",
+      "table": "orders",
+      "type": "text",
+      "typeCategory": "text"
+    },
+    "provenance": "EXTRACTED",
+    "sensitivity": "confidential",
+    "sourceRef": "examples/harbor-books/db/migrations/0014_orders_shipping.sql:8"
+  },
+  "truncated": false,
+  "truncationReasons": [],
+  "unknown": [],
+  "unknownDetectors": [
+    {
+      "code": "X1_NULLABILITY",
+      "reason": "VALUE_ROLE_UNOBSERVED: no joined response property states comparable nullability; generic code shapes and request properties do not prove a stored-row or insert obligation",
+      "scopeStatus": {},
+      "scopes": [],
+      "severity": "high"
+    },
+    {
+      "code": "X2_TYPE",
+      "reason": "VALUE_ROLE_UNOBSERVED: no joined column and contract property state comparable types; generic code shapes do not prove a stored-row or insert role",
+      "scopeStatus": {},
+      "scopes": [],
+      "severity": "high"
+    },
+    {
+      "code": "X5_UNWRITTEN_COLUMN",
+      "reason": "untracedWriteCalls is 21: write call(s) could not be attributed to a table; runtimeDdl is 822: embedded SQL may change schema defaults or triggers outside the data replay",
+      "scopeStatus": {},
+      "scopes": [],
+      "severity": "medium"
+    },
+    {
+      "code": "X7_VALIDATOR_DIVERGENCE",
+      "reason": "X7_NO_OBSERVABLE_LENGTH_PAIR: no current finite-length column and completely bound validated string input can be compared",
+      "scopeStatus": {},
+      "scopes": [],
+      "severity": "high"
+    },
+    {
+      "code": "X8_ORPHANED_MIGRATION",
+      "reason": "migration group examples/harbor-books/db/migrations: no supported framework ordering policy; migration group packages/extract-data/src/__fixtures__/sql-migrations/db/migrations: no supported framework ordering policy",
+      "scopeStatus": {},
+      "scopes": [],
+      "severity": "low"
+    }
+  ]
+}

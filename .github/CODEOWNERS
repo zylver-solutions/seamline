@@ -1,0 +1,42 @@
+# Seamline code owners.
+#
+# Every path here gets a required review from the listed owner. GitHub matches
+# the LAST matching pattern, so the most specific rules go at the bottom.
+#
+# Owner: @zylv3r, the organisation owner. A CODEOWNERS entry pointing at a team
+# that does not exist silently matches nobody, which produces a repository that
+# looks reviewed and is not; the seamline-maintainers team does not exist, so a
+# single real account is named instead. Move these entries back to a team the
+# moment one exists with at least two members.
+
+*                               @zylv3r
+
+# The shared contract. Every package compiles against it, so a change here is a
+# change to all of them at once.
+/packages/ontology/             @zylv3r
+/ontology/                      @zylv3r
+
+# Identity, merge, lifecycle, and the store decorator that makes the redactor
+# the sole writer to the store; a defect here is a disclosure, not a bug.
+/packages/core/                 @zylv3r
+
+# The redactor, the untrusted-text delimiting and the public injection corpus
+# that tests them. A defect here is a disclosure or an injection, not a bug.
+/packages/security/             @zylv3r
+
+# The security perimeter: export is default-deny, the MCP server has no raw
+# query tool, and the gates are what make the other two claims true.
+/packages/cli/src/commands/export.ts   @zylv3r
+/packages/mcp/                  @zylv3r
+/scripts/                       @zylv3r
+
+# Supply chain. This workflow holds a publish token.
+/.github/                       @zylv3r
+
+# Governance and the security posture documents.
+/LICENSE                        @zylv3r
+/NOTICE                         @zylv3r
+/SECURITY.md                    @zylv3r
+/THREATMODEL.md                 @zylv3r
+/CODE_OF_CONDUCT.md             @zylv3r
+/docs/design/                   @zylv3r

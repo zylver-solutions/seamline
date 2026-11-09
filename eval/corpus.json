@@ -1,0 +1,134 @@
+[
+  {
+    "name": "dokploy",
+    "url": "https://github.com/Dokploy/dokploy",
+    "sha": "e0c8d80cdea15a4ac3fe495a6ad38e043b4b80b5",
+    "license": "Apache-2.0",
+    "partition": "dev",
+    "stacks": [
+      "drizzle",
+      "sql-migrations",
+      "openapi",
+      "zod"
+    ],
+    "why": "Drizzle tables, SQL migrations, a committed OpenAPI document, and Zod schemas that mix drizzle-zod derivation with hand-written overrides. Permissively licensed."
+  },
+  {
+    "name": "frapp",
+    "url": "https://github.com/pdcarlson/Frapp",
+    "sha": "97a049f911f458111cb1c814d6ac04b252c9b7ca",
+    "license": "MIT",
+    "partition": "sealed",
+    "stacks": [
+      "sql-ddl",
+      "class-validator",
+      "openapi"
+    ],
+    "why": "Hand-written SQL DDL as the source of truth, class-validator DTOs, and a committed OpenAPI document. The only corpus entry without an ORM or Zod, so it exercises the SQL and decorator paths."
+  },
+  {
+    "name": "karakeep",
+    "url": "https://github.com/karakeep-app/karakeep",
+    "sha": "9012ab836ca1c766151f95b0e5b2c2a4385579bd",
+    "license": "AGPL-3.0",
+    "partition": "sealed",
+    "stacks": [
+      "drizzle",
+      "sql-migrations",
+      "openapi",
+      "zod"
+    ],
+    "why": "Drizzle tables, SQL migrations, a hand-registered OpenAPI layer with a committed document, and Zod request schemas: three separately authored layers over one database."
+  },
+  {
+    "name": "rallly",
+    "url": "https://github.com/lukevella/rallly",
+    "sha": "2d0b5aa82ac2b20350aa05efd5c48403dfdffc31",
+    "license": "AGPL-3.0",
+    "partition": "sealed",
+    "stacks": [
+      "prisma",
+      "sql-migrations",
+      "openapi",
+      "zod"
+    ],
+    "why": "Prisma models, SQL migrations, a committed OpenAPI document generated from the route layer, and hand-written Zod request schemas: four layers over one set of tables."
+  },
+  {
+    "name": "reactive-resume",
+    "url": "https://github.com/amruthpillai/reactive-resume",
+    "sha": "94f384aa589d74078b63a41404b26db1c27a9a1e",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "drizzle",
+      "sql-migrations",
+      "openapi",
+      "zod"
+    ],
+    "why": "Drizzle tables, SQL migrations, a committed OpenAPI document generated from the API layer, and a Zod resume-data schema kept separate from the table. Permissively licensed, with a root tsconfig."
+  },
+  {
+    "name": "saintandstory-fix",
+    "url": "https://github.com/whoisjimilitan/saintandstory",
+    "sha": "f171a21e14fc24a5ecc52bf3e048803125f9f4d2",
+    "license": "none",
+    "partition": "dev",
+    "stacks": [
+      "prisma",
+      "raw-sql"
+    ],
+    "why": "Historical X5 development comparison at the fix commit of design section 8.1 (docs/design/real-world-inputs.md). The earlier standing-order omission prediction is retired: all three parent/fix findings were adjudicated false positives because runtime schema setup can supply database defaults absent from Prisma. The guarded implementation needs a fresh corpus run; this pin is not current true-positive evidence. It has no licence file, so the harness reads it at run time and nothing from it is copied or quoted. Two pins of one repository count as one repository for partition sizes (design 6.1)."
+  },
+  {
+    "name": "saintandstory-parent",
+    "url": "https://github.com/whoisjimilitan/saintandstory",
+    "sha": "6f44c2f18a47f13010d51b987d9b851747ee54be",
+    "license": "none",
+    "partition": "dev",
+    "stacks": [
+      "prisma",
+      "raw-sql"
+    ],
+    "why": "Pinned development comparison for X5 raw inserts and client-side timestamp defaults. A fresh second source-review agent using the same account labels the emitted updated_at omission findings false positives: runtime schema helpers declare database defaults and are called before application inserts. Conditional table creation does not establish the state of a pre-existing live table. This repository has no license file; the harness reads it at run time and no content is copied or quoted. Two pins of one repository count as one repository for partition sizes (design 6.1). This review has no formal release independence credit under design 6.3."
+  },
+  {
+    "name": "umami",
+    "url": "https://github.com/umami-software/umami",
+    "sha": "af542569bf05328adf2989463cdc06de2b9d997d",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "prisma",
+      "sql-migrations",
+      "zod"
+    ],
+    "why": "Historical request-omission defect at the pinned parent, retained as a development input. X1 now requires response nullability and does not count request omission as a positive; current firing must be measured. Prisma, SQL migrations and Zod still exercise distinct extractors."
+  },
+  {
+    "name": "umami-x7-fix",
+    "url": "https://github.com/umami-software/umami",
+    "sha": "173f28c677b3d124c500431f842430dd4e2ddad0",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "prisma",
+      "sql-migrations",
+      "zod"
+    ],
+    "why": "Development fix of the narrow X7 comparison in docs/design/x7-upper-length.md, upstream PR4348. Adds max 200/500 to the same Board request fields. Its direct parent is c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, not the later API-reported PR base. Metadata supplies no label or sealed precision credit; the required source-only parent/fix extraction comparison remains separate. Multiple pins of this URL count as one repository."
+  },
+  {
+    "name": "umami-x7-parent",
+    "url": "https://github.com/umami-software/umami",
+    "sha": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "prisma",
+      "sql-migrations",
+      "zod"
+    ],
+    "why": "Development parent/fix comparison for the narrow admitted X7 upper-length case in docs/design/x7-upper-length.md. This is the sole direct parent of fix 173f28c677b3d124c500431f842430dd4e2ddad0 from upstream PR4348. The Board name/description columns declare 200/500 while the request strings lack upper bounds. This metadata labels no findings and supplies no independent or sealed precision credit. Multiple pins of this URL count as one repository."
+  }
+]

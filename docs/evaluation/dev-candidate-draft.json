@@ -1,0 +1,611 @@
+{
+  "schema": 1,
+  "scope": "Historical development-only partial measurement of the candidate draft of 2026-10-23, superseded by ongoing review fixes; not a final-main or sealed qualification result.",
+  "toolSource": "Seamline candidate draft of 2026-10-23 (commit id of the private history, not carried over)",
+  "toolTree": "not carried into the public history",
+  "node": "v24.22.0",
+  "pnpm": "10.34.5",
+  "reportSHA256": "298b212624abf3ee77e639785cc4e768c7a593f3805896282e35902148da6c40",
+  "provenance": {
+    "cli": {
+      "distDigest": "7792a1b047c14914489ba755dd5eb7b95a235823be50f7223d3c003381a76d07",
+      "ownBuild": true,
+      "path": "packages/cli/dist/index.js"
+    },
+    "codeId": "c2c7c67d19857cbc91e69a008ef32e8d5b87ef326c228cf85b557247afb741cd",
+    "scorerDigest": "9bc29de4c61e3bb9d16781422250cbc51316fd2ba64267200b63f3b9ca5d0d70",
+    "sealedCorpusDigest": "ce9140f8506286654b858c83363b8ac10f309de2b3077cbadc00f89dcc141ca4"
+  },
+  "command": "pnpm eval --allow-unlabelled --repo dokploy --repo reactive-resume --repo saintandstory-fix --repo saintandstory-parent --repo umami --repo umami-x7-fix --repo umami-x7-parent --cache <cache> --out <output> --mirrors <dev-mirrors>",
+  "exit": 1,
+  "exitReason": "The existing sealed partition is burned by watched source changes; no sealed source was selected, fetched or analysed.",
+  "partial": true,
+  "repos": [
+    {
+      "name": "dokploy",
+      "sha": "e0c8d80cdea15a4ac3fe495a6ad38e043b4b80b5",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "reactive-resume",
+      "sha": "94f384aa589d74078b63a41404b26db1c27a9a1e",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "saintandstory-fix",
+      "sha": "f171a21e14fc24a5ecc52bf3e048803125f9f4d2",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "saintandstory-parent",
+      "sha": "6f44c2f18a47f13010d51b987d9b851747ee54be",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "umami",
+      "sha": "af542569bf05328adf2989463cdc06de2b9d997d",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "umami-x7-fix",
+      "sha": "173f28c677b3d124c500431f842430dd4e2ddad0",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 0
+    },
+    {
+      "name": "umami-x7-parent",
+      "sha": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1",
+      "partition": "dev",
+      "analysis": "complete",
+      "findings": 5
+    }
+  ],
+  "overall": {
+    "clustered": {
+      "fp": 0,
+      "interval": {
+        "hi": 1,
+        "lo": 0.565517531341
+      },
+      "n": 5,
+      "precision": 1,
+      "tp": 5,
+      "unclear": 0,
+      "unlabelled": 0
+    },
+    "clusteredStrict": {
+      "fp": 0,
+      "interval": {
+        "hi": 1,
+        "lo": 0.565517531341
+      },
+      "n": 5,
+      "precision": 1,
+      "tp": 5,
+      "unclear": 0,
+      "unlabelled": 0
+    },
+    "detected": 1,
+    "findings": 5,
+    "fp": 0,
+    "interval": {
+      "hi": 1,
+      "lo": 0.565517531341
+    },
+    "mutants": 11,
+    "n": 5,
+    "precision": 1,
+    "recall": 0.09090909090909091,
+    "strict": {
+      "fp": 0,
+      "interval": {
+        "hi": 1,
+        "lo": 0.565517531341
+      },
+      "n": 5,
+      "precision": 1,
+      "tp": 5,
+      "unclear": 0,
+      "unlabelled": 0
+    },
+    "tp": 5,
+    "unclear": 0,
+    "unlabelled": 0
+  },
+  "detectors": [
+    {
+      "code": "X1_NULLABILITY",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 1,
+      "unknownRepos": [
+        "dokploy",
+        "saintandstory-fix",
+        "saintandstory-parent",
+        "umami",
+        "umami-x7-fix",
+        "umami-x7-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X2_TYPE",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 1,
+      "unknownRepos": [
+        "saintandstory-fix",
+        "saintandstory-parent",
+        "umami"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X3_CONSTRAINT",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 0,
+      "unknownRepos": [
+        "saintandstory-fix",
+        "saintandstory-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X4_UNBACKED_PROPERTY",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 0,
+      "unknownRepos": [
+        "saintandstory-fix",
+        "saintandstory-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X5_UNWRITTEN_COLUMN",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 1,
+      "unknownRepos": [
+        "dokploy",
+        "reactive-resume",
+        "saintandstory-fix",
+        "saintandstory-parent",
+        "umami",
+        "umami-x7-fix",
+        "umami-x7-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X6_PII_UNAUTHENTICATED",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 0,
+      "unknownRepos": [
+        "saintandstory-fix",
+        "saintandstory-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X7_VALIDATOR_DIVERGENCE",
+      "findings": 5,
+      "tp": 5,
+      "fp": 0,
+      "n": 5,
+      "precision": 1,
+      "interval": {
+        "hi": 1,
+        "lo": 0.565517531341
+      },
+      "mutants": 2,
+      "detected": 1,
+      "recall": 0.5,
+      "firesOnCorpus": true,
+      "unknownMutants": 1,
+      "unknownRepos": [
+        "dokploy",
+        "reactive-resume",
+        "saintandstory-fix",
+        "saintandstory-parent",
+        "umami"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X8_ORPHANED_MIGRATION",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 0,
+      "unknownRepos": [],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X9_CONTRACT_DRIFT",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 1,
+      "unknownRepos": [
+        "dokploy",
+        "reactive-resume",
+        "saintandstory-fix",
+        "saintandstory-parent"
+      ],
+      "status": "unmeasured"
+    },
+    {
+      "code": "X10_UNTESTED_PII_WRITE",
+      "findings": 0,
+      "tp": 0,
+      "fp": 0,
+      "n": 0,
+      "precision": null,
+      "interval": null,
+      "mutants": 1,
+      "detected": 0,
+      "recall": 0,
+      "firesOnCorpus": false,
+      "unknownMutants": 0,
+      "unknownRepos": [
+        "saintandstory-fix",
+        "saintandstory-parent"
+      ],
+      "status": "unmeasured"
+    }
+  ],
+  "mutants": [
+    {
+      "id": "x1-board-name-optional",
+      "repo": "umami",
+      "detector": "X1_NULLABILITY",
+      "status": "unknown"
+    },
+    {
+      "id": "x10-untested-user-email-write",
+      "repo": "reactive-resume",
+      "detector": "X10_UNTESTED_PII_WRITE",
+      "status": "missed"
+    },
+    {
+      "id": "x2-board-name-number",
+      "repo": "umami",
+      "detector": "X2_TYPE",
+      "status": "unknown"
+    },
+    {
+      "id": "x3-website-domain-wider",
+      "repo": "umami",
+      "detector": "X3_CONSTRAINT",
+      "status": "missed"
+    },
+    {
+      "id": "x4-user-one-phantom-property",
+      "repo": "dokploy",
+      "detector": "X4_UNBACKED_PROPERTY",
+      "status": "missed"
+    },
+    {
+      "id": "x5-session-required-column-unwritten",
+      "repo": "umami",
+      "detector": "X5_UNWRITTEN_COLUMN",
+      "status": "unknown"
+    },
+    {
+      "id": "x6-user-all-public",
+      "repo": "dokploy",
+      "detector": "X6_PII_UNAUTHENTICATED",
+      "status": "missed"
+    },
+    {
+      "id": "x7-board-name-unbounded",
+      "repo": "umami-x7-fix",
+      "detector": "X7_VALIDATOR_DIVERGENCE",
+      "status": "detected"
+    },
+    {
+      "id": "x7-website-domain-unbounded",
+      "repo": "umami",
+      "detector": "X7_VALIDATOR_DIVERGENCE",
+      "status": "unknown"
+    },
+    {
+      "id": "x8-migration-targets-missing-table",
+      "repo": "umami",
+      "detector": "X8_ORPHANED_MIGRATION",
+      "status": "missed"
+    },
+    {
+      "id": "x9-user-all-undeclared-path",
+      "repo": "dokploy",
+      "detector": "X9_CONTRACT_DRIFT",
+      "status": "unknown"
+    }
+  ],
+  "review": {
+    "declaredAuthorAccounts": 0,
+    "dev": {
+      "agreeingPairs": 0,
+      "agreement": null,
+      "clusters": 5,
+      "doubleReviewedClusters": 0,
+      "findings": 5,
+      "independentPrimaryFindings": 0,
+      "labelledFindings": 5,
+      "missingPrimaryFindings": 5,
+      "reviewPairs": 0
+    },
+    "metadata": "missing",
+    "overall": {
+      "agreeingPairs": 0,
+      "agreement": null,
+      "clusters": 5,
+      "doubleReviewedClusters": 0,
+      "findings": 5,
+      "independentPrimaryFindings": 0,
+      "labelledFindings": 5,
+      "missingPrimaryFindings": 5,
+      "ready": false,
+      "requiredDoubleReviewedClusters": 10,
+      "reviewPairs": 0
+    },
+    "sealed": {
+      "agreeingPairs": 0,
+      "agreement": null,
+      "clusters": 0,
+      "doubleReviewedClusters": 0,
+      "findings": 0,
+      "independentPrimaryFindings": 0,
+      "labelledFindings": 0,
+      "missingPrimaryFindings": 0,
+      "reviewPairs": 0
+    }
+  },
+  "confidenceFit": {
+    "basis": "raw-findings-tp-over-tp-plus-fp",
+    "folds": [
+      {
+        "check": {
+          "calibratedBrier": null,
+          "estimated": 0,
+          "findings": 5,
+          "labelled": 5,
+          "rawBrier": null
+        },
+        "heldOutRepos": [
+          "umami-x7-parent"
+        ],
+        "model": [
+          {
+            "action": "not-estimable",
+            "band": "[0.00, 0.50)",
+            "estimate": null,
+            "findings": 0,
+            "fp": 0,
+            "interval": null,
+            "labelled": 0,
+            "precision": null,
+            "repositories": 0,
+            "tp": 0,
+            "unclear": 0
+          },
+          {
+            "action": "not-estimable",
+            "band": "[0.50, 0.70)",
+            "estimate": null,
+            "findings": 0,
+            "fp": 0,
+            "interval": null,
+            "labelled": 0,
+            "precision": null,
+            "repositories": 0,
+            "tp": 0,
+            "unclear": 0
+          },
+          {
+            "action": "not-estimable",
+            "band": "[0.70, 0.85)",
+            "estimate": null,
+            "findings": 0,
+            "fp": 0,
+            "interval": null,
+            "labelled": 0,
+            "precision": null,
+            "repositories": 0,
+            "tp": 0,
+            "unclear": 0
+          },
+          {
+            "action": "not-estimable",
+            "band": "[0.85, 1.00]",
+            "estimate": null,
+            "findings": 0,
+            "fp": 0,
+            "interval": null,
+            "labelled": 0,
+            "precision": null,
+            "repositories": 0,
+            "tp": 0,
+            "unclear": 0
+          }
+        ],
+        "trainingRepos": []
+      }
+    ],
+    "inputDigest": "0f5b9d049786839530cbd602fc3659667bb1cb83fa9cc4b8f1acc130e5f56c5f",
+    "model": [
+      {
+        "action": "not-estimable",
+        "band": "[0.00, 0.50)",
+        "estimate": null,
+        "findings": 0,
+        "fp": 0,
+        "interval": null,
+        "labelled": 0,
+        "precision": null,
+        "repositories": 0,
+        "tp": 0,
+        "unclear": 0
+      },
+      {
+        "action": "not-estimable",
+        "band": "[0.50, 0.70)",
+        "estimate": null,
+        "findings": 0,
+        "fp": 0,
+        "interval": null,
+        "labelled": 0,
+        "precision": null,
+        "repositories": 0,
+        "tp": 0,
+        "unclear": 0
+      },
+      {
+        "action": "not-estimable",
+        "band": "[0.70, 0.85)",
+        "estimate": null,
+        "findings": 0,
+        "fp": 0,
+        "interval": null,
+        "labelled": 0,
+        "precision": null,
+        "repositories": 0,
+        "tp": 0,
+        "unclear": 0
+      },
+      {
+        "action": "not-estimable",
+        "band": "[0.85, 1.00]",
+        "estimate": null,
+        "findings": 5,
+        "fp": 0,
+        "interval": {
+          "hi": 1,
+          "lo": 0.565517531341
+        },
+        "labelled": 5,
+        "precision": 1,
+        "repositories": 1,
+        "tp": 5,
+        "unclear": 0
+      }
+    ],
+    "sealedCheck": {
+      "calibratedBrier": null,
+      "estimated": 0,
+      "findings": 0,
+      "labelled": 0,
+      "rawBrier": null
+    },
+    "target": "finding-correctness",
+    "trainingGroups": 1,
+    "trainingRepos": [
+      "umami-x7-parent"
+    ]
+  },
+  "headline": {
+    "detectorsBelow": [],
+    "lenient": {
+      "fp": 0,
+      "interval": null,
+      "n": 0,
+      "precision": null,
+      "tp": 0,
+      "unclear": 0,
+      "unlabelled": 0
+    },
+    "meetsBar": null,
+    "minLabelled": 30,
+    "partial": true,
+    "partition": "sealed",
+    "reviewIncomplete": false,
+    "status": "burned",
+    "strict": {
+      "fp": 0,
+      "interval": null,
+      "n": 0,
+      "precision": null,
+      "tp": 0,
+      "unclear": 0,
+      "unlabelled": 0
+    },
+    "unanalysed": [],
+    "unlabelled": 0
+  }
+}

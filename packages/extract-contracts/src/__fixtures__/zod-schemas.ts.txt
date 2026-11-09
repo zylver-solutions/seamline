@@ -1,0 +1,33 @@
+// Fixture source for the Zod extractor, stored as `.ts.txt` so the package's
+// own `tsc --build` does not try to resolve `zod`, which is deliberately NOT a
+// dependency of this package: the extractor parses this file, it never loads it.
+//
+// The throw below is the assertion. If extraction ever evaluated project code,
+// this module would abort before defining a single schema, and the test that
+// reads `UserInput` would fail.
+import { z } from 'zod';
+
+throw new Error('extract-contracts must never execute project code');
+
+export const Address = z.object({
+  city: z.string().min(1).max(120),
+  zip: z.string().regex(/^[0-9]{5}$/),
+});
+
+export const UserInput = z.object({
+  id: z.string().uuid(),
+  email: z.string().email().max(255),
+  // optional, and NOT nullable
+  displayName: z.string().optional(),
+  // required, and nullable
+  nickname: z.string().nullable(),
+  // optional, and nullable
+  bio: z.string().nullish(),
+  age: z.number().int().min(0).max(150),
+  balance: z.number(),
+  role: z.enum(['member', 'admin']),
+  active: z.boolean().default(true),
+  createdAt: z.string().datetime(),
+  tags: z.array(z.string()).max(10),
+  address: Address,
+});

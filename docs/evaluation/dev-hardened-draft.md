@@ -1,0 +1,36 @@
+# Hardened development measurement (draft of 2026-10-23)
+
+This pinned draft measurement supersedes the firing coverage of the [earlier candidate draft](dev-candidate-draft.md). It is not a final-main result. The draft has an unresolved mixed-binding retention finding; [the proposed authority amendment](../adr/ADR-0018-canonical-name-authority.md) is a separate design, not a runtime fix. [The machine-readable summary](dev-hardened-draft.json) preserves pins, counts, digests and the command. Full report SHA-256: `bb050b14df210feb402326e607170d7a157b404e394d571ac13ba0d4754c4725`.
+
+The isolated verification host ran Node 24.22.0 and pnpm 10.34.5 on seven explicit DEV pins from four upstreams, with all eleven mutants. All seven analyses completed. No sealed source was selected, fetched or analysed, and no upstream install, build, test or application module ran. Ordinary engine limits stayed in effect. The command exited 1 because the existing sealed freeze is burned by 32 watched changes; it was not replaced or reinterpreted.
+
+## Per-detector precision, recall and dormancy
+
+There are zero findings and zero labelled components. Precision and Wilson bounds are undefined, not zero or one. Every detector is dormant on this measured non-self corpus; a clean detector result alone does not prove its missing input is observable.
+
+| Detector | DEV precision (n) | Wilson lower bound | Mutant recall | UNKNOWN pins | Dormancy reason |
+| --- | --- | --- | --- | --- | --- |
+| X1_NULLABILITY | n/a (0) | n/a | 0/1 | 6/7 | One checkout observable with no reported mismatch; six UNKNOWN from response-role or scope limits. |
+| X2_TYPE | n/a (0) | n/a | 0/1 | 5/7 | Two clean pins with no reported type conflict; five UNKNOWN from role/type or scope limits. |
+| X3_CONSTRAINT | n/a (0) | n/a | 0/1 | 2/7 | Validator Symbol constraint facts are not emitted; the X7 producer does not feed X3. |
+| X4_UNBACKED_PROPERTY | n/a (0) | n/a | 0/1 | 2/7 | Supported response, container and confidence checks supplied no eligible unbacked pair. |
+| X5_UNWRITTEN_COLUMN | n/a (0) | n/a | 0/1 | 7/7 | All seven UNKNOWN: runtime-DDL and other writer guards prevent the absence claim. |
+| X6_PII_UNAUTHENTICATED | n/a (0) | n/a | 0/1 | 2/7 | No supported explicit unauthenticated operation-to-query exposure was reported. |
+| X7_VALIDATOR_DIVERGENCE | n/a (0) | n/a | 0/2 | 7/7 | All seven UNKNOWN with no current proved length pair. Both parent/fix parser summaries refuse unknown computed property extraction at src/lib/request.ts:36. |
+| X8_ORPHANED_MIGRATION | n/a (0) | n/a | 0/1 | 0/7 | No supported orphan witness; migration target props are absent and tombstoned endpoints are hidden. |
+| X9_CONTRACT_DRIFT | n/a (0) | n/a | 0/1 | 4/7 | Available graphs supplied no reported supported route/contract conflict; four pins UNKNOWN. |
+| X10_UNTESTED_PII_WRITE | n/a (0) | n/a | 0/1 | 2/7 | No TestCase/TESTS or CoverageRecord/COVERS producer supplies verification facts. |
+
+Overall mutant recall is **0/11**: five missed and six UNKNOWN. Both the Board mutant and the historical regex-bearing website mutant are UNKNOWN and remain in the denominator. The original ten mutants are unchanged; no miss was removed or redefined.
+
+Both the genuine parent and fix have contracts PASS but X7 UNKNOWN with zero findings. The current parser refusal is `WRITE_COMPUTED_PROPERTY_UNKNOWN: src/lib/request.ts:36`. UNKNOWN on the fix is not an examined fixed negative. The historical five-to-zero result cannot satisfy current real-source acceptance.
+
+## Qualification and calibration
+
+The original bar remains at least 30 independently labelled clusters, precision at least 0.90 and Wilson lower bound at least 0.75. This run supplies zero eligible sealed clusters and no precision or Wilson estimate. It cannot reach that bar with the observed zero-finding coverage. Supporting more inputs and completing independent review are necessary; neither a threshold change nor relabelling an UNKNOWN outcome can solve the coverage gap.
+
+Review metadata still declares zero author accounts and has zero eligible primary or double-reviewed findings. The required double-review sample remains ten. Stale-label validation was skipped because the run was partial; existing historical labels were not certified against a complete new corpus. A vacuous absence of missing finding labels does not complete the author/provider roster or formal independent-account review. Fresh agent councils on the author account do not qualify as independent evaluation reviewers.
+
+Calibration has zero labelled upstream groups. Every confidence band is not estimable; no holdout prediction or raw/calibrated Brier estimate exists. The empty fitting-input digest is `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`. Raw confidence values were not promoted to calibrated correctness probabilities.
+
+Historical labels, the candidate draft's precision 5/5 with Wilson lower bound 0.5655, and its 1/11 recall remain historical. This report records the stricter producer losing that coverage. It earns no implementation, sealed, deployment or release approval.

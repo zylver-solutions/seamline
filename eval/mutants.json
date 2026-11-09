@@ -1,0 +1,195 @@
+[
+  {
+    "id": "x1-board-name-optional",
+    "repo": "umami",
+    "detector": "X1_NULLABILITY",
+    "description": "Make the board name optional in the create-board request schema while board.name stays NOT NULL with no default.",
+    "edits": [
+      {
+        "path": "src/app/api/boards/route.ts",
+        "find": "name: z.string().max(100),",
+        "replace": "name: z.string().max(100).optional(),"
+      }
+    ],
+    "expect": {
+      "code": "X1_NULLABILITY",
+      "leftMatch": "public.board.name"
+    }
+  },
+  {
+    "id": "x2-board-name-number",
+    "repo": "umami",
+    "detector": "X2_TYPE",
+    "description": "Declare the board name as a number in the create-board request schema; the column is varchar.",
+    "edits": [
+      {
+        "path": "src/app/api/boards/route.ts",
+        "find": "name: z.string().max(100),",
+        "replace": "name: z.number(),"
+      }
+    ],
+    "expect": {
+      "code": "X2_TYPE",
+      "leftMatch": "public.board.name"
+    }
+  },
+  {
+    "id": "x3-website-domain-wider",
+    "repo": "umami",
+    "detector": "X3_CONSTRAINT",
+    "description": "Let the website domain validator accept 900 characters while the column is varchar(500).",
+    "edits": [
+      {
+        "path": "src/app/api/websites/route.ts",
+        "find": ".regex(DOMAIN_REGEX).max(500)",
+        "replace": ".regex(DOMAIN_REGEX).max(900)"
+      }
+    ],
+    "expect": {
+      "code": "X3_CONSTRAINT",
+      "leftMatch": "public.website.domain"
+    }
+  },
+  {
+    "id": "x4-user-one-phantom-property",
+    "repo": "dokploy",
+    "detector": "X4_UNBACKED_PROPERTY",
+    "description": "Give the user.one response three properties: email and emailVerified, whose names match columns of the user table (emailVerified after the camelCase to snake_case step: the column is email_verified), and evalPhantomField, a name no column or field has. X4 needs both siblings to resolve to a producer (one of three gives a confidence under its floor), and no extractor links these properties to the user columns today (no BACKED_BY or EXPOSED_AS edge reaches them), so whether this mutant is ever detected depends on that join and is not established.",
+    "edits": [
+      {
+        "path": "openapi.json",
+        "pointer": "/paths/~1user.one/get/responses/200/content/application~1json/schema/properties",
+        "set": {
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "evalPhantomField": {
+            "type": "string"
+          }
+        }
+      }
+    ],
+    "expect": {
+      "code": "X4_UNBACKED_PROPERTY",
+      "leftMatch": "evalPhantomField"
+    }
+  },
+  {
+    "id": "x5-session-required-column-unwritten",
+    "repo": "umami",
+    "detector": "X5_UNWRITTEN_COLUMN",
+    "description": "Add a NOT NULL column with no default to the session model; the raw INSERT in createSession does not name it.",
+    "edits": [
+      {
+        "path": "prisma/schema.prisma",
+        "find": "model Session {",
+        "replace": "model Session {\n  evalRequired String @map(\"eval_required\") @db.VarChar(20)"
+      }
+    ],
+    "expect": {
+      "code": "X5_UNWRITTEN_COLUMN",
+      "leftMatch": "session.eval_required"
+    }
+  },
+  {
+    "id": "x6-user-all-public",
+    "repo": "dokploy",
+    "detector": "X6_PII_UNAUTHENTICATED",
+    "description": "Declare the user.all operation as requiring no authentication; it reads the user table, which has an email column.",
+    "edits": [
+      {
+        "path": "openapi.json",
+        "pointer": "/paths/~1user.all/get/security",
+        "set": []
+      }
+    ],
+    "expect": {
+      "code": "X6_PII_UNAUTHENTICATED"
+    }
+  },
+  {
+    "id": "x7-website-domain-unbounded",
+    "repo": "umami",
+    "detector": "X7_VALIDATOR_DIVERGENCE",
+    "description": "Drop the length limit from the website domain validator; the column still enforces varchar(500).",
+    "edits": [
+      {
+        "path": "src/app/api/websites/route.ts",
+        "find": ".regex(DOMAIN_REGEX).max(500)",
+        "replace": ".regex(DOMAIN_REGEX)"
+      }
+    ],
+    "expect": {
+      "code": "X7_VALIDATOR_DIVERGENCE",
+      "leftMatch": "public.website.domain"
+    }
+  },
+  {
+    "id": "x8-migration-targets-missing-table",
+    "repo": "umami",
+    "detector": "X8_ORPHANED_MIGRATION",
+    "description": "Add a migration that alters a table no other migration or model ever creates.",
+    "edits": [
+      {
+        "path": "prisma/migrations/99_eval_orphan/migration.sql",
+        "append": "ALTER TABLE \"eval_ghost_table\" ADD COLUMN \"legacy_flag\" INTEGER;\n"
+      }
+    ],
+    "expect": {
+      "code": "X8_ORPHANED_MIGRATION",
+      "rightMatch": "eval_ghost_table"
+    }
+  },
+  {
+    "id": "x9-user-all-undeclared-path",
+    "repo": "dokploy",
+    "detector": "X9_CONTRACT_DRIFT",
+    "description": "Rename the declared path of the user.all operation. This relies on X9's first direction (an operation nobody serves). It cannot fire today: the detector calls an operation unserved when it has no IMPLEMENTED_BY edge to a route handler, but extract-contracts emits a route handler and that edge for every declared operation, so the renamed operation still looks served; and Dokploy has no code scope. Design section 5.5 (the X9 row) leaves extract-contracts unchanged and changes the detector instead: an operation is unserved when its route handler has no incoming HANDLES_ROUTE edge, and only when no route mount is unresolved (routeMountsUnresolved is 0). Until that lands this mutant is expected to stay UNKNOWN or missed. The second direction (a code route no operation declares) was tried on reactive-resume and is not reachable either: only 1 of its 25 code routes maps to an operation, so renaming that one leaves none declared in the file, and the detector needs a declared sibling.",
+    "edits": [
+      {
+        "path": "openapi.json",
+        "pointer": "/paths/~1user.all",
+        "renameKey": "/user.allRenamed"
+      }
+    ],
+    "expect": {
+      "code": "X9_CONTRACT_DRIFT"
+    }
+  },
+  {
+    "id": "x10-untested-user-email-write",
+    "repo": "reactive-resume",
+    "detector": "X10_UNTESTED_PII_WRITE",
+    "description": "Add a function that inserts into user.email, a PII column, from code that no test reaches.",
+    "edits": [
+      {
+        "path": "packages/db/src/client.ts",
+        "append": "\nexport function evalWriteUserEmail(run: (statement: string) => void): void {\n  run(\"INSERT INTO user (email) VALUES (?)\");\n}\n"
+      }
+    ],
+    "expect": {
+      "code": "X10_UNTESTED_PII_WRITE",
+      "rightMatch": "user.email"
+    }
+  },
+  {
+    "id": "x7-board-name-unbounded",
+    "repo": "umami-x7-fix",
+    "detector": "X7_VALIDATOR_DIVERGENCE",
+    "description": "Remove the explicit name maximum from the already bounded DEV fix while leaving Board storage at 200. The exact unchanged write binding is supported by the pinned parent/fix reproduction. This adds a new mutant; it does not remove or reinterpret the historical regex-bearing website mutant. Detection is measured by pnpm eval, not assumed from the source edit.",
+    "edits": [
+      {
+        "path": "src/app/api/boards/[boardId]/route.ts",
+        "find": "name: z.string().max(200).optional(),",
+        "replace": "name: z.string().optional(),"
+      }
+    ],
+    "expect": {
+      "code": "X7_VALIDATOR_DIVERGENCE",
+      "leftMatch": "public.board.name"
+    }
+  }
+]

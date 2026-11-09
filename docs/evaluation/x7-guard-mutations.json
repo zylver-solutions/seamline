@@ -1,0 +1,109 @@
+{
+  "sourceHead": "Seamline first X7 producer implementation of 2026-10-23 (commit id of the private history, not carried over)",
+  "sourceTree": "not carried into the public history",
+  "uid": 60010,
+  "node": "v24.22.0",
+  "scope": "Source guard mutation checks only; not corpus mutant recall, independent labels, precision or sealed qualification.",
+  "command": [
+    "node",
+    "--test",
+    "--test-reporter=spec",
+    "packages/contradictions/src/detectors/x7-length.test.ts"
+  ],
+  "controlExit": 0,
+  "controlSeconds": 0.457,
+  "mutations": [
+    {
+      "control": "complete-length",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "observablePairs(g).filter(pair => pair.property.props['lengthUpperState'] === 'unbounded').map",
+      "replace": "observablePairs(g).map",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.466,
+      "killed": true
+    },
+    {
+      "control": "successful-parse",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "props['successfulParse'] !== true || ",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.457,
+      "killed": true
+    },
+    {
+      "control": "unchanged-forwarding",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "props['unchangedForwarding'] !== true || ",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.513,
+      "killed": true
+    },
+    {
+      "control": "model-binding",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "props['modelBindingComplete'] !== true ||",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.436,
+      "killed": true
+    },
+    {
+      "control": "facts-only",
+      "file": "packages/contradictions/src/graph.ts",
+      "find": " && isFact(n.provenance)",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.483,
+      "killed": true
+    },
+    {
+      "control": "liveness",
+      "file": "packages/contradictions/src/graph.ts",
+      "find": " && n.deletedAt === null",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.465,
+      "killed": true
+    },
+    {
+      "control": "required-scope",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "const REQUIRED = [SCOPE_DATA, SCOPE_CONTRACTS, SCOPE_CODE, SCOPE_JOIN]",
+      "replace": "const REQUIRED = [SCOPE_DATA, SCOPE_CODE, SCOPE_JOIN]",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.455,
+      "killed": true
+    },
+    {
+      "control": "confidence",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": "confidence: pair.joined.confidence,",
+      "replace": "confidence: 1,",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.433,
+      "killed": true
+    },
+    {
+      "control": "current-property",
+      "file": "packages/contradictions/src/detectors/x7-validator-divergence.ts",
+      "find": " || !currentlyObserved(g, SCOPE_CONTRACTS, property)",
+      "replace": "",
+      "testExit": 1,
+      "assertionFailure": true,
+      "seconds": 0.462,
+      "killed": true
+    }
+  ],
+  "killed": 9,
+  "total": 9
+}

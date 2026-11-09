@@ -1,0 +1,47 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/ontology"
+    },
+    {
+      "path": "./packages/security"
+    },
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/extract-code-ts"
+    },
+    {
+      "path": "./packages/extract-data"
+    },
+    {
+      "path": "./packages/extract-contracts"
+    },
+    {
+      "path": "./packages/extract-change"
+    },
+    {
+      "path": "./packages/infer-join"
+    },
+    {
+      "path": "./packages/align"
+    },
+    {
+      "path": "./packages/contradictions"
+    },
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/mcp"
+    },
+    {
+      "path": "./packages/integration"
+    },
+    {
+      "path": "./packages/eval"
+    }
+  ]
+}

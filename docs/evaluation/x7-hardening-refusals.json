@@ -1,0 +1,137 @@
+{
+  "acceptanceMet": false,
+  "pipeline": {
+    "controllerExit": 1,
+    "fix": {
+      "executed": false,
+      "reason": "The required parent-conflict assertion stopped this runner before the fix. This is not a fixed negative."
+    },
+    "node": "v24.22.0",
+    "parent": {
+      "artifactSHA256": {
+        "logs/check.stdout.json": "b945476a4b061a89817dbcd755d077dccab7e236768ea99e211f8f367660a684",
+        "logs/extract.stdout.json": "3cb5b88cdb891de38b06e62e9dbb03dcb38159dc2368b4642292264dde5380bf",
+        "result.json": "b73409a5b2a01a1342def123ee49555e32581de888adf233a228252c51b5565e"
+      },
+      "contractRefusals": [
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/boards/[boardId]/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/boards/[boardId]/shares/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/links/[linkId]/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/links/[linkId]/shares/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/pixels/[pixelId]/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/pixels/[pixelId]/shares/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/users/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/[websiteId]/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/[websiteId]/segments/[segmentId]/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/[websiteId]/segments/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/[websiteId]/shares/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/[websiteId]/transfer/route.ts",
+        "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_COMPUTED_CALLABLE_UNKNOWN: src/app/api/websites/route.ts"
+      ],
+      "extractMilliseconds": 76349,
+      "extractorStatuses": [
+        {
+          "edgeCount": 13155,
+          "extractor": "extract-code-ts",
+          "nodeCount": 4459,
+          "status": "PASS"
+        },
+        {
+          "edgeCount": 844,
+          "extractor": "extract-data",
+          "nodeCount": 437,
+          "status": "PASS"
+        },
+        {
+          "edgeCount": 72,
+          "extractor": "extract-contracts",
+          "nodeCount": 83,
+          "status": "PASS"
+        },
+        {
+          "edgeCount": 20,
+          "extractor": "infer-join",
+          "nodeCount": 0,
+          "status": "PASS"
+        }
+      ],
+      "findingCount": 0,
+      "outcome": "complete",
+      "upstreamSHA": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1",
+      "x7": {
+        "findings": 0,
+        "reason": "X7_NO_OBSERVABLE_LENGTH_PAIR: no current finite-length column and completely bound validated string input can be compared",
+        "state": "unknown"
+      }
+    },
+    "toolSource": "Seamline full-pipeline candidate A of 2026-10-23 (commit id of the private history, not carried over)",
+    "toolTree": "not carried into the public history",
+    "uid": 60010
+  },
+  "schema": 1,
+  "scope": "Negative DEV engineering evidence after source-world hardening. Historical firing proofs are not current acceptance. No sealed, formal independent-review, precision or release qualification.",
+  "sourceHelpers": [
+    {
+      "node": "v24.22.0",
+      "results": [
+        {
+          "name": "parent",
+          "proofs": {
+            "client": {
+              "reason": "WRITE_COMPUTED_CALLABLE_UNKNOWN",
+              "sourceRef": "src/lib/utils.ts:11",
+              "state": "unknown"
+            }
+          },
+          "sha": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1"
+        },
+        {
+          "name": "fix",
+          "proofs": {
+            "client": {
+              "reason": "WRITE_COMPUTED_CALLABLE_UNKNOWN",
+              "sourceRef": "src/lib/utils.ts:11",
+              "state": "unknown"
+            }
+          },
+          "sha": "173f28c677b3d124c500431f842430dd4e2ddad0"
+        }
+      ],
+      "scope": "Exploratory source-helper probe only. No upstream install/build/execution; no emitted facts/findings, evaluation or acceptance credit.",
+      "statusSHA256": "3a1a4f2d56af6172b7ebf168ee4f2b4d42a425a02c1e90ab58d3fa182ce29784",
+      "toolSource": "Seamline full-pipeline candidate A of 2026-10-23 (commit id of the private history, not carried over)",
+      "uid": 60010
+    },
+    {
+      "node": "v24.22.0",
+      "results": [
+        {
+          "name": "parent",
+          "proofs": {
+            "client": {
+              "reason": "WRITE_COMPUTED_PROPERTY_UNKNOWN",
+              "sourceRef": "scripts/check-env.js:6",
+              "state": "unknown"
+            }
+          },
+          "sha": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1"
+        },
+        {
+          "name": "fix",
+          "proofs": {
+            "client": {
+              "reason": "WRITE_COMPUTED_PROPERTY_UNKNOWN",
+              "sourceRef": "scripts/check-env.js:6",
+              "state": "unknown"
+            }
+          },
+          "sha": "173f28c677b3d124c500431f842430dd4e2ddad0"
+        }
+      ],
+      "scope": "Exploratory source-helper probe only. No upstream install/build/execution; no emitted facts/findings, evaluation or acceptance credit.",
+      "statusSHA256": "43859c96559ddb6375d7a641a47b545f984859d4e40ed9e1b33497941b9ff257",
+      "toolSource": "Seamline helper candidate B of 2026-10-23 (commit id of the private history, not carried over)",
+      "uid": 60010
+    }
+  ]
+}

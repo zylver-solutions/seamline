@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Petstore API
+  version: 1.4.0
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Liveness probe
+      # An explicit empty list. This is "no auth", not "we could not tell".
+      security: []
+      responses:
+        '200':
+          description: ok
+  /pets:
+    get:
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+    post:
+      operationId: createPet
+      # An anonymous alternative alongside a real scheme: auth is optional.
+      security:
+        - {}
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pet'
+      responses:
+        '201':
+          description: created
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      x-seamline-handler: src/routes/pets.ts#getPet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: X-Trace-Id
+          in: header
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+        - status
+        - ownerId
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        # required AND nullable - the axes are independent.
+        ownerId:
+          type: string
+          format: uuid
+          nullable: true
+        # optional AND non-nullable.
+        tagCount:
+          type: integer
+        # optional AND nullable.
+        retiredAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum:
+            - available
+            - pending
+            - sold
+        weight:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        active:
+          type: boolean
+          default: true
+        metadata:
+          type: object
+        tags:
+          type: array
+          maxItems: 12
+          items:
+            type: string

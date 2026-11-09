@@ -1,0 +1,99 @@
+Seamline
+Copyright 2026 Zylver Solutions LLC
+
+This product includes software developed at Zylver Solutions LLC
+(https://zylver.com/).
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+--------------------------------------------------------------------------------
+1. Scope of this file
+--------------------------------------------------------------------------------
+
+Apache-2.0 section 4(d) requires that a redistributor propagate the attribution
+notices carried in the NOTICE file of any Apache-2.0 work included in a
+derivative work. This file discharges that obligation.
+
+It is deliberately not a full third-party licence listing. That is
+`THIRD-PARTY-NOTICES.txt`, regenerated from the installed dependency tree with
+`node scripts/license-gate.mjs --write-third-party-notices` (design v3 section
+10.2; a CycloneDX SBOM at release time is tracked separately). This file
+carries only what Apache-2.0 section 4(d) and MPL-2.0 section 3.4 actually
+require to be reproduced.
+
+--------------------------------------------------------------------------------
+2. Ontology and specification text
+--------------------------------------------------------------------------------
+
+The Seamline ontology (`ontology/seamline.yaml`), the generated vocabulary
+documentation, and the specification text in `docs/design/` are licensed under
+Creative Commons Attribution 4.0 International (CC-BY-4.0), not Apache-2.0.
+
+    Seamline ontology and specification
+    Copyright 2026 Zylver Solutions LLC
+    https://creativecommons.org/licenses/by/4.0/
+
+Attribution is required when reusing the vocabulary. Interoperating with it,
+or generating it from your own source, is not a derivative work of the text.
+
+--------------------------------------------------------------------------------
+3. Apache-2.0 dependencies
+--------------------------------------------------------------------------------
+
+Seamline links against Apache-2.0-licensed dependencies at build and runtime.
+As of the last run of `node scripts/license-gate.mjs --notices`, none of the
+Apache-2.0 packages in the installed tree ships a NOTICE file of its own, so
+there are no upstream attribution notices to reproduce verbatim here. The
+dependencies themselves are recorded, in full and with versions, in
+`THIRD-PARTY-NOTICES.txt`.
+
+Two Apache-2.0 build dependencies are called out explicitly because a previous
+revision of this project's design recorded their licence incorrectly
+(v3 section 10.2):
+
+  - LinkML (https://github.com/linkml/linkml) is Apache-2.0, not CC0. Only
+    `linkml-model` and `linkml-runtime` are CC0. Seamline uses LinkML as a
+    build-time generator for the ontology; the generated artefacts are
+    Seamline's own output, but the tooling's Apache-2.0 attribution obligation
+    is recorded here rather than assumed away.
+
+        LinkML
+        Copyright (c) 2021 Harold Solbrig and contributors
+        Licensed under the Apache License, Version 2.0
+
+  - TypeScript (https://github.com/microsoft/TypeScript) is Apache-2.0.
+
+        TypeScript
+        Copyright (c) Microsoft Corporation
+        Licensed under the Apache License, Version 2.0
+
+--------------------------------------------------------------------------------
+4. No code derivation
+--------------------------------------------------------------------------------
+
+Seamline implements published formats and aligns with published vocabularies.
+It does not incorporate source code from any of them. Every prior-art
+relationship is classified `SPEC-COMPATIBLE` or `CODE-DERIVED` in the design
+record (v3 section 10.1), and as of this release every row is
+`SPEC-COMPATIBLE`.
+
+Specifically: no source has been copied from FINOS CALM, Backstage, Apache
+Atlas, Cartography, OpenLineage, Joern, SCIP, Graphify, or any other
+Apache-2.0 project. Implementing a published schema or reusing a vocabulary
+term is not code derivation; copying an implementation is, and would carry the
+upstream licence and its NOTICE with it. If that ever changes, the derived
+files keep their upstream licence headers and this section must list them
+before the change is merged.
+
+--------------------------------------------------------------------------------
+5. Trademarks
+--------------------------------------------------------------------------------
+
+"Seamline" and the Seamline logo are trademarks of Zylver Solutions LLC.
+Apache-2.0 section 6 grants no trademark licence. You may state that your
+software works with Seamline; you may not use the name in a way that suggests
+endorsement, or as the name of a fork or a derived product, without
+permission.
+
+All other product names, logos, and brands mentioned in this project are the
+property of their respective owners, and are used for identification only.

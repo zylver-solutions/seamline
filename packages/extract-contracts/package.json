@@ -1,0 +1,66 @@
+{
+  "name": "@seamline/extract-contracts",
+  "version": "0.1.0",
+  "description": "API-contract facts for Seamline from OpenAPI, JSON Schema and Zod.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/extract-contracts"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/extract-contracts#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "!dist/test-harness.*",
+    "!dist/write-test-support.*",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/core": "workspace:*",
+    "@seamline/ontology": "workspace:*",
+    "yaml": "^2.9.1"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@seamline/security": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

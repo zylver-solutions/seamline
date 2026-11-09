@@ -1,0 +1,63 @@
+{
+  "name": "@seamline/align",
+  "version": "0.1.0",
+  "description": "Alignment reports for Seamline: compares what a repository's documents claim with what its code and manifests show, and emits a versioned finding packet. Never gates a build.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/align"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/align#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "!dist/test-support.*",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*",
+    "@seamline/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

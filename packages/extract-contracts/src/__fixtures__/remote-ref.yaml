@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Remote Ref API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      required:
+        - remote
+      properties:
+        remote:
+          $ref: 'https://evil.example.com/schema.json#/components/schemas/Pwned'
+        protocolRelative:
+          $ref: '//evil.example.com/schema.json#/Pwned'

@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Unknown Auth API
+  version: 0.1.0
+# Neither the document nor the operation declares `security`. That is
+# "we could not tell", and X6 must not fire on it.
+paths:
+  /reports:
+    get:
+      operationId: listReports
+      responses:
+        '200':
+          description: ok

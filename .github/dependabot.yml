@@ -1,0 +1,41 @@
+# Actions in this repository are pinned by commit SHA rather than by tag, which
+# is a supply-chain control and also means they never update on their own. This
+# file is the other half of that decision: without it, pinning quietly becomes
+# "frozen on a version with a known vulnerability".
+#
+# Dependabot rewrites the SHA and keeps the `# vX.Y.Z` comment in step, so the
+# pin stays readable.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: 'ci'
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: 'build'
+    groups:
+      # One pull request for the development toolchain rather than five.
+      dev-toolchain:
+        patterns:
+          - 'typescript'
+          - 'typescript-eslint'
+          - 'eslint*'
+          - 'prettier'
+          - '@types/*'
+        update-types:
+          - minor
+          - patch

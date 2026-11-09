@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: Escape Ref API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        outside:
+          $ref: '../../outside.yaml#/Thing'

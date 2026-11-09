@@ -1,0 +1,1477 @@
+{
+  "cases": [
+    {
+      "artifactSHA256": {
+        "logs/check.stdout.json": "793307e4bb688595fc64f1a87e8fcaa753ef2d264f272ee0fccab0bc740bbd6c",
+        "logs/extract.stdout.json": "170d0350bda08d480b82201acffd0969d3b6b90e96a1574737a53d2ae48492bb",
+        "result.json": "2ad991a2f277b29c9dcd5fd2db1943f8e80a4d7d03676b4f3889b77ef8c08276"
+      },
+      "checkMilliseconds": 2038,
+      "comparedPairs": [
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:Column:public.board.description",
+            "kind": "Column",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "description",
+            "path": "prisma/migrations/16_boards/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "description",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(500)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 500,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 3,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "board",
+              "type": "character varying(500)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/16_boards/migration.sql:6"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/description",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-ecafdf3543e55c4c",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-parent:Column:public.board.description"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/description",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "description",
+            "path": "src/app/api/boards/[boardId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/board.ts\",\"declarations\":[\"updateBoard\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Board\",\"modelField\":\"description\",\"storageField\":\"description\",\"storageTable\":\"umami-x7-parent:Table:public.board\"}",
+              "container": "board",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/description",
+              "lengthUpperState": "unbounded",
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "description",
+              "storageModel": "Board",
+              "storageTable": "umami-x7-parent:Table:public.board",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/boards/[boardId]/route.ts#/properties/description"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:Column:public.board.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "prisma/migrations/16_boards/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(200)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 200,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 2,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "board",
+              "type": "character varying(200)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/16_boards/migration.sql:5"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-ecafdf3543e55c4c",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-parent:Column:public.board.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "src/app/api/boards/[boardId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/board.ts\",\"declarations\":[\"updateBoard\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Board\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-parent:Table:public.board\"}",
+              "container": "board",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "unbounded",
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Board",
+              "storageTable": "umami-x7-parent:Table:public.board",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/boards/[boardId]/route.ts#/properties/name"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:Column:public.link.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(100)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 100,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 1,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "link",
+              "type": "character varying(100)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:13"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-ecafdf3543e55c4c",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-parent:Column:public.link.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "src/app/api/links/[linkId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/link.ts\",\"declarations\":[\"updateLink\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Link\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-parent:Table:public.link\"}",
+              "container": "link",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "unbounded",
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Link",
+              "storageTable": "umami-x7-parent:Table:public.link",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/links/[linkId]/route.ts#/properties/name"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:Column:public.link.url",
+            "kind": "Column",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "url",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "url",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(500)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 500,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 2,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "link",
+              "type": "character varying(500)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:14"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/url",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-ecafdf3543e55c4c",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-parent:Column:public.link.url"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/url",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "url",
+            "path": "src/app/api/links/[linkId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/link.ts\",\"declarations\":[\"updateLink\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Link\",\"modelField\":\"url\",\"storageField\":\"url\",\"storageTable\":\"umami-x7-parent:Table:public.link\"}",
+              "container": "link",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/url",
+              "lengthUpperState": "unbounded",
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "url",
+              "storageModel": "Link",
+              "storageTable": "umami-x7-parent:Table:public.link",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/links/[linkId]/route.ts#/properties/url"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:Column:public.pixel.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(100)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 100,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 1,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "pixel",
+              "type": "character varying(100)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:28"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-ecafdf3543e55c4c",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-parent:Column:public.pixel.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-ecafdf3543e55c4c",
+            "name": "name",
+            "path": "src/app/api/pixels/[pixelId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/pixel.ts\",\"declarations\":[\"updatePixel\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Pixel\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-parent:Table:public.pixel\"}",
+              "container": "pixel",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "unbounded",
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Pixel",
+              "storageTable": "umami-x7-parent:Table:public.pixel",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/pixels/[pixelId]/route.ts#/properties/name"
+          }
+        }
+      ],
+      "detectors": {
+        "X10_UNTESTED_PII_WRITE": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X1_NULLABILITY": {
+          "findings": 0,
+          "reason": "VALUE_ROLE_UNOBSERVED: no joined response property states comparable nullability; generic code shapes and request properties do not prove a stored-row or insert obligation",
+          "state": "unknown"
+        },
+        "X2_TYPE": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X3_CONSTRAINT": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X4_UNBACKED_PROPERTY": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X5_UNWRITTEN_COLUMN": {
+          "findings": 0,
+          "reason": "untracedWriteCalls is 2: write call(s) could not be attributed to a table; writeHooks is 1: write hook(s) may change what an insert writes; runtimeDdl is 56: embedded SQL may change schema defaults or triggers outside the data replay",
+          "state": "unknown"
+        },
+        "X6_PII_UNAUTHENTICATED": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X7_VALIDATOR_DIVERGENCE": {
+          "findings": 5,
+          "state": "fired"
+        },
+        "X8_ORPHANED_MIGRATION": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X9_CONTRACT_DRIFT": {
+          "findings": 0,
+          "state": "clean"
+        }
+      },
+      "extractMilliseconds": 70067,
+      "extractors": [
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "CodeField",
+                "File",
+                "Module",
+                "Parameter",
+                "Repo",
+                "RouteHandler",
+                "Symbol"
+              ],
+              "scope": "code.ts",
+              "selector": "{**/*.cjs,**/*.cts,**/*.js,**/*.jsx,**/*.mjs,**/*.mts,**/*.ts,**/*.tsx,cypress/**/*.cts,cypress/**/*.mts,cypress/**/*.ts,cypress/**/*.tsx,package.json,public/intl/country/en-US.json,public/intl/language/en-US.json,public/intl/messages/en-US.json,public/iso-3166-2.json}"
+            }
+          ],
+          "diagnostics": [
+            "56 SQL expression site(s) may change schema facts outside the data replay (runtimeDdl)",
+            "runtime DDL at public/intl/country/en-US.json:66",
+            "runtime DDL at public/intl/messages/en-US.json:67",
+            "runtime DDL at public/intl/messages/en-US.json:67",
+            "runtime DDL at public/intl/messages/en-US.json:68",
+            "runtime DDL at public/intl/messages/en-US.json:68",
+            "runtime DDL at public/intl/messages/en-US.json:69",
+            "runtime DDL at public/intl/messages/en-US.json:69",
+            "runtime DDL at public/intl/messages/en-US.json:70",
+            "runtime DDL at public/intl/messages/en-US.json:70",
+            "runtime DDL at public/iso-3166-2.json:722",
+            "runtime DDL at public/iso-3166-2.json:723",
+            "runtime DDL at public/iso-3166-2.json:724",
+            "runtime DDL at public/iso-3166-2.json:725",
+            "runtime DDL at public/iso-3166-2.json:726",
+            "runtime DDL at public/iso-3166-2.json:727",
+            "runtime DDL at public/iso-3166-2.json:728",
+            "runtime DDL at public/iso-3166-2.json:729",
+            "runtime DDL at public/iso-3166-2.json:730",
+            "runtime DDL at public/iso-3166-2.json:731",
+            "runtime DDL at public/iso-3166-2.json:732",
+            "2 write call(s) cannot be attributed to a table (untracedWriteCalls)",
+            "untraced write at src/lib/prisma.ts:279 (unsafe-raw-call, unknown)",
+            "untraced write at src/lib/prisma.ts:281 (unsafe-raw-call, unknown)",
+            "19 table(s) may be written by something no edge records (unknownWriterTables)",
+            "unknown writer of board: src/queries/prisma/board.ts:59 (orm-write)",
+            "unknown writer of event_data: scripts/seed/index.ts:94 (orm-write)",
+            "unknown writer of link: src/queries/prisma/link.ts:57 (orm-write)",
+            "unknown writer of pixel: src/queries/prisma/pixel.ts:51 (orm-write)",
+            "unknown writer of report: scripts/seed/index.ts:183 (orm-write)",
+            "unknown writer of revenue: scripts/seed/index.ts:110 (orm-write)",
+            "unknown writer of segment: scripts/seed/index.ts:182 (orm-write)",
+            "unknown writer of session: scripts/seed/index.ts:62 (orm-write)",
+            "unknown writer of session_data: scripts/seed/index.ts:179 (orm-write)",
+            "unknown writer of session_replay: src/queries/prisma/sessionReplay.ts:46 (orm-write)",
+            "unknown writer of session_replay_saved: src/queries/prisma/sessionReplay.ts:76 (orm-write)",
+            "unknown writer of share: src/queries/prisma/share.ts:56 (orm-write)",
+            "unknown writer of team: src/queries/prisma/team.ts:115 (orm-write)",
+            "unknown writer of team_user: src/queries/prisma/team.ts:118 (orm-write)",
+            "unknown writer of user: src/queries/prisma/user.ts:77 (orm-write)",
+            "unknown writer of website: scripts/seed/index.ts:144 (orm-write)",
+            "unknown writer of website_event: scripts/seed/index.ts:78 (orm-write)",
+            "unknown writer of website_event_stats_hourly: src/queries/sql/events/getEventStats.ts:120 (elsewhere)",
+            "unknown writer of website_revenue: src/queries/sql/reports/getRevenue.ts:103 (elsewhere)"
+          ],
+          "durationMs": 0,
+          "edgeCount": 13155,
+          "extractor": "extract-code-ts",
+          "nodeCount": 4459,
+          "status": "PASS",
+          "version": "0.0.1"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "DataSource",
+                "Schema",
+                "Table",
+                "Column",
+                "Migration"
+              ],
+              "scope": "data",
+              "selector": "**/*.{sql,prisma,ts,tsx,mts,cts,js,jsx,mjs,cjs}"
+            }
+          ],
+          "diagnostics": [],
+          "durationMs": 0,
+          "edgeCount": 844,
+          "extractor": "extract-data",
+          "nodeCount": 437,
+          "status": "PASS",
+          "version": "0.0.1"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "Contract",
+                "Operation",
+                "SchemaProperty",
+                "RouteHandler"
+              ],
+              "scope": "contracts",
+              "selector": "{.github/**,app.json,biome.json,cypress.config.ts,cypress/**,docker-compose.yml,docker/**,next.config.ts,package.components.json,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,podman/**,prisma.config.ts,public/**,scripts/**,seamline.config.json,src/app/(collect)/**,src/app/(main)/**,src/app/Providers.tsx,src/app/api/admin/**,src/app/api/auth/logout/**,src/app/api/auth/sso/**,src/app/api/auth/verify/**,src/app/api/boards/[boardId]/route.ts,src/app/api/config/**,src/app/api/heartbeat/**,src/app/api/links/[linkId]/route.ts,src/app/api/me/route.ts,src/app/api/me/teams/**,src/app/api/me/websites/**,src/app/api/pixels/[pixelId]/route.ts,src/app/api/realtime/**,src/app/api/reports/**,src/app/api/scripts/**,src/app/api/share/[slug]/**,src/app/api/teams/[teamId]/boards/**,src/app/api/teams/[teamId]/links/**,src/app/api/teams/[teamId]/pixels/**,src/app/api/teams/[teamId]/websites/**,src/app/api/users/[userId]/teams/**,src/app/api/users/[userId]/websites/**,src/app/api/websites/[websiteId]/active/**,src/app/api/websites/[websiteId]/daterange/**,src/app/api/websites/[websiteId]/event-data/**,src/app/api/websites/[websiteId]/events/**,src/app/api/websites/[websiteId]/export/**,src/app/api/websites/[websiteId]/metrics/**,src/app/api/websites/[websiteId]/pageviews/**,src/app/api/websites/[websiteId]/replays/[replayId]/**,src/app/api/websites/[websiteId]/replays/route.ts,src/app/api/websites/[websiteId]/replays/saved/route.ts,src/app/api/websites/[websiteId]/reports/**,src/app/api/websites/[websiteId]/reset/**,src/app/api/websites/[websiteId]/revenue/**,src/app/api/websites/[websiteId]/segments/**,src/app/api/websites/[websiteId]/session-data/**,src/app/api/websites/[websiteId]/sessions/**,src/app/api/websites/[websiteId]/stats/**,src/app/api/websites/[websiteId]/values/**,src/app/layout.tsx,src/app/login/**,src/app/logout/**,src/app/not-found.tsx,src/app/page.tsx,src/app/share/**,src/app/sso/**,src/components/**,src/i18n/**,src/index.ts,src/lib/auth.ts,src/lib/boardComponentCompatibility.ts,src/lib/boards.test.ts,src/lib/boards.ts,src/lib/charts.test.ts,src/lib/charts.ts,src/lib/clickhouse.ts,src/lib/client.ts,src/lib/colors.ts,src/lib/constants.ts,src/lib/crypto.ts,src/lib/data.ts,src/lib/date.ts,src/lib/db.ts,src/lib/detect.test.ts,src/lib/detect.ts,src/lib/entity.ts,src/lib/fetch.ts,src/lib/filters.ts,src/lib/format.test.ts,src/lib/format.ts,src/lib/generate.ts,src/lib/get-base-url.test.ts,src/lib/get-base-url.ts,src/lib/ip.ts,src/lib/jwt.ts,src/lib/kafka.ts,src/lib/lang.ts,src/lib/load.ts,src/lib/match-configured-path.test.ts,src/lib/match-configured-path.ts,src/lib/params.ts,src/lib/password.ts,src/lib/prisma.ts,src/lib/react.ts,src/lib/redis.ts,src/lib/request.ts,src/lib/response.ts,src/lib/sql.ts,src/lib/storage.ts,src/lib/types.ts,src/lib/url.ts,src/lib/utils.ts,src/permissions/**,src/queries/**,src/store/**,src/test/**,tsconfig.json,tsconfig.prisma.json,vitest.config.ts}"
+            }
+          ],
+          "diagnostics": [
+            "CONTRACTS_PARTIAL_COVERAGE: 27 file(s) are outside the authoritative claim; contracts they declare are neither emitted nor tombstoned by this run",
+            "CONTRACT_NAME_COLLISION: schema is declared in src/app/api/batch/route.ts, src/app/api/record/route.ts, src/app/api/send/route.ts; every declaration is withheld",
+            "CONTRACT_NAME_COLLISION: validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b226372656174655368617265225d5d2c225368617265225d is declared in src/app/api/boards/[boardId]/shares/route.ts, src/app/api/links/[linkId]/shares/route.ts, src/app/api/pixels/[pixelId]/shares/route.ts, src/app/api/share/route.ts, src/app/api/websites/[websiteId]/route.ts, src/app/api/websites/[websiteId]/shares/route.ts, src/app/api/websites/route.ts; every declaration is withheld",
+            "WRITE_LOCAL_PARSER_AMBIGUOUS: src/app/api/auth/login/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/boards/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/dashboard/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/links/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/me/password/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/pixels/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/users/[userId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/users/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/join/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/users/[userId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/websites/[websiteId]/replays/saved/[replayId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/websites/[websiteId]/transfer/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_PERSISTENCE_CALL_UNKNOWN: src/app/api/teams/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/users/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/websites/[websiteId]/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/websites/route.ts",
+            "WRITE_SCHEMA_ROOT_UNKNOWN: src/app/api/share/id/[shareId]/route.ts",
+            "WRITE_SCHEMA_ROOT_UNKNOWN: src/app/api/share/route.ts",
+            "WRITE_UNSUPPORTED_SCHEMA_DECLARATION: src/app/api/send/route.ts",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/batch/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/record/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/send/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportBaseSchema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract performanceReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract reportTypeSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract retentionReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract revenueReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract timezoneParam",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract unitParam",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract urlOrPathParam",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/batch/route.ts contract schema",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/record/route.ts contract schema",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/send/route.ts contract schema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportBaseSchema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportSchema"
+          ],
+          "durationMs": 0,
+          "edgeCount": 87,
+          "extractor": "extract-contracts",
+          "nodeCount": 103,
+          "status": "PASS",
+          "version": "0.0.4"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [],
+              "scope": "infer-join",
+              "selector": "MAPS_TO_FIELD|BACKED_BY|EXPOSED_AS|VALIDATED_BY"
+            }
+          ],
+          "diagnostics": [
+            "validator umami-x7-parent:Symbol:umami#anyObjectParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#fieldsParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#operatorParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#reportBaseSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#reportResultSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#reportTypeParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#reportTypeSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#schema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#segmentTypeParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#teamRoleParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#timezoneParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#unitParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#urlOrPathParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-parent:Symbol:umami#userRoleParam declares no members; VALIDATED_BY not inferable from it"
+          ],
+          "durationMs": 0,
+          "edgeCount": 34,
+          "extractor": "infer-join",
+          "nodeCount": 0,
+          "status": "PASS",
+          "version": "0.1.0"
+        }
+      ],
+      "findings": [
+        {
+          "claim": "validated write input description permits strings longer than 500 along its extracted binding to description",
+          "code": "X7_VALIDATOR_DIVERGENCE",
+          "confidence": 0.89,
+          "id": "b2a89eedb3d87bc1",
+          "left": "umami-x7-parent:Column:public.board.description",
+          "leftFact": "description declares maxLength=500 (prisma/migrations/16_boards/migration.sql:6)",
+          "occurrences": 1,
+          "repo": "umami-x7-parent",
+          "right": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/description",
+          "rightFact": "description has a positively proved unbounded string validator and unchanged validated write binding (src/app/api/boards/[boardId]/route.ts#/properties/description)",
+          "severity": "high",
+          "viaPath": [
+            "EXPOSED_AS"
+          ]
+        },
+        {
+          "claim": "validated write input name permits strings longer than 200 along its extracted binding to name",
+          "code": "X7_VALIDATOR_DIVERGENCE",
+          "confidence": 0.89,
+          "id": "37b9a83a41eb4899",
+          "left": "umami-x7-parent:Column:public.board.name",
+          "leftFact": "name declares maxLength=200 (prisma/migrations/16_boards/migration.sql:5)",
+          "occurrences": 1,
+          "repo": "umami-x7-parent",
+          "right": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/name",
+          "rightFact": "name has a positively proved unbounded string validator and unchanged validated write binding (src/app/api/boards/[boardId]/route.ts#/properties/name)",
+          "severity": "high",
+          "viaPath": [
+            "EXPOSED_AS"
+          ]
+        },
+        {
+          "claim": "validated write input name permits strings longer than 100 along its extracted binding to name",
+          "code": "X7_VALIDATOR_DIVERGENCE",
+          "confidence": 0.89,
+          "id": "be0b1f13879cf60a",
+          "left": "umami-x7-parent:Column:public.link.name",
+          "leftFact": "name declares maxLength=100 (prisma/migrations/14_add_link_and_pixel/migration.sql:13)",
+          "occurrences": 1,
+          "repo": "umami-x7-parent",
+          "right": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/name",
+          "rightFact": "name has a positively proved unbounded string validator and unchanged validated write binding (src/app/api/links/[linkId]/route.ts#/properties/name)",
+          "severity": "high",
+          "viaPath": [
+            "EXPOSED_AS"
+          ]
+        },
+        {
+          "claim": "validated write input url permits strings longer than 500 along its extracted binding to url",
+          "code": "X7_VALIDATOR_DIVERGENCE",
+          "confidence": 0.89,
+          "id": "0a52884bd0d1d609",
+          "left": "umami-x7-parent:Column:public.link.url",
+          "leftFact": "url declares maxLength=500 (prisma/migrations/14_add_link_and_pixel/migration.sql:14)",
+          "occurrences": 1,
+          "repo": "umami-x7-parent",
+          "right": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/url",
+          "rightFact": "url has a positively proved unbounded string validator and unchanged validated write binding (src/app/api/links/[linkId]/route.ts#/properties/url)",
+          "severity": "high",
+          "viaPath": [
+            "EXPOSED_AS"
+          ]
+        },
+        {
+          "claim": "validated write input name permits strings longer than 100 along its extracted binding to name",
+          "code": "X7_VALIDATOR_DIVERGENCE",
+          "confidence": 0.89,
+          "id": "4d919e754c2c2455",
+          "left": "umami-x7-parent:Column:public.pixel.name",
+          "leftFact": "name declares maxLength=100 (prisma/migrations/14_add_link_and_pixel/migration.sql:28)",
+          "occurrences": 1,
+          "repo": "umami-x7-parent",
+          "right": "umami-x7-parent:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d#/properties/name",
+          "rightFact": "name has a positively proved unbounded string validator and unchanged validated write binding (src/app/api/pixels/[pixelId]/route.ts#/properties/name)",
+          "severity": "high",
+          "viaPath": [
+            "EXPOSED_AS"
+          ]
+        }
+      ],
+      "name": "umami-x7-parent",
+      "outcome": "complete",
+      "runId": "run-det-ecafdf3543e55c4c",
+      "upstreamSHA": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1"
+    },
+    {
+      "artifactSHA256": {
+        "logs/check.stdout.json": "8f9312d14bb82a8c4b8a1a96b6892b9de958a765520faa821b817c2b54926738",
+        "logs/extract.stdout.json": "3a1886a0fb25a902b4c0a7cfb34506d096b618920e4eac16a97d73ba24af2281",
+        "result.json": "2ff3da44a41905d046a10ee73bcf2af3b239dd7c5506af1dbe43eb4a71af2433"
+      },
+      "checkMilliseconds": 2000,
+      "comparedPairs": [
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:Column:public.board.description",
+            "kind": "Column",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "description",
+            "path": "prisma/migrations/16_boards/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "description",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(500)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 500,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 3,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "board",
+              "type": "character varying(500)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/16_boards/migration.sql:6"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/description",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-db1242079b3c1ad9",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-fix:Column:public.board.description"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/description",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "description",
+            "path": "src/app/api/boards/[boardId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/board.ts\",\"declarations\":[\"updateBoard\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Board\",\"modelField\":\"description\",\"storageField\":\"description\",\"storageTable\":\"umami-x7-fix:Table:public.board\"}",
+              "container": "board",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/description",
+              "lengthUpperState": "bounded",
+              "maxLength": 500,
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "description",
+              "storageModel": "Board",
+              "storageTable": "umami-x7-fix:Table:public.board",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/boards/[boardId]/route.ts#/properties/description"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:Column:public.board.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "prisma/migrations/16_boards/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(200)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 200,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 2,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "board",
+              "type": "character varying(200)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/16_boards/migration.sql:5"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-db1242079b3c1ad9",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-fix:Column:public.board.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "src/app/api/boards/[boardId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/board.ts\",\"declarations\":[\"updateBoard\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Board\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-fix:Table:public.board\"}",
+              "container": "board",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465426f617264225d5d2c22426f617264225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "bounded",
+              "maxLength": 200,
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Board",
+              "storageTable": "umami-x7-fix:Table:public.board",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/boards/[boardId]/route.ts#/properties/name"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:Column:public.link.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(100)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 100,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 1,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "link",
+              "type": "character varying(100)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:13"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-db1242079b3c1ad9",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-fix:Column:public.link.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "src/app/api/links/[linkId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/link.ts\",\"declarations\":[\"updateLink\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Link\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-fix:Table:public.link\"}",
+              "container": "link",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "bounded",
+              "maxLength": 100,
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Link",
+              "storageTable": "umami-x7-fix:Table:public.link",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/links/[linkId]/route.ts#/properties/name"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:Column:public.link.url",
+            "kind": "Column",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "url",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "url",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(500)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 500,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 2,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "link",
+              "type": "character varying(500)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:14"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/url",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-db1242079b3c1ad9",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-fix:Column:public.link.url"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d#/properties/url",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "url",
+            "path": "src/app/api/links/[linkId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/link.ts\",\"declarations\":[\"updateLink\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Link\",\"modelField\":\"url\",\"storageField\":\"url\",\"storageTable\":\"umami-x7-fix:Table:public.link\"}",
+              "container": "link",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b227570646174654c696e6b225d5d2c224c696e6b225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/url",
+              "lengthUpperState": "bounded",
+              "maxLength": 500,
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "url",
+              "storageModel": "Link",
+              "storageTable": "umami-x7-fix:Table:public.link",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/links/[linkId]/route.ts#/properties/url"
+          }
+        },
+        {
+          "column": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:Column:public.pixel.name",
+            "kind": "Column",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "prisma/migrations/14_add_link_and_pixel/migration.sql",
+            "props": {
+              "checkConstraint": null,
+              "checkCount": 0,
+              "column": "name",
+              "comment": null,
+              "dataSource": "default",
+              "declaredType": "varchar(100)",
+              "defaultExpr": null,
+              "defaultSite": "none",
+              "dialect": "postgres",
+              "hasDefault": false,
+              "isArray": false,
+              "isPrimaryKey": false,
+              "isUnique": false,
+              "maxLength": 100,
+              "nullable": false,
+              "numericPrecision": null,
+              "numericScale": null,
+              "ordinal": 1,
+              "pii": "none",
+              "piiConfidence": 0,
+              "piiEvidence": null,
+              "piiProvenance": "EXTRACTED",
+              "schema": "public",
+              "sourceKinds": "prisma,sql-migration",
+              "table": "pixel",
+              "type": "character varying(100)",
+              "typeCategory": "text"
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "prisma/migrations/14_add_link_and_pixel/migration.sql:28"
+          },
+          "joinEdges": [
+            {
+              "confidence": 0.89,
+              "deleted_at": null,
+              "dst_id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d#/properties/name",
+              "kind": "EXPOSED_AS",
+              "last_seen_run": "run-det-db1242079b3c1ad9",
+              "provenance": "INFERRED",
+              "scope": "infer-join",
+              "src_id": "umami-x7-fix:Column:public.pixel.name"
+            }
+          ],
+          "property": {
+            "confidence": 1.0,
+            "deleted_at": null,
+            "id": "umami-x7-fix:SchemaProperty:validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d#/properties/name",
+            "kind": "SchemaProperty",
+            "last_seen_run": "run-det-db1242079b3c1ad9",
+            "name": "name",
+            "path": "src/app/api/pixels/[pixelId]/route.ts",
+            "props": {
+              "bindingWitness": "{\"method\":\"POST\",\"parser\":{\"file\":\"src/lib/request.ts\",\"declaration\":\"parseRequest\"},\"persistence\":{\"file\":\"src/queries/prisma/pixel.ts\",\"declarations\":[\"updatePixel\"],\"operation\":\"update\"},\"generator\":\"src/generated/prisma\",\"extensions\":[\"@prisma/extension-read-replicas@0.5.0\"],\"sourceBoundary\":\"inspected-repository-source\",\"cacheKey\":\"prisma\",\"storageModel\":\"Pixel\",\"modelField\":\"name\",\"storageField\":\"name\",\"storageTable\":\"umami-x7-fix:Table:public.pixel\"}",
+              "container": "pixel",
+              "contract": "validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b22757064617465506978656c225d5d2c22506978656c225d",
+              "direction": "request",
+              "hasDefault": false,
+              "isArray": false,
+              "jsonPointer": "/properties/name",
+              "lengthUpperState": "bounded",
+              "maxLength": 100,
+              "modelBindingComplete": true,
+              "nullable": false,
+              "required": false,
+              "storageField": "name",
+              "storageModel": "Pixel",
+              "storageTable": "umami-x7-fix:Table:public.pixel",
+              "successfulParse": true,
+              "type": "string",
+              "typeCategory": "text",
+              "unchangedForwarding": true,
+              "valueRole": "validated-write-input",
+              "writeBindingComplete": true
+            },
+            "provenance": "EXTRACTED",
+            "source_ref": "src/app/api/pixels/[pixelId]/route.ts#/properties/name"
+          }
+        }
+      ],
+      "detectors": {
+        "X10_UNTESTED_PII_WRITE": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X1_NULLABILITY": {
+          "findings": 0,
+          "reason": "VALUE_ROLE_UNOBSERVED: no joined response property states comparable nullability; generic code shapes and request properties do not prove a stored-row or insert obligation",
+          "state": "unknown"
+        },
+        "X2_TYPE": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X3_CONSTRAINT": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X4_UNBACKED_PROPERTY": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X5_UNWRITTEN_COLUMN": {
+          "findings": 0,
+          "reason": "untracedWriteCalls is 2: write call(s) could not be attributed to a table; writeHooks is 1: write hook(s) may change what an insert writes; runtimeDdl is 56: embedded SQL may change schema defaults or triggers outside the data replay",
+          "state": "unknown"
+        },
+        "X6_PII_UNAUTHENTICATED": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X7_VALIDATOR_DIVERGENCE": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X8_ORPHANED_MIGRATION": {
+          "findings": 0,
+          "state": "clean"
+        },
+        "X9_CONTRACT_DRIFT": {
+          "findings": 0,
+          "state": "clean"
+        }
+      },
+      "extractMilliseconds": 69245,
+      "extractors": [
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "CodeField",
+                "File",
+                "Module",
+                "Parameter",
+                "Repo",
+                "RouteHandler",
+                "Symbol"
+              ],
+              "scope": "code.ts",
+              "selector": "{**/*.cjs,**/*.cts,**/*.js,**/*.jsx,**/*.mjs,**/*.mts,**/*.ts,**/*.tsx,cypress/**/*.cts,cypress/**/*.mts,cypress/**/*.ts,cypress/**/*.tsx,package.json,public/intl/country/en-US.json,public/intl/language/en-US.json,public/intl/messages/en-US.json,public/iso-3166-2.json}"
+            }
+          ],
+          "diagnostics": [
+            "56 SQL expression site(s) may change schema facts outside the data replay (runtimeDdl)",
+            "runtime DDL at public/intl/country/en-US.json:66",
+            "runtime DDL at public/intl/messages/en-US.json:67",
+            "runtime DDL at public/intl/messages/en-US.json:67",
+            "runtime DDL at public/intl/messages/en-US.json:68",
+            "runtime DDL at public/intl/messages/en-US.json:68",
+            "runtime DDL at public/intl/messages/en-US.json:69",
+            "runtime DDL at public/intl/messages/en-US.json:69",
+            "runtime DDL at public/intl/messages/en-US.json:70",
+            "runtime DDL at public/intl/messages/en-US.json:70",
+            "runtime DDL at public/iso-3166-2.json:722",
+            "runtime DDL at public/iso-3166-2.json:723",
+            "runtime DDL at public/iso-3166-2.json:724",
+            "runtime DDL at public/iso-3166-2.json:725",
+            "runtime DDL at public/iso-3166-2.json:726",
+            "runtime DDL at public/iso-3166-2.json:727",
+            "runtime DDL at public/iso-3166-2.json:728",
+            "runtime DDL at public/iso-3166-2.json:729",
+            "runtime DDL at public/iso-3166-2.json:730",
+            "runtime DDL at public/iso-3166-2.json:731",
+            "runtime DDL at public/iso-3166-2.json:732",
+            "2 write call(s) cannot be attributed to a table (untracedWriteCalls)",
+            "untraced write at src/lib/prisma.ts:279 (unsafe-raw-call, unknown)",
+            "untraced write at src/lib/prisma.ts:281 (unsafe-raw-call, unknown)",
+            "19 table(s) may be written by something no edge records (unknownWriterTables)",
+            "unknown writer of board: src/queries/prisma/board.ts:59 (orm-write)",
+            "unknown writer of event_data: scripts/seed/index.ts:94 (orm-write)",
+            "unknown writer of link: src/queries/prisma/link.ts:57 (orm-write)",
+            "unknown writer of pixel: src/queries/prisma/pixel.ts:51 (orm-write)",
+            "unknown writer of report: scripts/seed/index.ts:183 (orm-write)",
+            "unknown writer of revenue: scripts/seed/index.ts:110 (orm-write)",
+            "unknown writer of segment: scripts/seed/index.ts:182 (orm-write)",
+            "unknown writer of session: scripts/seed/index.ts:62 (orm-write)",
+            "unknown writer of session_data: scripts/seed/index.ts:179 (orm-write)",
+            "unknown writer of session_replay: src/queries/prisma/sessionReplay.ts:46 (orm-write)",
+            "unknown writer of session_replay_saved: src/queries/prisma/sessionReplay.ts:76 (orm-write)",
+            "unknown writer of share: src/queries/prisma/share.ts:56 (orm-write)",
+            "unknown writer of team: src/queries/prisma/team.ts:115 (orm-write)",
+            "unknown writer of team_user: src/queries/prisma/team.ts:118 (orm-write)",
+            "unknown writer of user: src/queries/prisma/user.ts:77 (orm-write)",
+            "unknown writer of website: scripts/seed/index.ts:144 (orm-write)",
+            "unknown writer of website_event: scripts/seed/index.ts:78 (orm-write)",
+            "unknown writer of website_event_stats_hourly: src/queries/sql/events/getEventStats.ts:120 (elsewhere)",
+            "unknown writer of website_revenue: src/queries/sql/reports/getRevenue.ts:103 (elsewhere)"
+          ],
+          "durationMs": 0,
+          "edgeCount": 13155,
+          "extractor": "extract-code-ts",
+          "nodeCount": 4459,
+          "status": "PASS",
+          "version": "0.0.1"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "DataSource",
+                "Schema",
+                "Table",
+                "Column",
+                "Migration"
+              ],
+              "scope": "data",
+              "selector": "**/*.{sql,prisma,ts,tsx,mts,cts,js,jsx,mjs,cjs}"
+            }
+          ],
+          "diagnostics": [],
+          "durationMs": 0,
+          "edgeCount": 844,
+          "extractor": "extract-data",
+          "nodeCount": 437,
+          "status": "PASS",
+          "version": "0.0.1"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [
+                "Contract",
+                "Operation",
+                "SchemaProperty",
+                "RouteHandler"
+              ],
+              "scope": "contracts",
+              "selector": "{.github/**,app.json,biome.json,cypress.config.ts,cypress/**,docker-compose.yml,docker/**,next.config.ts,package.components.json,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,podman/**,prisma.config.ts,public/**,scripts/**,seamline.config.json,src/app/(collect)/**,src/app/(main)/**,src/app/Providers.tsx,src/app/api/admin/**,src/app/api/auth/logout/**,src/app/api/auth/sso/**,src/app/api/auth/verify/**,src/app/api/boards/[boardId]/route.ts,src/app/api/config/**,src/app/api/heartbeat/**,src/app/api/links/[linkId]/route.ts,src/app/api/me/route.ts,src/app/api/me/teams/**,src/app/api/me/websites/**,src/app/api/pixels/[pixelId]/route.ts,src/app/api/realtime/**,src/app/api/reports/**,src/app/api/scripts/**,src/app/api/share/[slug]/**,src/app/api/teams/[teamId]/boards/**,src/app/api/teams/[teamId]/links/**,src/app/api/teams/[teamId]/pixels/**,src/app/api/teams/[teamId]/websites/**,src/app/api/users/[userId]/teams/**,src/app/api/users/[userId]/websites/**,src/app/api/websites/[websiteId]/active/**,src/app/api/websites/[websiteId]/daterange/**,src/app/api/websites/[websiteId]/event-data/**,src/app/api/websites/[websiteId]/events/**,src/app/api/websites/[websiteId]/export/**,src/app/api/websites/[websiteId]/metrics/**,src/app/api/websites/[websiteId]/pageviews/**,src/app/api/websites/[websiteId]/replays/[replayId]/**,src/app/api/websites/[websiteId]/replays/route.ts,src/app/api/websites/[websiteId]/replays/saved/route.ts,src/app/api/websites/[websiteId]/reports/**,src/app/api/websites/[websiteId]/reset/**,src/app/api/websites/[websiteId]/revenue/**,src/app/api/websites/[websiteId]/segments/**,src/app/api/websites/[websiteId]/session-data/**,src/app/api/websites/[websiteId]/sessions/**,src/app/api/websites/[websiteId]/stats/**,src/app/api/websites/[websiteId]/values/**,src/app/layout.tsx,src/app/login/**,src/app/logout/**,src/app/not-found.tsx,src/app/page.tsx,src/app/share/**,src/app/sso/**,src/components/**,src/i18n/**,src/index.ts,src/lib/auth.ts,src/lib/boardComponentCompatibility.ts,src/lib/boards.test.ts,src/lib/boards.ts,src/lib/charts.test.ts,src/lib/charts.ts,src/lib/clickhouse.ts,src/lib/client.ts,src/lib/colors.ts,src/lib/constants.ts,src/lib/crypto.ts,src/lib/data.ts,src/lib/date.ts,src/lib/db.ts,src/lib/detect.test.ts,src/lib/detect.ts,src/lib/entity.ts,src/lib/fetch.ts,src/lib/filters.ts,src/lib/format.test.ts,src/lib/format.ts,src/lib/generate.ts,src/lib/get-base-url.test.ts,src/lib/get-base-url.ts,src/lib/ip.ts,src/lib/jwt.ts,src/lib/kafka.ts,src/lib/lang.ts,src/lib/load.ts,src/lib/match-configured-path.test.ts,src/lib/match-configured-path.ts,src/lib/params.ts,src/lib/password.ts,src/lib/prisma.ts,src/lib/react.ts,src/lib/redis.ts,src/lib/request.ts,src/lib/response.ts,src/lib/sql.ts,src/lib/storage.ts,src/lib/types.ts,src/lib/url.ts,src/lib/utils.ts,src/permissions/**,src/queries/**,src/store/**,src/test/**,tsconfig.json,tsconfig.prisma.json,vitest.config.ts}"
+            }
+          ],
+          "diagnostics": [
+            "CONTRACTS_PARTIAL_COVERAGE: 27 file(s) are outside the authoritative claim; contracts they declare are neither emitted nor tombstoned by this run",
+            "CONTRACT_NAME_COLLISION: schema is declared in src/app/api/batch/route.ts, src/app/api/record/route.ts, src/app/api/send/route.ts; every declaration is withheld",
+            "CONTRACT_NAME_COLLISION: validated-write:5b22756d616d69222c5b22504f5354222c22736368656d61225d2c5b22756d616d69222c5b226372656174655368617265225d5d2c225368617265225d is declared in src/app/api/boards/[boardId]/shares/route.ts, src/app/api/links/[linkId]/shares/route.ts, src/app/api/pixels/[pixelId]/shares/route.ts, src/app/api/share/route.ts, src/app/api/websites/[websiteId]/route.ts, src/app/api/websites/[websiteId]/shares/route.ts, src/app/api/websites/route.ts; every declaration is withheld",
+            "WRITE_LOCAL_PARSER_AMBIGUOUS: src/app/api/auth/login/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/boards/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/dashboard/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/links/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/me/password/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/pixels/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/users/[userId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/[teamId]/users/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/teams/join/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/users/[userId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/websites/[websiteId]/replays/saved/[replayId]/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_AMBIGUOUS: src/app/api/websites/[websiteId]/transfer/route.ts",
+            "WRITE_LOCAL_PERSISTENCE_UNPROVED: WRITE_PERSISTENCE_CALL_UNKNOWN: src/app/api/teams/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/users/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/websites/[websiteId]/route.ts",
+            "WRITE_NO_COMPLETE_FIELD: src/app/api/websites/route.ts",
+            "WRITE_SCHEMA_ROOT_UNKNOWN: src/app/api/share/id/[shareId]/route.ts",
+            "WRITE_SCHEMA_ROOT_UNKNOWN: src/app/api/share/route.ts",
+            "WRITE_UNSUPPORTED_SCHEMA_DECLARATION: src/app/api/send/route.ts",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/batch/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/record/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/app/api/send/route.ts contract schema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportBaseSchema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_CONTRACT_WITHHELD: src/lib/schema.ts contract reportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract performanceReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract reportTypeSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract retentionReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract revenueReportSchema",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract timezoneParam",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract unitParam",
+            "ZOD_UNSUPPORTED_MODIFIER: src/lib/schema.ts contract urlOrPathParam",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/batch/route.ts contract schema",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/record/route.ts contract schema",
+            "ZOD_UNSUPPORTED_MUTATION: src/app/api/send/route.ts contract schema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportBaseSchema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportResultSchema",
+            "ZOD_UNSUPPORTED_SCHEMA: src/lib/schema.ts contract reportSchema"
+          ],
+          "durationMs": 0,
+          "edgeCount": 87,
+          "extractor": "extract-contracts",
+          "nodeCount": 103,
+          "status": "PASS",
+          "version": "0.0.4"
+        },
+        {
+          "authoritative": [
+            {
+              "kinds": [],
+              "scope": "infer-join",
+              "selector": "MAPS_TO_FIELD|BACKED_BY|EXPOSED_AS|VALIDATED_BY"
+            }
+          ],
+          "diagnostics": [
+            "validator umami-x7-fix:Symbol:umami#anyObjectParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#fieldsParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#operatorParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#reportBaseSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#reportResultSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#reportTypeParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#reportTypeSchema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#schema declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#segmentTypeParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#teamRoleParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#timezoneParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#unitParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#urlOrPathParam declares no members; VALIDATED_BY not inferable from it",
+            "validator umami-x7-fix:Symbol:umami#userRoleParam declares no members; VALIDATED_BY not inferable from it"
+          ],
+          "durationMs": 0,
+          "edgeCount": 34,
+          "extractor": "infer-join",
+          "nodeCount": 0,
+          "status": "PASS",
+          "version": "0.1.0"
+        }
+      ],
+      "findings": [],
+      "name": "umami-x7-fix",
+      "outcome": "complete",
+      "runId": "run-det-db1242079b3c1ad9",
+      "upstreamSHA": "173f28c677b3d124c500431f842430dd4e2ddad0"
+    }
+  ],
+  "commandTemplates": [
+    "node --max-old-space-size=6144 packages/cli/dist/index.js extract --repo <prepared-dev-copy> --store <store> --json",
+    "node --max-old-space-size=6144 packages/cli/dist/index.js check --repo <prepared-dev-copy> --store <store> --json"
+  ],
+  "contractsChildLimits": {
+    "memoryMiB": 512,
+    "timeoutSeconds": 120
+  },
+  "controllerExit": 0,
+  "node": "v24.22.0",
+  "outerHeapMiB": 6144,
+  "outerUID": 60010,
+  "pipeline": "prepareWorkTree then runPipeline, default development extractor configuration",
+  "schema": 1,
+  "scope": "Development parent/fix CLI reproduction only. No formal independent-account, precision, calibrated-confidence, mutant-recall, sealed or release qualification credit.",
+  "toolSource": "Seamline first X7 producer implementation of 2026-10-23 (commit id of the private history, not carried over)",
+  "toolTree": "not carried into the public history",
+  "upstreamExecuted": false,
+  "upstreamInstalled": false
+}

@@ -1,0 +1,10 @@
+dist/
+node_modules/
+seamline-out/
+docs/audit/council/
+docs/internal/
+packages/*/src/__fixtures__/
+# Written by scripts/dogfood-gate.mjs --update; the gate owns the serialization.
+docs/dogfood/baseline/
+# Written by scripts/gen-ontology-ref.mjs; the generator owns the serialization.
+docs/reference/ontology.md

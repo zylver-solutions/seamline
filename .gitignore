@@ -1,0 +1,18 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+seamline-out/
+
+# Evaluation harness: fetched third-party checkouts and run artefacts. Never committed.
+.eval-cache/
+eval-out/
+coverage/
+.DS_Store
+
+# Local database files (not part of the published tree)
+*.db
+
+# Internal session handoff notes, not for publication
+docs/handoff/

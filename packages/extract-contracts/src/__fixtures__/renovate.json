@@ -1,0 +1,7 @@
+{
+  "$comment": "Deny-listed by name: schema-shaped configuration that is not a contract.",
+  "type": "object",
+  "properties": {
+    "extends": { "type": "array", "items": { "type": "string" } }
+  }
+}

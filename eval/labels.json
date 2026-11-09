@@ -1,0 +1,123 @@
+{
+  "6dc4289a943ea1c6": {
+    "verdict": "fp",
+    "rationale": "Pin 6f44c2f18a47f13010d51b987d9b851747ee54be. A fresh second source-review agent using the same account found a database timestamp default in the runtime schema helper, called before application inserts. Conditional table creation does not repair a pre-existing table, but an existing live table without a default is unestablished. The universal absence claim is not supported by the pinned source. The second reviewer did not see the first verdict or engine confidence; this adjudicated record is not marked blind because its review packet described the detector claim. Same-account review does not satisfy formal release independence under design 6.3.",
+    "evidence": [
+      "prisma/schema.prisma:348",
+      "lib/b2b-schema.ts:71",
+      "app/api/b2b/standing-orders/route.ts:40",
+      "app/api/b2b/standing-orders/route.ts:66"
+    ],
+    "reviewer": "Fresh second source-review agent using the same account; adjudicated source verdict, no formal release independence credit",
+    "blind": false
+  },
+  "b14e3a67d1b16735": {
+    "verdict": "fp",
+    "rationale": "Parent pin 6f44c2f18a47f13010d51b987d9b851747ee54be. A fresh second source-review agent using the same account found a database timestamp default in the runtime schema helper, called before application inserts. Conditional table creation does not repair a pre-existing table, but an existing live table without a default is unestablished. The universal absence claim is not supported by the pinned source. The second reviewer did not see the first verdict or engine confidence; this adjudicated record is not marked blind because its review packet described the detector claim. Same-account review does not satisfy formal release independence under design 6.3.",
+    "evidence": [
+      "prisma/schema.prisma:295",
+      "lib/b2b-schema.ts:28",
+      "app/api/b2b/leads/route.ts:43",
+      "app/api/b2b/leads/route.ts:59",
+      "app/api/b2b/inbound/route.ts:26",
+      "app/api/b2b/inbound/route.ts:29",
+      "app/api/b2b/discover/route.ts:196",
+      "app/api/b2b/discover/route.ts:247",
+      "test-discovery.ts:180"
+    ],
+    "reviewer": "Fresh second source-review agent using the same account; adjudicated source verdict, no formal release independence credit",
+    "blind": false
+  },
+  "eaa072881e9780a9": {
+    "verdict": "fp",
+    "rationale": "Pin f171a21e14fc24a5ecc52bf3e048803125f9f4d2. A fresh second source-review agent using the same account found a database timestamp default in the runtime schema helper, called before application inserts. Conditional table creation does not repair a pre-existing table, but an existing live table without a default is unestablished. The universal absence claim is not supported by the pinned source. The second reviewer did not see the first verdict or engine confidence; this adjudicated record is not marked blind because its review packet described the detector claim. Same-account review does not satisfy formal release independence under design 6.3.",
+    "evidence": [
+      "prisma/schema.prisma:348",
+      "lib/b2b-schema.ts:71",
+      "app/api/b2b/standing-orders/route.ts:40",
+      "app/api/b2b/standing-orders/route.ts:66"
+    ],
+    "reviewer": "Fresh second source-review agent using the same account; adjudicated source verdict, no formal release independence credit",
+    "blind": false
+  },
+  "37b9a83a41eb4899": {
+    "verdict": "tp",
+    "rationale": "At DEV parent c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, Board.name declares storage maximum 200, while its optional request string has no upper bound. The non-GET parser awaits JSON, returns successful safeParse data, and the guarded handler forwards the primitive unchanged into its resolved Prisma update wrapper. Fix 173f28c677b3d124c500431f842430dd4e2ddad0 adds the corresponding maximum. This supports the stated source disagreement, not an executed request or database error. A fresh same-account source reviewer agreed. No formal independent-review or sealed qualification credit is claimed.",
+    "evidence": [
+      "prisma/schema.prisma:332",
+      "src/app/api/boards/[boardId]/route.ts:38",
+      "src/app/api/boards/[boardId]/route.ts:58",
+      "src/queries/prisma/board.ts:63",
+      "src/lib/request.ts:19",
+      "src/lib/request.ts:26",
+      "src/lib/request.ts:40",
+      "src/lib/request.ts:52"
+    ],
+    "reviewer": "Fresh source-review agent using the author account; non-blind development adjudication with no formal release independence credit",
+    "blind": false
+  },
+  "b2a89eedb3d87bc1": {
+    "verdict": "tp",
+    "rationale": "At DEV parent c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, Board.description declares storage maximum 500, while its optional request string has no upper bound. The non-GET parser awaits JSON, returns successful safeParse data, and the guarded handler forwards the primitive unchanged into its resolved Prisma update wrapper. Fix 173f28c677b3d124c500431f842430dd4e2ddad0 adds the corresponding maximum. This supports the stated source disagreement, not an executed request or database error. A fresh same-account source reviewer agreed. No formal independent-review or sealed qualification credit is claimed.",
+    "evidence": [
+      "prisma/schema.prisma:333",
+      "src/app/api/boards/[boardId]/route.ts:39",
+      "src/app/api/boards/[boardId]/route.ts:58",
+      "src/queries/prisma/board.ts:63",
+      "src/lib/request.ts:19",
+      "src/lib/request.ts:26",
+      "src/lib/request.ts:40",
+      "src/lib/request.ts:52"
+    ],
+    "reviewer": "Fresh source-review agent using the author account; non-blind development adjudication with no formal release independence credit",
+    "blind": false
+  },
+  "be0b1f13879cf60a": {
+    "verdict": "tp",
+    "rationale": "At DEV parent c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, Link.name declares storage maximum 100, while its optional request string has no upper bound. The non-GET parser awaits JSON, returns successful safeParse data, and the guarded handler forwards the primitive unchanged into its resolved Prisma update wrapper. Fix 173f28c677b3d124c500431f842430dd4e2ddad0 adds the corresponding maximum. This supports the stated source disagreement, not an executed request or database error. A fresh same-account source reviewer agreed. No formal independent-review or sealed qualification credit is claimed.",
+    "evidence": [
+      "prisma/schema.prisma:290",
+      "src/app/api/links/[linkId]/route.ts:27",
+      "src/app/api/links/[linkId]/route.ts:46",
+      "src/queries/prisma/link.ts:61",
+      "src/lib/request.ts:19",
+      "src/lib/request.ts:26",
+      "src/lib/request.ts:40",
+      "src/lib/request.ts:52"
+    ],
+    "reviewer": "Fresh source-review agent using the author account; non-blind development adjudication with no formal release independence credit",
+    "blind": false
+  },
+  "0a52884bd0d1d609": {
+    "verdict": "tp",
+    "rationale": "At DEV parent c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, Link.url declares storage maximum 500, while its optional request string has no upper bound. The non-GET parser awaits JSON, returns successful safeParse data, and the guarded handler forwards the primitive unchanged into its resolved Prisma update wrapper. Fix 173f28c677b3d124c500431f842430dd4e2ddad0 adds the corresponding maximum. This supports the stated source disagreement, not an executed request or database error. A fresh same-account source reviewer agreed. No formal independent-review or sealed qualification credit is claimed.",
+    "evidence": [
+      "prisma/schema.prisma:291",
+      "src/app/api/links/[linkId]/route.ts:28",
+      "src/app/api/links/[linkId]/route.ts:46",
+      "src/queries/prisma/link.ts:61",
+      "src/lib/request.ts:19",
+      "src/lib/request.ts:26",
+      "src/lib/request.ts:40",
+      "src/lib/request.ts:52"
+    ],
+    "reviewer": "Fresh source-review agent using the author account; non-blind development adjudication with no formal release independence credit",
+    "blind": false
+  },
+  "4d919e754c2c2455": {
+    "verdict": "tp",
+    "rationale": "At DEV parent c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1, Pixel.name declares storage maximum 100, while its optional request string has no upper bound. The non-GET parser awaits JSON, returns successful safeParse data, and the guarded handler forwards the primitive unchanged into its resolved Prisma update wrapper. Fix 173f28c677b3d124c500431f842430dd4e2ddad0 adds the corresponding maximum. This supports the stated source disagreement, not an executed request or database error. A fresh same-account source reviewer agreed. No formal independent-review or sealed qualification credit is claimed.",
+    "evidence": [
+      "prisma/schema.prisma:311",
+      "src/app/api/pixels/[pixelId]/route.ts:27",
+      "src/app/api/pixels/[pixelId]/route.ts:45",
+      "src/queries/prisma/pixel.ts:55",
+      "src/lib/request.ts:19",
+      "src/lib/request.ts:26",
+      "src/lib/request.ts:40",
+      "src/lib/request.ts:52"
+    ],
+    "reviewer": "Fresh source-review agent using the author account; non-blind development adjudication with no formal release independence credit",
+    "blind": false
+  }
+}

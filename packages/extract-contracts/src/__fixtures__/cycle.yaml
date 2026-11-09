@@ -1,0 +1,36 @@
+openapi: 3.0.3
+info:
+  title: Cycle API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    # A composes B composes A. Following `required` across `allOf` must
+    # terminate rather than recurse.
+    A:
+      allOf:
+        - $ref: '#/components/schemas/B'
+      required:
+        - a
+      properties:
+        a:
+          type: string
+    B:
+      allOf:
+        - $ref: '#/components/schemas/A'
+      required:
+        - b
+      properties:
+        b:
+          type: string
+    # A self-referential property. Recursion never crosses a `$ref`, so this
+    # emits `value` and `next` once and stops.
+    Node:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: string
+        next:
+          $ref: '#/components/schemas/Node'

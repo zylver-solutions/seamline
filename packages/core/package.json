@@ -1,0 +1,65 @@
+{
+  "name": "@seamline/core",
+  "version": "0.1.0",
+  "description": "Seamline's storage, identity, merge, traversal and evidence infrastructure, with an extensible semantic foundation.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./identity": {
+      "types": "./dist/identity/index.d.ts",
+      "default": "./dist/identity/index.js"
+    },
+    "./semantic": {
+      "types": "./dist/semantic/index.d.ts",
+      "default": "./dist/semantic/index.js"
+    },
+    "./sql": {
+      "types": "./dist/sql/index.d.ts",
+      "default": "./dist/sql/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "!dist/sif/test-fixtures.*",
+    "!dist/store/testing.*",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*",
+    "@seamline/security": "workspace:*"
+  }
+}

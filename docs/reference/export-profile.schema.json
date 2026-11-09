@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zylver-solutions/seamline/blob/main/docs/reference/export-profile.schema.json",
+  "title": "Seamline export profile, format version 1",
+  "description": "One export profile, as declared under \"exportProfiles\" in seamline.config.json. The profile name is its key there, so the object has no \"name\" field. Rules JSON Schema cannot express are listed under \"x-seamline-rules\" and are enforced by the parser in @seamline/core (parseExportProfile). Design: docs/design/export-profile.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "description",
+    "allow",
+    "allowEdges",
+    "allowProps",
+    "allowEdgeProps",
+    "allowFields",
+    "allowProvenance",
+    "includeUntrusted"
+  ],
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Required. The only version this build reads."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]*$",
+      "description": "Plain text, at most 500 characters (Unicode code points, as JSON Schema counts them; an emoji is one), no control characters."
+    },
+    "allow": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "The node allow-list: [kind, sensitivity] pairs matched against a node's effective sensitivity. A pair not listed is denied. Never empty.",
+      "items": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "$ref": "#/$defs/nodeKind"
+          },
+          {
+            "$ref": "#/$defs/sensitivity"
+          }
+        ],
+        "minItems": 2,
+        "maxItems": 2
+      }
+    },
+    "allowEdges": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Edge kinds that may be released. An edge is also withheld when either endpoint is withheld.",
+      "items": {
+        "$ref": "#/$defs/edgeKind"
+      }
+    },
+    "allowProps": {
+      "type": "object",
+      "description": "Per node kind, the prop keys released, or \"*\" for all. A kind without an entry releases no props. Every key must be a kind that \"allow\" admits.",
+      "propertyNames": {
+        "$ref": "#/$defs/nodeKind"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/propAllowance"
+      }
+    },
+    "allowEdgeProps": {
+      "type": "object",
+      "description": "Per edge kind, the prop keys released, or \"*\" for all. Every key must be a kind that \"allowEdges\" lists.",
+      "propertyNames": {
+        "$ref": "#/$defs/edgeKind"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/propAllowance"
+      }
+    },
+    "allowFields": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "The record fields a released node or edge carries in an exported file; a field not listed is not written. On the agent surface (MCP) it governs the location fields (path, sourceRef, srcFile, dstFile) and the lifecycle fields (firstSeenRun, lastSeenRun, deletedAt); the MCP tools always print id, kind, name, src, dst, untrusted, provenance, confidence, sensitivity and the props that allowProps and allowEdgeProps name. The run ids and deletedAt are released only when named, because under the real clock a run id contains the extraction time. \"props\" selects whether the props object is present; allowProps and allowEdgeProps select which props it holds, so a profile with an allowProps or allowEdgeProps entry that is \"*\" or a non-empty list must name \"props\" (an empty list releases no prop and does not count). A name applies to whichever of nodes and edges has the field.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "id",
+          "kind",
+          "name",
+          "path",
+          "sensitivity",
+          "provenance",
+          "confidence",
+          "sourceRef",
+          "untrusted",
+          "props",
+          "firstSeenRun",
+          "lastSeenRun",
+          "deletedAt",
+          "src",
+          "dst",
+          "srcFile",
+          "dstFile"
+        ]
+      }
+    },
+    "allowProvenance": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Provenance levels a node or edge may carry and still be released. Never empty.",
+      "items": {
+        "$ref": "#/$defs/provenance"
+      }
+    },
+    "includeUntrusted": {
+      "type": "boolean",
+      "description": "Nodes tagged untrusted are withheld unless this is true. Always written down. When true, allowFields must name \"untrusted\", so untrusted text is never written without its marker."
+    },
+    "packets": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Optional. Finding packets that may leave through this profile. Absent means none. A packet is released only if allow admits, at the level the packet's content has, every node kind the packet carries.",
+      "items": {
+        "$ref": "#/$defs/packetKind"
+      }
+    }
+  },
+  "x-seamline-rules": [
+    "Every key of allowProps names a node kind that allow admits.",
+    "Every key of allowEdgeProps names an edge kind that allowEdges lists.",
+    "If any entry of allowProps or allowEdgeProps is \"*\" or a non-empty list, allowFields names \"props\" (a file would otherwise carry none of those props while the agent surface prints them). An entry that is an empty list releases no prop and does not count.",
+    "If includeUntrusted is true, allowFields names \"untrusted\" (untrusted text is never written without its marker).",
+    "A \"name\" field is never accepted inside exportProfiles; the key is the name, and it must not equal a shipped profile (public, team, audit)."
+  ],
+  "$defs": {
+    "packetKind": {
+      "type": "string",
+      "enum": [
+        "alignment"
+      ]
+    },
+    "nodeKind": {
+      "type": "string",
+      "enum": [
+        "Repo",
+        "File",
+        "Module",
+        "Symbol",
+        "CodeField",
+        "Parameter",
+        "RouteHandler",
+        "DataSource",
+        "Schema",
+        "Table",
+        "Column",
+        "Migration",
+        "Contract",
+        "Operation",
+        "SchemaProperty",
+        "Entity",
+        "DomainProperty",
+        "TestCase",
+        "TestRun",
+        "CoverageRecord",
+        "Commit",
+        "Changeset",
+        "Owner",
+        "Run",
+        "Extractor",
+        "Contradiction",
+        "Alias",
+        "Lens",
+        "ThreatModel"
+      ]
+    },
+    "edgeKind": {
+      "type": "string",
+      "enum": [
+        "CONTAINS",
+        "IMPORTS",
+        "EXPORTS",
+        "CALLS",
+        "EXTENDS",
+        "IMPLEMENTS",
+        "USES_TYPE",
+        "DECORATED_WITH",
+        "HANDLES_ROUTE",
+        "QUERIES",
+        "MIGRATED_BY",
+        "FK_TO",
+        "IMPLEMENTED_BY",
+        "MAPS_TO_FIELD",
+        "BACKED_BY",
+        "EXPOSED_AS",
+        "VALIDATED_BY",
+        "PERSISTED_IN",
+        "STORED_IN",
+        "TESTS",
+        "COVERS",
+        "TOUCHES",
+        "RENAMED_FROM",
+        "PRODUCED_BY",
+        "ALIAS_OF",
+        "OWNED_BY"
+      ]
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"]
+    },
+    "provenance": {
+      "type": "string",
+      "enum": ["EXTRACTED", "DECLARED", "INFERRED", "LLM_SUGGESTED"]
+    },
+    "propAllowance": {
+      "oneOf": [
+        {
+          "const": "*"
+        },
+        {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
+    }
+  }
+}

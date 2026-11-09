@@ -1,0 +1,99 @@
+{
+  "scope": "DEV source-only engineering refusal at the stated implementation pin; no current firing, examined fixed negative, precision, recall, qualification or release credit.",
+  "source": {
+    "sha": "Seamline implementation of 2026-10-24 (commit id of the private history, not carried over)",
+    "tree": "not carried into the public history",
+    "cliSHA256": "96ed5a83696bbbb3575a810ef0420a8903571780a94ccf5ac6e8caaa7648f0a4"
+  },
+  "runtime": "Node 24.22.0",
+  "execution": {
+    "uid": 60010,
+    "capabilities": false,
+    "noNewPrivileges": true,
+    "networkNamespace": true,
+    "upstreamInstallBuildTestOrExecution": false,
+    "newFetch": false,
+    "sealedAccess": false,
+    "outerHeapMiB": 6144,
+    "outerTimeoutMs": 900000,
+    "contractsChildHeapMiB": 512,
+    "contractsChildTimeoutMs": 120000
+  },
+  "runExit": 0,
+  "sourceClean": true,
+  "evidenceArchiveSHA256": "a545c04febefc51d73ef2f9d61ac4334328829b38a0c2799264178ccc678c4fd",
+  "results": [
+    {
+      "name": "umami-x7-parent",
+      "sha": "c0ea3aefbee7a3429ee2f824b06dc4a9dbe0b7e1",
+      "partition": "dev",
+      "pipelineOutcome": "complete",
+      "x7": {
+        "state": "unknown",
+        "findings": 0,
+        "reason": "X7_NO_OBSERVABLE_LENGTH_PAIR: no current finite-length column and completely bound validated string input can be compared"
+      },
+      "extractors": [
+        {
+          "name": "extract-code-ts",
+          "status": "PASS"
+        },
+        {
+          "name": "extract-contracts",
+          "status": "PASS"
+        },
+        {
+          "name": "extract-data",
+          "status": "PASS"
+        },
+        {
+          "name": "infer-join",
+          "status": "PASS"
+        }
+      ],
+      "contractsDiagnostics": [
+        "CONTRACTS_PARTIAL_COVERAGE: 47 file(s) are outside the authoritative claim; filename-wide deletion authority is withheld for those files",
+        "CONTRACT_NAME_COLLISION: schema is declared in src/app/api/batch/route.ts, src/app/api/record/route.ts, src/app/api/send/route.ts; every declaration is withheld",
+        "WRITE_NEXT_METHOD_INVOCATION_UNKNOWN: scripts/build-geo.js:3"
+      ],
+      "extractMs": 58048,
+      "checkMs": 2312
+    },
+    {
+      "name": "umami-x7-fix",
+      "sha": "173f28c677b3d124c500431f842430dd4e2ddad0",
+      "partition": "dev",
+      "pipelineOutcome": "complete",
+      "x7": {
+        "state": "unknown",
+        "findings": 0,
+        "reason": "X7_NO_OBSERVABLE_LENGTH_PAIR: no current finite-length column and completely bound validated string input can be compared"
+      },
+      "extractors": [
+        {
+          "name": "extract-code-ts",
+          "status": "PASS"
+        },
+        {
+          "name": "extract-contracts",
+          "status": "PASS"
+        },
+        {
+          "name": "extract-data",
+          "status": "PASS"
+        },
+        {
+          "name": "infer-join",
+          "status": "PASS"
+        }
+      ],
+      "contractsDiagnostics": [
+        "CONTRACTS_PARTIAL_COVERAGE: 47 file(s) are outside the authoritative claim; filename-wide deletion authority is withheld for those files",
+        "CONTRACT_NAME_COLLISION: schema is declared in src/app/api/batch/route.ts, src/app/api/record/route.ts, src/app/api/send/route.ts; every declaration is withheld",
+        "WRITE_NEXT_METHOD_INVOCATION_UNKNOWN: scripts/build-geo.js:3"
+      ],
+      "extractMs": 62336,
+      "checkMs": 2542
+    }
+  ]
+}

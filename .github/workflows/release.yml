@@ -1,0 +1,269 @@
+# Seamline release.
+#
+# This workflow publishes packages with provenance when the release gates
+# and publishing requirements are satisfied. See design v3 section 8 and
+# the council review section 6, finding L10.
+#
+# Provenance requires three things together, and it silently produces an
+# unattested package if any one is missing:
+#   1. id-token: write on the job
+#   2. --provenance on the publish command
+#   3. a public repository and a public package
+#
+# Actions are pinned by commit SHA. This workflow holds a publish token, so a
+# mutable tag here is a direct path to shipping someone else's code as ours.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Pack and verify without publishing'
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TZ: UTC
+  NO_COLOR: '1'
+
+jobs:
+  # A tag never publishes on the strength of a green CI run against a different
+  # commit. Every gate runs again here, on the exact tagged tree.
+  verify:
+    name: Re-verify the tagged tree
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: 'Gate: license allow-list'
+        run: node scripts/license-gate.mjs --notices
+
+      - name: 'Gate: published package versions are equal'
+        run: pnpm gate:versions
+
+      # Packs every publishable package and checks the tarball: LICENSE and
+      # NOTICE present, top-level allow-list, no test or source files. It needs
+      # the Build step above. Neither this workflow nor ci.yml ran it before.
+      - name: 'Gate: pack'
+        run: pnpm gate:pack
+
+      - name: 'Gate: ontology lint'
+        run: pnpm gate:ontology
+
+      - name: 'Gate: determinism'
+        env:
+          SEAMLINE_DETERMINISTIC: '1'
+        run: node scripts/determinism-gate.mjs
+
+      # The PUBLICATION leak scan, and the only place --publish is used.
+      #
+      # CI's copy of this gate reports open release-readiness items (an
+      # unconfirmed security contact, say) without failing, because it runs on
+      # every pull request over the whole tree and a blocking finding there is
+      # inherited by every later PR until the item closes. That trade is right
+      # for CI and wrong here: this workflow is what actually puts the package
+      # on the open internet, so the same finding must be fatal. --publish
+      # escalates those warnings back to blocking.
+      #
+      # This job previously ran no leak scan at all, so publication was the one
+      # path that never asked the question the script exists to answer.
+      - name: 'Gate: publication leak scan'
+        run: node scripts/internal-leak-scan.mjs --publish
+
+      # Design v3 sections 8 and 10.2 require a CycloneDX SBOM of the released
+      # tree. Run via npx with a pinned version rather than a devDependency:
+      # it is a release-time-only concern and never touches the lockfile.
+      #
+      # 1.19.3 declared engines npm "6 - 10", so on this job's Node 24 / npm 11
+      # toolchain (.npmrc sets engine-strict=true) npx failed with EBADENGINE
+      # before running. 6.0.1 declares npm ">=9", node ">=20.18.0". The CLI
+      # flags used here are unchanged across 1.19.3 to 6.0.1. It reads the
+      # tree through `npm ls`; .npmrc sets node-linker=hoisted, so pnpm installs
+      # a flat node_modules that `npm ls` can read.
+      - name: Generate CycloneDX SBOM
+        run: npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --output-format JSON --output-file sbom.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: seamline-sbom
+          path: sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Tag matches the published version
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./packages/cli/package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match packages/cli version $pkg"
+            exit 1
+          fi
+          echo "tag v$tag matches packages/cli version $pkg"
+
+  publish:
+    name: Publish to npm with provenance
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # A protected environment so a human approval sits between a pushed tag and
+    # a published artifact, and so the npm token is scoped to this environment.
+    environment: npm-publish
+    permissions:
+      contents: read
+      # Mints the OIDC token npm exchanges for a provenance attestation.
+      # Without this the publish succeeds and the package has no provenance.
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish
+        if: github.event_name == 'push'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: |
+          set -euo pipefail
+          pnpm publish --recursive --access public --provenance --tag next --no-git-checks
+
+      - name: Dry run
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm publish --recursive --access public --tag next --no-git-checks --dry-run
+
+      - name: Verify every published package carries provenance
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          # `pnpm publish --recursive` publishes every workspace package with
+          # publishConfig.access, not just the CLI. Checking one hardcoded
+          # name here would pass while saying nothing about the others,
+          # and would silently report success against a name this project
+          # does not even own if the name were ever wrong (docs/design/
+          # aspirational-state.md section 1.2). List is intentionally
+          # explicit rather than derived from `pnpm -r list --json` at run
+          # time: a package silently dropped from this list (private:true
+          # flipped, publishConfig removed) should make this step's diff
+          # visible in review, not disappear from verification unnoticed.
+          packages=(
+            "@seamline/cli"
+            "@seamline/contradictions"
+            "@seamline/core"
+            "@seamline/extract-change"
+            "@seamline/extract-code-ts"
+            "@seamline/extract-contracts"
+            "@seamline/extract-data"
+            "@seamline/infer-join"
+            "@seamline/mcp"
+            "@seamline/ontology"
+            "@seamline/security"
+            "@seamline/align"
+          )
+          verification_dir="$(mktemp -d)"
+          trap 'rm -rf -- "$verification_dir"' EXIT
+          specs=()
+          for pkg in "${packages[@]}"; do
+            specs+=("${pkg}@${version}")
+          done
+          cd "$verification_dir"
+          printf '{"name":"seamline-provenance-verification","version":"0.0.0","private":true}\n' > package.json
+          # Audit the registry artifacts from this release, with no lifecycle scripts.
+          npm install --ignore-scripts --no-audit --no-fund --save-exact \
+            --registry=https://registry.npmjs.org/ -- "${specs[@]}"
+          npm audit signatures --json --include-attestations \
+            --registry=https://registry.npmjs.org/ > audit.json
+          # A valid registry signature alone does not establish provenance.
+          # npm verifies the bundles cryptographically; require its evidence for every target.
+          node --input-type=module - audit.json "$version" "${packages[@]}" <<'VERIFY'
+          import assert from 'node:assert/strict';
+          import { readFileSync } from 'node:fs';
+          const [file, version, ...packages] = process.argv.slice(2);
+          const report = JSON.parse(readFileSync(file, 'utf8'));
+          assert.deepEqual(report.invalid, [], 'npm reported invalid verification evidence');
+          assert.deepEqual(report.missing, [], 'npm reported missing registry signatures');
+          assert.ok(Array.isArray(report.verified), 'npm did not return verified attestation evidence');
+          const provenanceTypes = new Set([
+            'https://slsa.dev/provenance/v0.2',
+            'https://slsa.dev/provenance/v1',
+          ]);
+          for (const name of packages) {
+            const records = report.verified.filter((entry) =>
+              entry?.name === name && entry.version === version &&
+              entry.location === `node_modules/${name}` &&
+              entry.registry === 'https://registry.npmjs.org/');
+            assert.equal(records.length, 1, `${name}@${version}: missing unique verified release artifact`);
+            const entry = records[0];
+            const predicateType = entry.attestations?.provenance?.predicateType;
+            assert.ok(provenanceTypes.has(predicateType), `${name}@${version}: missing provenance`);
+            assert.ok(Array.isArray(entry.attestationBundles) && entry.attestationBundles.some((item) => {
+              const envelope = item?.bundle?.dsseEnvelope;
+              if (item?.predicateType !== predicateType || envelope === null ||
+                typeof envelope !== 'object' || typeof envelope.payload !== 'string' ||
+                envelope.payload.length === 0) return false;
+              const statement = JSON.parse(Buffer.from(envelope.payload, 'base64').toString('utf8'));
+              return ['https://in-toto.io/Statement/v0.1', 'https://in-toto.io/Statement/v1']
+                .includes(statement?._type) && statement.predicateType === predicateType;
+            }),
+            `${name}@${version}: missing verified provenance bundle`);
+            console.log(`Verified provenance: ${name}@${version}`);
+          }
+          VERIFY

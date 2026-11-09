@@ -1,0 +1,1045 @@
+# SPDX-License-Identifier: CC-BY-4.0
+#
+# Seamline core ontology: the normative vocabulary.
+#
+# This file is the single hand-edited source for the vocabulary. JSON Schema,
+# TypeScript types, SQL DDL, and reference documentation are generated from it;
+# none of those is edited by hand.
+#
+# It must agree EXACTLY with `packages/ontology/src/contract.ts`, which is the
+# implementation seam every Seamline package compiles against. `ontology/lint.mjs`
+# cross-checks the two on every run and fails on any divergence. Neither file is
+# allowed to drift from the other. If they disagree, that is a bug in one of them
+# and the lint tells you which claim is unsupported.
+#
+# Licensing: this ontology is CC-BY-4.0 and is versioned SEPARATELY from the
+# tooling, which is Apache-2.0. See `ontology/README.md` and `docs/adr/ADR-0010`.
+#
+# Decision record: docs/adr/ADR-0001 (profile gating), ADR-0002 (identity),
+# ADR-0003 (lifecycle), ADR-0007 (provenance), ADR-0009 (determinism).
+
+id: https://seamline.dev/ontology/seamline
+name: seamline
+title: "Seamline core ontology"
+description: "A zero-declaration cross-domain join over a codebase: code, data, contract, and change in one vocabulary, with field-level identity across all four."
+license: CC-BY-4.0
+version: 1.0.0
+status: "core profile, v0.1"
+
+default_prefix: seamline
+default_range: string
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  seamline: https://seamline.dev/ontology/
+  prov: http://www.w3.org/ns/prov#
+  dcterms: http://purl.org/dc/terms/
+
+imports:
+  - linkml:types
+
+# ---------------------------------------------------------------------------
+# Enumerations
+#
+# LinkML permissible values are the right construct here. The prohibition on
+# `enum` in this project applies to TypeScript only, and for a specific reason:
+# Node strips types rather than transforming them, so a TS `enum` is not
+# erasable syntax. See docs/internal/toolchain.md. The TypeScript side expresses
+# the same closed sets as `as const` arrays plus a derived union.
+# ---------------------------------------------------------------------------
+
+enums:
+
+  ProfileEnum:
+    description: "Which profile a kind belongs to. See docs/adr/ADR-0001."
+    permissible_values:
+      core:
+        description: "Shipped and live. v0.1 extractors emit core kinds only."
+      extended:
+        description: "Reserved vocabulary. Inert: no extractor produces it, no detector reads it, no query traverses it. It exists to reserve the name."
+      vendor:
+        description: "Reserved for third-party extensions. Never produced by a first-party extractor."
+
+  ProvenanceEnum:
+    description: "Where a fact came from. Total precedence order, highest first: EXTRACTED > DECLARED > INFERRED > LLM_SUGGESTED. See docs/adr/ADR-0007."
+    permissible_values:
+      EXTRACTED:
+        description: "Read directly from an authoritative source by a first-party extractor. Outranks a human annotation deliberately: an annotation that disagrees with the compiler is wrong."
+      DECLARED:
+        description: "Asserted by a human, typically as an annotation, and reviewed."
+      INFERRED:
+        description: "Derived by name, type, or structure matching. Stored in the insert-only annotations table; never mutates a fact; never feeds a gate."
+      LLM_SUGGESTED:
+        description: "Proposed by a model. Lowest precedence. Promotion to DECLARED writes a new row retaining prov:wasAttributedTo; attribution is never overwritten."
+
+  SensitivityEnum:
+    description: "Export classification, defaulted per kind and required on every node. Export is default-deny: a profile is an allow-list and there is no export-everything flag. See docs/adr/ADR-0006."
+    permissible_values:
+      public:
+        description: "Safe to publish."
+      internal:
+        description: "Safe within the organization."
+      confidential:
+        description: "Restricted to those who need it. Data-layer kinds default here: a schema is a map of where the data lives."
+      restricted:
+        description: "Highest classification. People and threat models default here."
+
+  ExtractorStatusEnum:
+    description: "Per-extractor outcome for a run. UNAVAILABLE is never PASS. See docs/adr/ADR-0003."
+    permissible_values:
+      PASS:
+        description: "Ran to completion and is authoritative for its declared scope."
+      FAIL:
+        description: "Ran and errored. Tombstones nothing; queries over its scope return UNKNOWN."
+      UNAVAILABLE:
+        description: "Could not run at all: input absent, tool missing, credentials absent. Tombstones nothing. Never treated as a clean result, because a clean result and an absent extractor are indistinguishable from their output alone."
+
+  SeverityEnum:
+    description: "Severity of a contradiction."
+    permissible_values:
+      critical: {}
+      high: {}
+      medium: {}
+      low: {}
+
+  ContradictionCodeEnum:
+    description: "The v0.1 contradiction catalogue. Each detector compares two authoritative facts and never the absence of a declaration. See docs/adr/ADR-0005."
+    permissible_values:
+      X1_NULLABILITY:
+        description: "Column.nullable disagrees with the SchemaProperty.required or CodeField optionality it is joined to."
+      X2_TYPE:
+        description: "Column.type, CodeField.type, and SchemaProperty.type disagree across a join."
+      X3_CONSTRAINT:
+        description: "Column length or check constraint disagrees with the validator enforcing it."
+      X4_UNBACKED_PROPERTY:
+        description: "A response SchemaProperty has no BACKED_BY column and no computing symbol."
+      X5_UNWRITTEN_COLUMN:
+        description: "A NOT NULL column with no default is never written by any traced write path."
+      X6_PII_UNAUTHENTICATED:
+        description: "A column with pii is reachable from an Operation with no declared auth."
+      X7_VALIDATOR_DIVERGENCE:
+        description: "A validator enforces a constraint the database does not, or the reverse."
+      X8_ORPHANED_MIGRATION:
+        description: "A Migration references a Table or Column that no longer exists."
+      X9_CONTRACT_DRIFT:
+        description: "An Operation has no IMPLEMENTED_BY route handler, or a handler implements no declared operation."
+      X10_UNTESTED_PII_WRITE:
+        description: "A symbol writes a pii column and no TESTS or COVERS intersects it."
+
+  NodeKindEnum:
+    description: "Every node kind in the core profile. Must equal NODE_KINDS in contract.ts, and must equal the set of classes deriving from SeamlineNode."
+    permissible_values:
+      Repo: {}
+      File: {}
+      Module: {}
+      Symbol: {}
+      CodeField: {}
+      Parameter: {}
+      RouteHandler: {}
+      DataSource: {}
+      Schema: {}
+      Table: {}
+      Column: {}
+      Migration: {}
+      Contract: {}
+      Operation: {}
+      SchemaProperty: {}
+      Entity: {}
+      DomainProperty: {}
+      TestCase: {}
+      TestRun: {}
+      CoverageRecord: {}
+      Commit: {}
+      Changeset: {}
+      Owner: {}
+      Run: {}
+      Extractor: {}
+      Contradiction: {}
+      Alias: {}
+      Lens: {}
+      ThreatModel: {}
+
+  EdgeKindEnum:
+    description: "Every edge kind in the core profile. Must equal EDGE_KINDS in contract.ts, and must equal the set of classes deriving from SeamlineEdge."
+    permissible_values:
+      CONTAINS: {}
+      IMPORTS: {}
+      EXPORTS: {}
+      CALLS: {}
+      EXTENDS: {}
+      IMPLEMENTS: {}
+      USES_TYPE: {}
+      DECORATED_WITH: {}
+      HANDLES_ROUTE: {}
+      QUERIES: {}
+      MIGRATED_BY: {}
+      FK_TO: {}
+      IMPLEMENTED_BY: {}
+      MAPS_TO_FIELD: {}
+      BACKED_BY: {}
+      EXPOSED_AS: {}
+      VALIDATED_BY: {}
+      PERSISTED_IN: {}
+      STORED_IN: {}
+      TESTS: {}
+      COVERS: {}
+      TOUCHES: {}
+      RENAMED_FROM: {}
+      PRODUCED_BY: {}
+      ALIAS_OF: {}
+      OWNED_BY: {}
+
+# ---------------------------------------------------------------------------
+# Base slots
+#
+# These are the fields on SeamlineNode and SeamlineEdge in contract.ts.
+# Naming convention: LinkML uses snake_case, TypeScript uses camelCase, and the
+# generator maps between them (`first_seen_run` <-> `firstSeenRun`). The mapping
+# is mechanical and total; it is not a place where meaning is added.
+#
+# DELIBERATELY ABSENT: `created_at` and `updated_at`.
+#
+# Byte-identical output across two consecutive runs is a release gate
+# (docs/adr/ADR-0009). A wall-clock timestamp in a node or edge body makes that
+# impossible in principle, because two extractions of an unchanged repository
+# then differ in every row. The predecessor design put created_at/updated_at on
+# every node, and that single decision was enough to make golden-file testing,
+# `seamline diff`, and a graph merge driver all unimplementable.
+#
+# Time belongs to the run, not to the fact. A fact is not created at a time; it
+# is OBSERVED at a time, and the observation is the run. Node and edge lifecycle
+# is therefore expressed in run ids: first_seen_run, last_seen_run, deleted_at.
+# ---------------------------------------------------------------------------
+
+slots:
+
+  id:
+    description: "Natural key, `{repo}:{kind}:{canonicalName}`, path-free for every kind except File, whose canonical name is its repo-relative path. Deliberately not a synthetic UUID or ULID: an id minted at first sight is not stable across a rebuild-from-scratch, and rebuild-from-scratch is the operation this design rests on. See docs/adr/ADR-0002, and docs/adr/ADR-0016 for the File exception and for the inputs through which a move or rename changes another id."
+    identifier: true
+    required: true
+    range: string
+
+  kind:
+    description: "The node or edge kind. Pinned per class by slot_usage, so a class and its kind cannot disagree."
+    required: true
+
+  name:
+    description: "Display name. Not identity."
+    required: true
+    range: string
+
+  path:
+    description: "Repo-relative POSIX path. A PROPERTY, part of identity only for File (whose canonical name it is), and never absolute. Stored because the re-run invalidation rule needs it and because determinism forbids absolute paths."
+    required: false
+    range: string
+
+  profile:
+    description: "Which profile this kind belongs to. Class-level metadata, pinned per class with `equals_string` rather than carried per instance, which is why there is no corresponding runtime field on SeamlineNode in contract.ts. See docs/adr/ADR-0001."
+    required: true
+    range: ProfileEnum
+
+  sensitivity:
+    description: "Export classification. Required on every node and defaulted per kind, so a new kind cannot be added without a sensitivity decision."
+    required: true
+    range: SensitivityEnum
+
+  provenance:
+    description: "Where this fact came from. Merge resolves conflicts by the total precedence order, then by (extractor_priority, run_id), so the winner does not depend on input order."
+    required: true
+    range: ProvenanceEnum
+
+  confidence:
+    description: "Calibrated confidence in [0,1]. Ranks within a provenance level; it never substitutes for one."
+    required: true
+    range: float
+
+  source_ref:
+    description: "Pointer to the authoritative source this was read from."
+    required: false
+    range: string
+
+  untrusted:
+    description: "True when any string field derives from third-party content: dependency metadata, issue and pull-request text, commit messages, code comments. Such text is delimited when rendered into agent context, so that an attacker who lands a comment in a transitive dependency cannot issue instructions to a reading agent. See docs/adr/ADR-0006."
+    required: false
+    range: boolean
+
+  props:
+    description: "Open key/value map of kind-specific scalar properties. Values are string, number, boolean, or null. Sorted by key before serialization."
+    required: false
+    multivalued: true
+    range: string
+
+  first_seen_run:
+    description: "Run id in which this was first observed. Replaces created_at: run granularity, no wall clock."
+    required: true
+    range: string
+
+  last_seen_run:
+    description: "Run id in which this was most recently observed."
+    required: true
+    range: string
+
+  deleted_at:
+    description: "Tombstone marker. Set when the fact vanished from an authoritative scope of a PASSing run; CLEARED on re-insert, so a fact that reappears is resurrected rather than shadowed by a second row. Never hard-delete. See docs/adr/ADR-0003."
+    required: false
+    range: string
+
+  src:
+    description: "Source node id."
+    required: true
+    range: string
+
+  dst:
+    description: "Destination node id."
+    required: true
+    range: string
+
+  src_file:
+    description: "Repo-relative POSIX path of the source node's file, carried on the edge so the re-run invalidation rule can find every edge whose endpoints changed."
+    required: false
+    range: string
+
+  dst_file:
+    description: "Repo-relative POSIX path of the destination node's file. Same reason as src_file."
+    required: false
+    range: string
+
+# ---------------------------------------------------------------------------
+# Classes
+#
+# Two abstract bases, 29 node kinds, 26 edge kinds. Everything authored here is
+# `core`; nothing in this file is `extended` or `vendor` yet.
+#
+# Edge classes are named in SCREAMING_SNAKE_CASE rather than the LinkML CamelCase
+# convention. That is deliberate: the class name IS the edge kind token, and the
+# token must be identical in this file, in contract.ts, in serialized output, and
+# in a query. One spelling, checked mechanically, beats a convention plus a
+# mapping table.
+# ---------------------------------------------------------------------------
+
+classes:
+
+  SeamlineNode:
+    abstract: true
+    description: "Base for every node kind. A node is a fact about a thing that exists, addressed by a natural key."
+    slots:
+      - id
+      - kind
+      - name
+      - path
+      - profile
+      - sensitivity
+      - provenance
+      - confidence
+      - source_ref
+      - untrusted
+      - props
+      - first_seen_run
+      - last_seen_run
+      - deleted_at
+
+  SeamlineEdge:
+    abstract: true
+    description: "Base for every edge kind. Edge identity is UNIQUE(scope, src, dst, kind); without an edge identity an edge cannot be deleted, which is how the predecessor design ended up unable to forget anything. An edge carries no sensitivity of its own: it inherits the classification of its endpoints."
+    slots:
+      - kind
+      - src
+      - dst
+      - src_file
+      - dst_file
+      - profile
+      - provenance
+      - confidence
+      - source_ref
+      - props
+      - first_seen_run
+      - last_seen_run
+      - deleted_at
+
+  # --- Code -----------------------------------------------------------------
+
+  Repo:
+    is_a: SeamlineNode
+    description: "A source repository. The namespace component of every node id."
+    slot_usage:
+      kind: { equals_string: Repo }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo)"
+
+  File:
+    is_a: SeamlineNode
+    description: "A source file, addressed by repo-relative POSIX path."
+    slot_usage:
+      kind: { equals_string: File }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, posix_path)"
+
+  Module:
+    is_a: SeamlineNode
+    description: "A module or package: an importable unit, which is not always one file. Module -> File containment is enumerated explicitly, because the predecessor design declared containment as all-domains and consequently had no module-to-file edge at all while four of its views traversed one."
+    slot_usage:
+      kind: { equals_string: Module }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, module_specifier)"
+
+  Symbol:
+    is_a: SeamlineNode
+    description: "A declared symbol: class, interface, type alias, enum, function, or method. One kind with a symbol_kind property, not six kinds, because six would multiply every edge signature touching a symbol by six and buy nothing."
+    slot_usage:
+      kind: { equals_string: Symbol }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, canonical_qualified_name) resolved through re-exports and barrels to the DECLARATION site by the type checker. Resolving to the import site would make identity depend on which file was scanned first, which is a path dependency wearing a different name."
+
+  CodeField:
+    is_a: SeamlineNode
+    description: "A field or property declared on a symbol. One of the four endpoints of the field-level cross-domain join that is this project's wedge."
+    slot_usage:
+      kind: { equals_string: CodeField }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, canonical_qualified_name, field_name)"
+
+  Parameter:
+    is_a: SeamlineNode
+    description: "A parameter of a function or method."
+    slot_usage:
+      kind: { equals_string: Parameter }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, canonical_qualified_name, ordinal)"
+
+  RouteHandler:
+    is_a: SeamlineNode
+    description: "An HTTP route as the code exposes it: method plus path template. Distinct from Operation, which is the route as a contract DECLARES it. Keeping them separate is what makes contract drift detectable at all."
+    slot_usage:
+      kind: { equals_string: RouteHandler }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, http_method, path_template)"
+
+  # --- Data -----------------------------------------------------------------
+
+  DataSource:
+    is_a: SeamlineNode
+    description: "A database or other persistent store. Defaults to confidential: an inventory of an organization's data stores is not internal-safe by default."
+    slot_usage:
+      kind: { equals_string: DataSource }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_default_sensitivity: confidential
+      seamline_natural_key: "(datasource)"
+
+  Schema:
+    is_a: SeamlineNode
+    description: "A namespace within a data source."
+    slot_usage:
+      kind: { equals_string: Schema }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_default_sensitivity: confidential
+      seamline_natural_key: "(datasource, schema)"
+
+  Table:
+    is_a: SeamlineNode
+    description: "A table, view, or collection."
+    slot_usage:
+      kind: { equals_string: Table }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_default_sensitivity: confidential
+      seamline_natural_key: "(datasource, schema, table)"
+
+  Column:
+    is_a: SeamlineNode
+    description: "A column. Carries nullable, type, constraints, and pii, which are the facts most of the contradiction catalogue compares against. Defaults to confidential: a column inventory is a map of where the sensitive data is."
+    slot_usage:
+      kind: { equals_string: Column }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_default_sensitivity: confidential
+      seamline_natural_key: "(datasource, schema, table, column)"
+
+  Migration:
+    is_a: SeamlineNode
+    description: "A migration file. Extracted from static files only; v0.1 performs no live database introspection."
+    slot_usage:
+      kind: { equals_string: Migration }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, migration_id)"
+
+  # --- Contract -------------------------------------------------------------
+
+  Contract:
+    is_a: SeamlineNode
+    description: "An interface specification: an OpenAPI document, a JSON Schema, or a Zod schema module."
+    slot_usage:
+      kind: { equals_string: Contract }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Contract
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, contract_id)"
+
+  Operation:
+    is_a: SeamlineNode
+    description: "A declared operation on a contract, with its auth mode. The null auth modes are the interesting ones, which is exactly why export is default-deny."
+    slot_usage:
+      kind: { equals_string: Operation }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Contract
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(contract, operation_id)"
+
+  SchemaProperty:
+    is_a: SeamlineNode
+    description: "A property within a contract schema, addressed by JSON pointer. The contract-side endpoint of the field-level join."
+    slot_usage:
+      kind: { equals_string: SchemaProperty }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Contract
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(contract, json_pointer)"
+
+  # --- Domain ---------------------------------------------------------------
+
+  Entity:
+    is_a: SeamlineNode
+    description: "A domain entity. Declared-only and optional: the graph works without it, and nothing in v0.1 requires anyone to write one. This is the profile boundary doing its job."
+    slot_usage:
+      kind: { equals_string: Entity }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Domain
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, entity_name)"
+
+  DomainProperty:
+    is_a: SeamlineNode
+    description: "A property of a domain entity. Declared-only and optional, like Entity."
+    slot_usage:
+      kind: { equals_string: DomainProperty }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Domain
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, entity_name, property_name)"
+
+  # --- Verification ---------------------------------------------------------
+
+  TestCase:
+    is_a: SeamlineNode
+    description: "A test case. TESTS is the only EXTRACTED verification edge, and it is extracted from what the test imports and calls, never from a substring in its name."
+    slot_usage:
+      kind: { equals_string: TestCase }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Verification
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, test_file, test_name)"
+
+  TestRun:
+    is_a: SeamlineNode
+    description: "The result of executing a test suite at a commit."
+    slot_usage:
+      kind: { equals_string: TestRun }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Verification
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, commit, suite)"
+      seamline_unreachable_waiver: "No edge in v0.1. TestRun is the authoritative-evidence anchor the deferred needs matrix requires: a rule at error severity must cite a TestRun result at the commit plus coverage intersecting the realizing symbols, never a substring in a test name. The TestCase -> TestRun result edge lands with the needs matrix, behind a named consumer. Reserving the kind now costs nothing; adding a node kind later is an ontology-breaking change."
+
+  CoverageRecord:
+    is_a: SeamlineNode
+    description: "Coverage over a symbol or file, from a coverage report."
+    slot_usage:
+      kind: { equals_string: CoverageRecord }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Verification
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, commit, target_id)"
+
+  # --- Change ---------------------------------------------------------------
+
+  Commit:
+    is_a: SeamlineNode
+    description: "A git commit. Its message is third-party-authored text and is tagged untrusted."
+    slot_usage:
+      kind: { equals_string: Commit }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Change
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, sha)"
+
+  Changeset:
+    is_a: SeamlineNode
+    description: "A working diff or a set of commits under review. What blast radius is computed for."
+    slot_usage:
+      kind: { equals_string: Changeset }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Change
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, changeset_id)"
+
+  # --- People ---------------------------------------------------------------
+
+  Owner:
+    is_a: SeamlineNode
+    description: "An owning person or team, from CODEOWNERS. Defaults to restricted. This is personal data: retention and pseudonymization are unresolved in v0.1 and are recorded as such in docs/adr/ADR-0006 rather than left implicit."
+    slot_usage:
+      kind: { equals_string: Owner }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: People
+      seamline_default_sensitivity: restricted
+      seamline_natural_key: "(repo, owner_handle)"
+
+  # --- Meta -----------------------------------------------------------------
+
+  Run:
+    is_a: SeamlineNode
+    description: "One extraction. Carries started_at and finished_at, which is the ONLY place wall-clock time appears. Every node and edge lifecycle field is a run id rather than a timestamp, which is what makes byte-identical output achievable."
+    slot_usage:
+      kind: { equals_string: Run }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, run_id)"
+
+  Extractor:
+    is_a: SeamlineNode
+    description: "An extractor and its capability manifest, including the provenance ceiling the host enforces. An extractor may not assert a provenance above its ceiling; infer-join therefore cannot emit EXTRACTED, and that is a runtime error rather than a code-review question."
+    slot_usage:
+      kind: { equals_string: Extractor }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(extractor_name, version)"
+
+  Contradiction:
+    is_a: SeamlineNode
+    description: "Two authoritative facts that disagree, citing both facts and the join path along which they were compared. A NODE referencing two facts, never an edge between edges: the predecessor design required three edges that put edges and types in node positions, which no property-graph store supports."
+    slot_usage:
+      kind: { equals_string: Contradiction }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, code, left_id, right_id)"
+      seamline_unreachable_waiver: "No edge, by design. A contradiction references its two facts through the left and right node-id FIELDS on the record, not through graph edges. Making them edges would be reification (an edge whose endpoints are themselves facts about edges), which is the construct v3 removed. This waiver is the de-reification decision, recorded where it can be seen."
+
+  Alias:
+    is_a: SeamlineNode
+    description: "A rename mapping. When a canonical name changes, an ALIAS_OF row records old to new and history survives the rename. Identity is path-free for every kind except File, so a git mv changes no other id, unless it changes an input that the id is built from; a File's canonical name is its repo-relative path, so for a File that git reports as renamed the Alias is how history follows it. See docs/adr/ADR-0016, which lists those inputs."
+    slot_usage:
+      kind: { equals_string: Alias }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, former_canonical_name)"
+
+  Lens:
+    is_a: SeamlineNode
+    description: "A named saved view over the graph."
+    slot_usage:
+      kind: { equals_string: Lens }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: internal
+      seamline_natural_key: "(repo, lens_name)"
+      seamline_unreachable_waiver: "No edge in v0.1. All 24 predecessor lenses are deferred behind a named consumer, and the CLI prints lineage and contradictions as human-readable text, or as JSON with --json, instead (CSV and Mermaid output are not implemented). The predecessor design's PROJECTS edge (Lens -> kinds) is exactly the reification v3 removed, so when lenses land their kind selection will be a property, not an edge. The kind is reserved so a later lens implementation is additive rather than breaking."
+
+  ThreatModel:
+    is_a: SeamlineNode
+    description: "A recorded threat model. Defaults to restricted. Seamline is its own first user: THREATMODEL.md is a Phase-0 deliverable, because a verification tool that does not model its own threats is making a claim it has not tested on itself."
+    slot_usage:
+      kind: { equals_string: ThreatModel }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_default_sensitivity: restricted
+      seamline_natural_key: "(repo, threat_model_id)"
+      seamline_unreachable_waiver: "No edge in v0.1. The kind exists so that the security spine has a place in the vocabulary from commit one rather than being retrofitted, and so Seamline can record its own threat model in its own graph. Edges from ThreatModel to the assets and controls it covers require the infrastructure and control kinds, which are deferred."
+
+  # ==========================================================================
+  # Edges
+  #
+  # EVERY edge declares its domain and range, as an enumerated list of
+  # (src_kind, dst_kind) pairs under `seamline_signatures`.
+  #
+  # This is not bookkeeping. The predecessor design declared its containment
+  # edges as "all domains" with no constraint, and the direct consequence was
+  # that it shipped with NO Module -> File edge at all while four of its views
+  # traversed one. Nobody noticed, because "all domains" cannot be checked
+  # against anything. An enumerated list can: `ontology/lint.mjs` compares every
+  # pair here against EDGE_SIGNATURES in contract.ts and fails on any divergence,
+  # in either direction.
+  #
+  # An edge kind with multiple pairs is a genuine union, not a shorthand for
+  # "anything goes". EXPOSED_AS accepts Column -> SchemaProperty and
+  # CodeField -> SchemaProperty and nothing else.
+  # ==========================================================================
+
+  # --- Containment ----------------------------------------------------------
+
+  CONTAINS:
+    is_a: SeamlineEdge
+    description: "Structural containment. Twelve enumerated pairs, spanning code, data, contract, and domain. Never all-domains."
+    slot_usage:
+      kind: { equals_string: CONTAINS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Containment
+      seamline_signatures:
+        - [Repo, File]
+        - [Repo, Module]
+        - [Module, File]
+        - [File, Symbol]
+        - [Symbol, CodeField]
+        - [Symbol, Parameter]
+        - [DataSource, Schema]
+        - [Schema, Table]
+        - [Table, Column]
+        - [Contract, Operation]
+        - [Contract, SchemaProperty]
+        - [Entity, DomainProperty]
+
+  # --- Code -----------------------------------------------------------------
+
+  IMPORTS:
+    is_a: SeamlineEdge
+    description: "One file or module imports another."
+    slot_usage:
+      kind: { equals_string: IMPORTS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [File, File]
+        - [Module, Module]
+
+  EXPORTS:
+    is_a: SeamlineEdge
+    description: "A file or module exports a symbol. Barrel re-exports are deduplicated by construction during resolution, and the resolved target is always the declaration site."
+    slot_usage:
+      kind: { equals_string: EXPORTS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [File, Symbol]
+        - [Module, Symbol]
+
+  CALLS:
+    is_a: SeamlineEdge
+    description: "A symbol calls another symbol, resolved by the type checker."
+    slot_usage:
+      kind: { equals_string: CALLS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Symbol]
+
+  EXTENDS:
+    is_a: SeamlineEdge
+    description: "Class or interface inheritance. Edges resolved through an interface or an abstract base carry reduced confidence, because the call target is not determined by the declaration alone."
+    slot_usage:
+      kind: { equals_string: EXTENDS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Symbol]
+
+  IMPLEMENTS:
+    is_a: SeamlineEdge
+    description: "A class implements an interface."
+    slot_usage:
+      kind: { equals_string: IMPLEMENTS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Symbol]
+
+  USES_TYPE:
+    is_a: SeamlineEdge
+    description: "A symbol, field, or parameter references a type. One of the inputs to type-disagreement detection."
+    slot_usage:
+      kind: { equals_string: USES_TYPE }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Symbol]
+        - [CodeField, Symbol]
+        - [Parameter, Symbol]
+
+  DECORATED_WITH:
+    is_a: SeamlineEdge
+    description: "A symbol or field carries a decorator. Decorators are how most ORM and validation frameworks declare the facts the join needs."
+    slot_usage:
+      kind: { equals_string: DECORATED_WITH }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Symbol]
+        - [CodeField, Symbol]
+
+  HANDLES_ROUTE:
+    is_a: SeamlineEdge
+    description: "A symbol handles an HTTP route as the code exposes it."
+    slot_usage:
+      kind: { equals_string: HANDLES_ROUTE }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, RouteHandler]
+
+  QUERIES:
+    is_a: SeamlineEdge
+    description: "A symbol reads or writes a table. The bridge from the code layer to the data layer, and the traced write path several detectors depend on."
+    slot_usage:
+      kind: { equals_string: QUERIES }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Code
+      seamline_signatures:
+        - [Symbol, Table]
+
+  # --- Data -----------------------------------------------------------------
+
+  MIGRATED_BY:
+    is_a: SeamlineEdge
+    description: "A table or column was created or altered by a migration. Feeds orphaned-migration detection."
+    slot_usage:
+      kind: { equals_string: MIGRATED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_signatures:
+        - [Table, Migration]
+        - [Column, Migration]
+
+  FK_TO:
+    is_a: SeamlineEdge
+    description: "A declared foreign key from one column to another."
+    slot_usage:
+      kind: { equals_string: FK_TO }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Data
+      seamline_signatures:
+        - [Column, Column]
+
+  # --- Contract -------------------------------------------------------------
+
+  IMPLEMENTED_BY:
+    is_a: SeamlineEdge
+    description: "A declared operation is implemented by a route handler. Its ABSENCE in either direction is contract drift, and that finding is legitimate precisely because both endpoints are extracted facts rather than annotations."
+    slot_usage:
+      kind: { equals_string: IMPLEMENTED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Contract
+      seamline_signatures:
+        - [Operation, RouteHandler]
+
+  # --- The join: the wedge, mostly INFERRED ---------------------------------
+
+  MAPS_TO_FIELD:
+    is_a: SeamlineEdge
+    description: "A database column maps to a code field. Inferred by name, type, and structure matching. Usually INFERRED and never above the infer-join ceiling; a wrong join here produces a confident, well-formatted, entirely fictitious contradiction, which is why confidence calibration on this edge is load-bearing for correctness and not merely for ranking."
+    slot_usage:
+      kind: { equals_string: MAPS_TO_FIELD }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [Column, CodeField]
+
+  BACKED_BY:
+    is_a: SeamlineEdge
+    description: "A contract schema property is backed by a database column."
+    slot_usage:
+      kind: { equals_string: BACKED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [SchemaProperty, Column]
+
+  EXPOSED_AS:
+    is_a: SeamlineEdge
+    description: "A column or code field is exposed as a contract schema property. The edge that turns a database column into an API surface, and therefore the edge that makes PII-reachable-without-auth answerable."
+    slot_usage:
+      kind: { equals_string: EXPOSED_AS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [Column, SchemaProperty]
+        - [CodeField, SchemaProperty]
+
+  VALIDATED_BY:
+    is_a: SeamlineEdge
+    description: "A field, schema property, or column is validated by a symbol. Comparing what the validator enforces against what the database enforces is validator/database divergence."
+    slot_usage:
+      kind: { equals_string: VALIDATED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [CodeField, Symbol]
+        - [SchemaProperty, Symbol]
+        - [Column, Symbol]
+
+  PERSISTED_IN:
+    is_a: SeamlineEdge
+    description: "A domain entity is persisted in a table. Declared, and optional."
+    slot_usage:
+      kind: { equals_string: PERSISTED_IN }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [Entity, Table]
+
+  STORED_IN:
+    is_a: SeamlineEdge
+    description: "A domain property is stored in a column. Declared, and optional."
+    slot_usage:
+      kind: { equals_string: STORED_IN }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Join
+      seamline_signatures:
+        - [DomainProperty, Column]
+
+  # --- Verification ---------------------------------------------------------
+
+  TESTS:
+    is_a: SeamlineEdge
+    description: "A test case exercises a symbol. EXTRACTED from what the test imports and calls. It is deliberately not derivable from a substring in a test name: the predecessor design's verification gate was satisfied by naming a test after a requirement, which asserts that a link exists rather than that anything was verified."
+    slot_usage:
+      kind: { equals_string: TESTS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Verification
+      seamline_signatures:
+        - [TestCase, Symbol]
+
+  COVERS:
+    is_a: SeamlineEdge
+    description: "A coverage record intersects a symbol or file."
+    slot_usage:
+      kind: { equals_string: COVERS }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Verification
+      seamline_signatures:
+        - [CoverageRecord, Symbol]
+        - [CoverageRecord, File]
+
+  # --- Change ---------------------------------------------------------------
+
+  TOUCHES:
+    is_a: SeamlineEdge
+    description: "A commit or changeset touches a file or symbol. The input to blast radius."
+    slot_usage:
+      kind: { equals_string: TOUCHES }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Change
+      seamline_signatures:
+        - [Commit, File]
+        - [Commit, Symbol]
+        - [Changeset, Symbol]
+
+  RENAMED_FROM:
+    is_a: SeamlineEdge
+    description: "Rename detection from git similarity plus content hashes. Note the limit honestly: git rename detection is a heuristic, so a rename combined with a heavy edit can fall below the threshold and be recorded as delete-plus-create. The graph stays correct; the history across that rename is what is lost."
+    slot_usage:
+      kind: { equals_string: RENAMED_FROM }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Change
+      seamline_signatures:
+        - [File, File]
+        - [Symbol, Symbol]
+
+  # --- Meta -----------------------------------------------------------------
+
+  PRODUCED_BY:
+    is_a: SeamlineEdge
+    description: "A run was produced by an extractor, carrying that extractor's PASS, FAIL, or UNAVAILABLE status and its authoritative scope. This is what lets a query know it must answer UNKNOWN rather than report a negative finding."
+    slot_usage:
+      kind: { equals_string: PRODUCED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_signatures:
+        - [Run, Extractor]
+
+  ALIAS_OF:
+    is_a: SeamlineEdge
+    description: "An alias points at the node it renames to, preserving history across a canonical-name change."
+    slot_usage:
+      kind: { equals_string: ALIAS_OF }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_signatures:
+        - [Alias, Symbol]
+        - [Alias, Column]
+        - [Alias, File]
+
+  OWNED_BY:
+    is_a: SeamlineEdge
+    description: "A file, module, or table is owned by an owner, from CODEOWNERS."
+    slot_usage:
+      kind: { equals_string: OWNED_BY }
+      profile: { equals_string: core }
+    annotations:
+      seamline_group: Meta
+      seamline_signatures:
+        - [File, Owner]
+        - [Module, Owner]
+        - [Table, Owner]

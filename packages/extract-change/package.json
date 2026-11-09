@@ -1,0 +1,50 @@
+{
+  "name": "@seamline/extract-change",
+  "version": "0.1.0",
+  "description": "Git history facts for Seamline: commits, touched files and rename detection.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/extract-change"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/extract-change#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*"
+  }
+}

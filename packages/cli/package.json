@@ -1,0 +1,63 @@
+{
+  "name": "@seamline/cli",
+  "version": "0.1.0",
+  "description": "The Seamline command-line interface: init, extract, why, check, export, diff, blast-radius and mcp.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Zylver Solutions",
+    "email": "seamline@zylver.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/zylver-solutions/seamline/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/zylver-solutions/seamline/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/__fixtures__/**",
+    "!dist/**/*.map",
+    "!dist/testing.*",
+    "README.md",
+    "NOTICE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*",
+    "@seamline/core": "workspace:*",
+    "@seamline/security": "workspace:*",
+    "@seamline/contradictions": "workspace:*",
+    "@seamline/infer-join": "workspace:*",
+    "@seamline/extract-code-ts": "workspace:*",
+    "@seamline/extract-data": "workspace:*",
+    "@seamline/extract-contracts": "workspace:*",
+    "@seamline/extract-change": "workspace:*",
+    "@seamline/mcp": "workspace:*",
+    "@seamline/align": "workspace:*"
+  },
+  "bin": {
+    "seamline": "./dist/bin.js"
+  }
+}

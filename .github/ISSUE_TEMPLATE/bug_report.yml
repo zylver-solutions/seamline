@@ -1,0 +1,134 @@
+name: Bug report
+description: Something behaves incorrectly, crashes, or reports the wrong thing.
+title: '[bug] '
+labels: ['bug', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing this.
+
+        **Do not report a security vulnerability here.** Use the private path in
+        [SECURITY.md](../blob/main/SECURITY.md) instead.
+
+        **Do not paste your real graph, a real export, or real secrets.** Seamline
+        output concentrates your attack surface into one artifact; redact it, or
+        reproduce on a synthetic repository.
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Run this and paste the whole output. Most reports that turn out not to be
+        bugs are resolved by this block alone, because "it does not work" and
+        "this Node build does not support type stripping" look identical from
+        the outside.
+      render: shell
+      placeholder: |
+        # copy, run, and paste the entire output
+        echo "seamline: $(seamline --version 2>&1)"
+        echo "node:     $(node -v)"
+        echo "pnpm:     $(pnpm -v 2>&1)"
+        echo "npm:      $(npm -v 2>&1)"
+        echo "os:       $(uname -srm)"
+        echo "install:  $(command -v seamline)"
+        echo "---- seamline extract status ----"
+        seamline extract --json 2>&1 | head -60
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual behaviour, including the full error and stack trace if there is one.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: |
+        Numbered steps. A link to a minimal public repository is the single most
+        useful thing you can provide; a synthetic fixture is better than a real
+        codebase, and is usually smaller than you expect.
+      placeholder: |
+        1. Clone https://github.com/example/minimal-repro
+        2. seamline init
+        3. seamline extract
+        4. seamline why orders.shipped_at
+        5. Chain 2 lists a column that does not exist
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      multiple: true
+      options:
+        - 'CLI (init / extract / why / check / export / diff)'
+        - 'extract-code-ts (TypeScript and JavaScript)'
+        - 'extract-data (SQL, Drizzle, Prisma, migrations)'
+        - 'extract-contracts (OpenAPI, JSON Schema, Zod)'
+        - 'extract-change (git)'
+        - 'infer-join (the cross-domain field join)'
+        - 'contradiction detectors'
+        - 'MCP server'
+        - 'ontology'
+        - 'build, install, or toolchain'
+        - 'not sure'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: What kind of wrong
+      description: |
+        A false positive and a crash need very different triage. If a detector
+        fired on something correct, or a lineage chain joined two unrelated
+        fields, say so here: inference quality reports are among the most useful
+        issues this project receives.
+      options:
+        - 'Crash or unhandled error'
+        - 'False positive: a contradiction was reported that is not real'
+        - 'False negative: a real disagreement was not reported'
+        - 'Wrong lineage: two fields were joined that are unrelated, or a join was missed'
+        - 'Reported UNAVAILABLE or UNKNOWN when it should have worked'
+        - 'Non-deterministic: two runs produced different output'
+        - 'Wrong or confusing output, message, or exit code'
+        - 'Performance'
+        - 'Other'
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: |
+        Repository size, whether it is a monorepo, which ORM and validator you
+        use, and whether this worked in an earlier version.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for this.
+          required: true
+        - label: This is not a security vulnerability (those go through SECURITY.md).
+          required: true
+        - label: I have removed real secrets, real hostnames, and real identifiers from everything I pasted.
+          required: true

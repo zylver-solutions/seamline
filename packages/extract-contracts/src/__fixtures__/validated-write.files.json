@@ -1,0 +1,12 @@
+{
+  "files": {
+    "package.json": "{\"name\":\"@sample/forms\",\"dependencies\":{\"next\":\"16.2.6\",\"zod\":\"4.3.6\"}}",
+    "pnpm-lock.yaml": "lockfileVersion: \"9.0\"\nimporters:\n  .:\n    dependencies:\n      zod: {specifier: 4.3.6, version: 4.3.6}\n      next: {specifier: 16.2.6, version: 16.2.6}\npackages:\n  next@16.2.6:\n    resolution: {integrity: sha512-qOVgKJg1+At15NpeUP+eJgCHvTCgXsogweq87Ri/Ix7PkqQHg4sdaXmSFqKlgaIXE4kW0g25LE68W87UANlHtw==}\n  zod@4.3.6:\n    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}\n",
+    "tsconfig.json": "{\"compilerOptions\":{\"paths\":{\"@/*\":[\"./src/*\"]}}}",
+    "schema.prisma": "generator client {\n provider = \"prisma-client\"\n output = \"./src/generated\"\n engineType = \"client\"\n}\ndatasource db {\n provider = \"postgresql\"\n}\nmodel Entry {\n title String @db.VarChar(120)\n caption String? @db.VarChar(500)\n kind String\n @@map(\"entries\")\n}\n",
+    "src/parser.ts": "async function readJson(input: Request) {\n  try { return await input.clone().json(); } catch { return undefined; }\n}\nexport async function decode(input: Request, validator: any) {\n let query = {};\n let body = await readJson(input);\n let error;\n if (validator) {\n  const queryMethod = input.method === 'GET';\n  const originalQuery = query;\n  const parsed = validator.safeParse(queryMethod ? query : body);\n  if (!parsed.success) { error = () => invalid(parsed.error); }\n  else if (queryMethod) { query = parsed.data; }\n  else { body = parsed.data; }\n }\n return {body, error};\n}",
+    "src/storage.ts": "import {PrismaClient} from './generated/client';\n    const client = new PrismaClient({}); export default {connection: client};",
+    "src/write.ts": "import database from './storage';\n    export async function persist(id: string, data: unknown) {\n      return database.connection.entry.update({where: {id}, data});\n    }"
+  },
+  "route": "import {z} from 'zod';\nimport {decode} from '../../parser';\nimport {persist} from '../../write';\nexport async function POST(request: Request) {\n const schema = z.object({title: z.string().optional(), caption: z.string().optional(), kind: z.enum(['note'])});\n const {body, error} = await decode(request, schema);\n if (error) { return error(); }\n const {title, caption} = body;\n const kind = body.kind;\n try {\n  const saved = await persist('id', {title, caption, kind});\n  return render(saved);\n } catch (issue) { return failed(issue); }\n}"
+}

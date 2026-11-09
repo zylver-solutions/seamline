@@ -1,0 +1,45 @@
+{
+  "name": "seamline-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Seamline — a zero-declaration cross-domain join over your codebase, served to agents.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zylver-solutions/seamline.git"
+  },
+  "engines": {
+    "node": ">=22.13.0",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.34.5+sha512.a4ee05f2f73658255bd6a89859c065a45c28a57daefae2c893a168ee2b73168c37b91e83e57ea67654ad03f03031746430e8bce38e362e042605fb8abc80192e",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "typecheck": "tsc --build --force",
+    "test": "node --experimental-strip-types --test --experimental-test-module-mocks 'packages/*/src/**/*.test.ts' 'scripts/*.test.mjs'",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "gate:license": "node scripts/license-gate.mjs",
+    "gate:determinism": "node scripts/determinism-gate.mjs",
+    "gate:pack": "node scripts/pack-check.mjs",
+    "gate:versions": "node scripts/version-check.mjs",
+    "gate:dogfood": "node scripts/dogfood-gate.mjs",
+    "gate:ontology": "node --experimental-strip-types ontology/lint.mjs",
+    "gate:ontology-ref": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gen-ontology-ref.mjs --check",
+    "gen:ontology-ref": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gen-ontology-ref.mjs",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm gate:license && pnpm gate:ontology && pnpm gate:ontology-ref && pnpm gate:determinism && pnpm gate:versions && pnpm gate:pack && pnpm gate:dogfood",
+    "eval": "node --experimental-strip-types packages/eval/src/bin.ts",
+    "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage 'packages/*/src/**/*.test.ts'"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "eslint": "^10.13.0",
+    "fast-check": "^4.10.2",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

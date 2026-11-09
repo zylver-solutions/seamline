@@ -1,0 +1,172 @@
+# Seamline CI.
+#
+# Pull requests run the repository verification gates. Package release
+# provenance is requested by the separate release workflow. See design v3
+# section 8 for the public CI and release requirements.
+#
+# Every action is pinned to a commit SHA rather than a tag. A tag is mutable and
+# an action runs with access to this workflow's token; pinning is the same
+# supply-chain discipline the license gate enforces for dependencies.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Default to no permissions; each job asks for exactly what it needs.
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Extraction must be byte-reproducible (v3 section 2.3). Freeze everything
+  # that could vary between the two runs of the determinism gate.
+  SEAMLINE_DETERMINISTIC: '1'
+  TZ: UTC
+  NO_COLOR: '1'
+  # Never let an install script phone home or fetch outside the registry.
+  npm_config_fund: 'false'
+  npm_config_audit: 'false'
+
+jobs:
+  verify:
+    name: verify (node ${{ matrix.node }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.13 is the floor declared in package.json engines; 24 is what the
+        # project develops on. Type stripping behaves differently across them,
+        # so both are load-bearing rather than decorative. (Was 22.11 until
+        # eslint 10's own engines field turned out to require 22.13+ -- see
+        # the packageManager pin's commit for the pnpm side of that same
+        # discovery.)
+        node: ['22.13', '24']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
+      - name: Install Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and build
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      # Gates. Each one fails the build; none of them may be made advisory.
+
+      - name: 'Gate: license allow-list'
+        run: node scripts/license-gate.mjs --notices
+
+      - name: 'Gate: published package versions are equal'
+        # The twelve published packages release in lockstep, and the CLI's
+        # compiled-in VERSION must equal packages/cli/package.json.
+        run: pnpm gate:versions
+
+      - name: 'Gate: ontology lint'
+        run: pnpm gate:ontology
+
+      - name: 'Gate: ontology reference'
+        run: pnpm gate:ontology-ref
+
+      - name: 'Gate: determinism'
+        # Runs extraction twice and compares bytes. Exits non-zero when the CLI
+        # is not built, rather than passing on an empty comparison: a gate that
+        # goes green because it found nothing to check is worse than no gate.
+        run: node scripts/determinism-gate.mjs
+
+      - name: 'Gate: dogfood'
+        # `seamline extract && seamline why` on Seamline itself, diffed against
+        # the committed baseline under docs/dogfood/baseline. Unlike the
+        # determinism gate (agreement between two runs today), this catches an
+        # unreviewed regression against the last *reviewed* run (v3 section 7,
+        # ADR-0009 section 4 gate 4).
+        run: node scripts/dogfood-gate.mjs
+
+      - name: 'Gate: internal leak scan'
+        # Regression guard per PUBLIC-RELEASE-CHECKLIST.md item E7: a future
+        # pull request cannot reintroduce internal material once this repo is
+        # public.
+        run: node scripts/internal-leak-scan.mjs
+
+      - name: License report (artifact)
+        if: always()
+        run: node scripts/license-gate.mjs --json > license-report.json || true
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: license-report-node-${{ matrix.node }}
+          path: license-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  dco:
+    name: DCO sign-off
+    # Only pull requests carry a range of commits to check.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Every commit is signed off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          missing=0
+          while read -r sha; do
+            [ -z "$sha" ] && continue
+            author="$(git show -s --format='%an <%ae>' "$sha")"
+            if git show -s --format='%B' "$sha" | grep -qiE "^Signed-off-by: .+ <.+@.+>$"; then
+              continue
+            fi
+            echo "::error::commit $sha by $author has no Signed-off-by line"
+            missing=$((missing + 1))
+          done < <(git rev-list "$BASE_SHA".."$HEAD_SHA")
+
+          if [ "$missing" -gt 0 ]; then
+            echo ""
+            echo "$missing commit(s) are missing a DCO sign-off."
+            echo "Seamline uses the Developer Certificate of Origin, not a CLA."
+            echo "Fix the whole branch with:  git rebase --signoff ${BASE_SHA}"
+            echo "See CONTRIBUTING.md."
+            exit 1
+          fi
+          echo "All commits signed off."

@@ -1,0 +1,17 @@
+{
+  "name": "@seamline/eval",
+  "version": "0.0.1",
+  "type": "module",
+  "license": "Apache-2.0",
+  "private": true,
+  "description": "Evaluation harness: precision and recall of the detector catalog over a pinned corpus of public repositories. Not published.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "test": "node --test 'src/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@seamline/ontology": "workspace:*"
+  }
+}
