@@ -1,25 +1,25 @@
 # X8: references at migration replay order
 
-Status: design proposal for X8 migration replay, subordinate to v3 and `real-world-inputs.md` section 5.5, row H2. This document adds no implementation, evaluation label, successful acceptance or release claim. It leaves the original X7 acceptance unchanged.
+Status: accepted design for X8 migration replay, implemented in 0.1.0 (ordering and replay: `packages/extract-data/src/migration-order.ts` and `migration-replay*.ts`; detector: `packages/contradictions/src/detectors/x8-orphaned-migration.ts` with `x8-replay-proof.ts`; status checked 2026-11-10). The real-source parent/fix acceptance required below is unmet, so X8 stays dormant ([detector limits](../contradictions/X8.md)). Subordinate to v3 and `real-world-inputs.md` section 5.5, row H2. This document itself supplies no evaluation label, successful acceptance or release claim. It leaves the original X7 acceptance unchanged.
 
 ## Admission and consumer
 
 [SafeStepsApp PR57](https://github.com/kmwstudy88-ship-it/SafeStepsApp/pull/57) was merged on 2026-08-10. The upstream description identifies a clean rebuild ordering defect: the foreign key is deferred until its target exists. It explicitly distinguishes the already existing production constraint. The fix commit has one parent:
 
-| Pin | Commit | Tree |
-| --- | --- | --- |
+| Pin    | Commit                                     | Tree                                       |
+| ------ | ------------------------------------------ | ------------------------------------------ |
 | Parent | `76506eaa966121ab74ac1faf964cf7df75bd07ee` | `a4b00f763186a64323e4ce54a910687f22b8ff07` |
-| Fix | `5f2e6aa9648f1d52ed9f38d253e61aeeb0128f4e` | `5dfff709d65ee5445293efd428077e430c83c50f` |
+| Fix    | `5f2e6aa9648f1d52ed9f38d253e61aeeb0128f4e` | `5dfff709d65ee5445293efd428077e430c83c50f` |
 
 The parent [declares the child feedback table](https://github.com/kmwstudy88-ship-it/SafeStepsApp/blob/76506eaa966121ab74ac1faf964cf7df75bd07ee/supabase/migrations/20260721174116_ai_continuous_learning_volume10_completion.sql#L101-L106) with a foreign key to `public.children` at line 104. The first visible declaration of [the target table](https://github.com/kmwstudy88-ship-it/SafeStepsApp/blob/76506eaa966121ab74ac1faf964cf7df75bd07ee/supabase/migrations/202607220012_family_foundation_schema.sql#L75) sorts later. The fix removes the early foreign key and adds a [guarded restoration](https://github.com/kmwstudy88-ship-it/SafeStepsApp/blob/5f2e6aa9648f1d52ed9f38d253e61aeeb0128f4e/supabase/migrations/20260810120637_restore_ai_child_feedback_foreign_key.sql#L1-L18). Its table-existence guards and referenced column must be examined, not skipped to obtain a negative.
 
-This merged repair supplies leg 1 for a reference to a table declared later in the migration history. It admits neither arbitrary database execution nor a claim about the state of a running production database. The named owner and window are the operator's accepted commitment (see the named-owner row of [real-world-inputs.md](real-world-inputs.md)): three triage passes after implementation merge or first public release, whichever is later. Both exact pins are development inputs. Their measured findings must be triaged before implementation merge. This design's merge supplies leg 3; successful implementation acceptance remains separate.
+This merged repair supplies leg 1 for a reference to a table declared later in the migration history. It admits neither arbitrary database execution nor a claim about the state of a running production database. The named owner and window are the repository owner's accepted commitment (see the named-owner row of [real-world-inputs.md](real-world-inputs.md)): three triage passes after implementation merge or first public release, whichever is later. Both exact pins are development inputs. Their measured findings must be triaged before implementation merge. (Note, 2026-11-10: the implementation shipped in 0.1.0 without that triage; the two pins are not entries of `eval/corpus.json`.) This design's merge supplies leg 3; successful implementation acceptance remains separate.
 
 The repository's pinned LICENSE is MIT. Research source stays outside this repository; fixtures are independently authored. No dependency or upstream execution is needed.
 
 ## Observed baseline and required acceptance
 
-Engineering diagnostics on the verification host used the complete clean parent and fix, respectively 32,387 and 32,388 tracked files, with unchanged production `extract-data` defaults. Both passed. The parent emitted 191 migrations; the fix emitted 192. Both emitted 771 tables and 9,640 columns. Neither emitted a migration target fact. The data source reported 16 dynamic DDL blocks at the parent and 17 at the fix. These are data-extractor diagnostics, not full CLI acceptance, findings, precision or recall.
+Engineering diagnostics on an isolated verification host (a separate machine that holds the pinned sources and neither installs nor executes them) used the complete clean parent and fix, respectively 32,387 and 32,388 tracked files, with unchanged production `extract-data` defaults. Both passed. The parent emitted 191 migrations; the fix emitted 192. Both emitted 771 tables and 9,640 columns. Neither emitted a migration target fact. The data source reported 16 dynamic DDL blocks at the parent and 17 at the fix. These are data-extractor diagnostics, not full CLI acceptance, findings, precision or recall.
 
 The implementation must run the complete parent and fix through the production CLI, using the same extractor and sandbox limits as other development entries. It must show the early `public.children` reference as an X8 contradiction at the parent and examine the restored reference without that contradiction at the fix. Other withheld references and pipeline failures must be shown separately. A SQL-only subset, a larger limit, a skipped procedural block, or UNKNOWN for the restored reference cannot satisfy the fixed negative. Any failure leaves acceptance pending; it does not justify substituting another consumer or relabelling the expected result.
 
@@ -33,7 +33,7 @@ The reconstruction starts with an empty group-local declared catalog. It does no
 
 ## Ordering is part of the evidence
 
-The existing comparator in `packages/extract-data/src/discover.ts` compares leading integers first. For this consumer it places the 12-digit version `202607220012` before the 14-digit version `20260721174116`, the reverse of filename order. The baseline measurements above used that existing comparator. They establish no correct reference-point replay.
+The existing comparator in `packages/extract-data/src/discover.ts` compares leading integers first. For this consumer it places the 12-digit version `202607220012` before the 14-digit version `20260721174116`, the reverse of filename order. The baseline measurements above used that existing comparator. They establish no correct reference-point replay. Note (2026-11-10): this paragraph describes the state before this design was implemented. The filename policy of the next paragraph now exists as `supabase-filename-v1` in `packages/extract-data/src/migration-order.ts`.
 
 For a supported Supabase group, use lexical filename order over direct SQL migration files matching its digit-prefix convention, without converting the prefix to a Number. The pinned [Supabase migration reader](https://github.com/supabase/cli/blob/5afad870388552d0198087d27037da7ac745ba2b/apps/cli-go/pkg/migration/list.go#L33-L63) iterates `fs.ReadDir` results and retains their order; [Go's ReadDir contract](https://pkg.go.dev/io/fs#ReadDir) orders entries by filename. Its [filename parser](https://github.com/supabase/cli/blob/5afad870388552d0198087d27037da7ac745ba2b/apps/cli-go/pkg/migration/file.go#L29-L52) accepts variable-width digit prefixes as strings. These sources justify this supported declarative policy; they do not attest which upstream binary or command ran historically.
 
@@ -63,7 +63,7 @@ The seven procedural blocks before the cited parent reference need this analysis
 
 ## Stored facts and detector
 
-Use scalar props on existing Migration and DataSource nodes. Do not change the ontology contract, node kinds, store API or public exports. Preserve Migration identity under ADR0016. A statement offset or source line is evidence, never part of an identity.
+Use scalar props on existing Migration and DataSource nodes. Do not change the ontology contract, node kinds, store API or public exports. Preserve Migration identity under ADR-0016. A statement offset or source line is evidence, never part of an identity.
 
 Version the replay fact format. On every examined migration, emit sorted canonical JSON scalar props for unresolved local references, external references, unknown references and their counts, including explicit empty sets. Each unresolved record identifies the qualified target, table or column role, statement position, absence state and creation witness. Use existing canonical name construction; do not concatenate ambiguous identifier segments. Store no raw SQL. The creation witness must resolve to a current live fact Migration in the same repo, data source, group and replay epoch; same-file ordering uses that Migration's statement positions. The detector validates the format, counts and witness agreement before using it.
 
@@ -75,6 +75,6 @@ Replace both legacy X8 routes when implementing this design. Current-schema abse
 
 The implementation requires independently authored extraction fixture pairs for framework ordering and its refusal cases, early and late creation, multiple references in one statement, self-reference, composite columns, quoted names, separate groups, conditional creation, guarded constraints, rename, drop and recreate, and never-created external objects. Include opaque blocks, malformed tails, unknown conditions, unread and over-limit sources, ambiguous ordering and unsupported dialects. A block that creates the target before the reference must defeat a proposed absence claim. Mutation checks must kill removal of those controls, not merely a change in output counts.
 
-Exercise the real sandbox and SQLite store: positive to valid fix; positive to unsupported input; deletion; same-run retry; tombstone and restoration; and group/path rename with the identities ADR0016 allows. Compare byte output across repeated extractions and Node 22.13 and 24. Unknown, unavailable and resource-limited runs cannot sweep protected facts or produce a finding through the old routes.
+Exercise the real sandbox and SQLite store: positive to valid fix; positive to unsupported input; deletion; same-run retry; tombstone and restoration; and group/path rename with the identities ADR-0016 allows. Compare byte output across repeated extractions and Node 22.13 and 24. Unknown, unavailable and resource-limited runs cannot sweep protected facts or produce a finding through the old routes.
 
 Keep any changed dogfood baseline in its own reviewed PR. Run the full verification, leak scans and recursive publish dry-run on the verification host. Require the six fresh review roles and a pinned signed-off squash after green CI. Implementation merge additionally requires the complete real-source parent/fix proof above. This engineering pair supplies no sealed partition credit, calibration sample, independent reviewer identity or proof that the original precision and recall bars have been reached.

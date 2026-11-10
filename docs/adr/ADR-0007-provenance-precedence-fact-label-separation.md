@@ -4,12 +4,13 @@
 - **Date:** 2026-08-29
 - **Design reference:** `docs/design/v3.md` §2.4
 - **Council finding:** C6 (CONFIRMED CRITICAL). Also §5 of the review, "what survived refutation": the provenance model was attacked as bookkeeping bloat by three lenses and held every time.
-- **Corroborating prior art:** an earlier internal project reached the same insert-only annotations design independently.
+- **Corroborating prior art:** an earlier internal project reached the same insert-only annotations design independently. That project is not published, so a reader cannot check this; it is context, and the decision does not rest on it (see the note in the [index](README.md)).
 - **Contract:** `packages/ontology/src/contract.ts` (`PROVENANCE`, `PROVENANCE_RANK`, `outranks()`, `isFact()`, `assertWithinCeiling()`)
+- **Status of implementation (2026-11-10):** Decisions 1, 2 and 5 are implemented: the precedence order and `outranks()` in the contract, merge in `packages/core/src/merge/`, the ceiling check in the sandbox host (`packages/core/src/security/sandbox.ts`), and `isFact()` on every detector read path (`packages/contradictions/src/graph.ts`). Decisions 3 and 4 are **not** implemented in release 0.1.0. There is no annotations table: `packages/core/src/store/schema.ts` creates one `nodes` and one `edges` table, each with a `provenance` column constrained to the four levels, so `INFERRED` rows sit in the same tables as facts and are told apart by that column; rows are upserted in place (`ON CONFLICT ... DO UPDATE` in `packages/core/src/store/sqlite-store.ts`), not inserted only. There is no Postgres adapter, so there is no role and no `GRANT`. There is no promotion operation and no `wasAttributedTo` field. The control that keeps inference out of a gate today is therefore the read-time one, `isFact()`, which this record describes as the weaker layer when used alone.
 
 ## Context
 
-v2 got the *model* right and the *enforcement* wrong.
+v2 got the _model_ right and the _enforcement_ wrong.
 
 The model, `{EXTRACTED, INFERRED, DECLARED, LLM_SUGGESTED}` plus confidence plus a source reference on every edge, was attacked by three lenses as bookkeeping bloat and survived every attack. The council's assessment is that it is the mechanism that lets agents write to the graph without corrupting it, that nothing in the 2024 to 2026 crop of AI codebase-graph tools has it, and that v2 buried it as principle 1 when it should have been the headline claim.
 
@@ -42,7 +43,7 @@ An extractor **may not assert a provenance level above the ceiling in its manife
 
 `INFERRED` and `LLM_SUGGESTED` rows live in a **separate, insert-only annotations table**. They never mutate the facts tables. The separation is structural, not a convention.
 
-**On the Postgres adapter this is enforced at the GRANT level.** The database role that writes inference has `INSERT` on the annotations table and **no `UPDATE` and no `DELETE` anywhere**. The reason to spend a role and a migration on this, rather than trusting the enum column, is stated plainly: *a `provenance` enum column alone is a weaker control, because a single bug in one code path defeats it.* A `GRANT` is not defeated by a bug in a code path; it is defeated only by a deliberate privilege change, which is a reviewable event in a migration.
+**On the Postgres adapter this is enforced at the GRANT level.** The database role that writes inference has `INSERT` on the annotations table and **no `UPDATE` and no `DELETE` anywhere**. The reason to spend a role and a migration on this, rather than trusting the enum column, is stated plainly: _a `provenance` enum column alone is a weaker control, because a single bug in one code path defeats it._ A `GRANT` is not defeated by a bug in a code path; it is defeated only by a deliberate privilege change, which is a reviewable event in a migration.
 
 Keep the enum **and** segregate the storage. They fail differently: the enum catches logic errors at read time, the GRANT catches them at write time, and neither subsumes the other.
 
@@ -52,7 +53,7 @@ Promotion to `DECLARED` writes a **new row** that retains PROV-O `wasAttributedT
 
 ### 5. Gates read facts only
 
-`isFact(p)` is `EXTRACTED || DECLARED`. Contradiction detectors read facts only; inference never feeds a gate. The join used to *locate* a candidate pair may be `INFERRED`, and the resulting contradiction inherits that confidence, but the two facts being compared are always facts.
+`isFact(p)` is `EXTRACTED || DECLARED`. Contradiction detectors read facts only; inference never feeds a gate. The join used to _locate_ a candidate pair may be `INFERRED`, and the resulting contradiction inherits that confidence, but the two facts being compared are always facts.
 
 ## Consequences
 
@@ -68,18 +69,18 @@ Promotion to `DECLARED` writes a **new row** that retains PROV-O `wasAttributedT
 
 - **Two write paths, forever.** Facts and annotations are separate tables with separate roles, so every query that wants both must union them, and every schema change must be applied twice. That is a permanent structural cost, accepted in exchange for the failure mode it removes.
 - The GRANT-level control **exists only on the Postgres adapter**. SQLite has no role system, so the default store enforces the separation by table boundary and application code alone. This is a real asymmetry between adapters and it must be stated rather than glossed: on SQLite, the enum-plus-separate-table is the whole control.
-- `EXTRACTED > DECLARED` means a human cannot override an extractor by annotation. When an extractor is *wrong*, the user's only remedy is to fix the extractor or suppress the finding, and there is currently no suppression mechanism (waivers are deferred with the needs matrix, ADR-0005). This is a known sharp edge.
+- `EXTRACTED > DECLARED` means a human cannot override an extractor by annotation. When an extractor is _wrong_, the user's only remedy is to fix the extractor or suppress the finding, and there is currently no suppression mechanism (waivers are deferred with the needs matrix, ADR-0005). This is a known sharp edge.
 - Insert-only annotations grow without bound, on top of the tombstone growth from ADR-0003. Compaction is deferred and named as debt in both places.
 - Carrying provenance, confidence, and a source reference on every node and edge is real storage and real serialization cost on a large graph. Three lenses called this bloat. They were overruled, and they were not obviously unreasonable.
 
 ## Alternatives considered
 
-**A `provenance` enum column on one shared table, and filter on read (v2).** Rejected: this is C6. One forgotten filter serves a guess as a fact, silently and permanently. Kept as a *second* layer precisely because it is useful, just not sufficient.
+**A `provenance` enum column on one shared table, and filter on read (v2).** Rejected: this is C6. One forgotten filter serves a guess as a fact, silently and permanently. Kept as a _second_ layer precisely because it is useful, just not sufficient.
 
 **Separate stores (a facts database and an annotations database) rather than separate tables.** Rejected: it makes the union query a cross-database join and doubles the operational surface, for a stronger boundary than the threat requires. The threat is a bug in our own code path, not a hostile writer with database credentials.
 
 **Let extractors self-assert provenance with no ceiling.** Rejected: `infer-join` is the highest-value and lowest-certainty component in the system. If anything must be prevented from asserting `EXTRACTED`, it is that. A convention would be honoured by our own code and by nobody else's.
 
-**Confidence scores instead of discrete provenance levels.** Rejected: a continuous score has no total order that is meaningful across producers (one extractor's 0.8 is not another's), so merge stops being deterministic, and there is no principled threshold at which a gate should fire. Confidence is retained *alongside* provenance for ranking within a level, which is what it is actually good for.
+**Confidence scores instead of discrete provenance levels.** Rejected: a continuous score has no total order that is meaningful across producers (one extractor's 0.8 is not another's), so merge stops being deterministic, and there is no principled threshold at which a gate should fire. Confidence is retained _alongside_ provenance for ranking within a level, which is what it is actually good for.
 
 **Overwrite on promotion to `DECLARED`, keeping one row per fact.** Rejected: it loses `wasAttributedTo` at the exact moment attribution starts to matter, which is v2's specific defect. Append is also consistent with every other lifecycle decision in this record.

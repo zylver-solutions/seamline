@@ -5,6 +5,7 @@
 - **Design reference:** `docs/design/v3.md` §4
 - **Council finding:** C1 (CONFIRMED CRITICAL), raised independently by five lenses: architect (A7/A10), devil's advocate (DA-05), DevEx (W-1), grill-me (F6), QA (F1). Process finding §4 of the same review.
 - **Contract:** `packages/ontology/src/contract.ts` (`NODE_KINDS`, `EDGE_KINDS`)
+- **Status of implementation (2026-11-10):** `profile` is a required slot that every class in `ontology/seamline.yaml` pins through `slot_usage`, and `ontology/lint.mjs` (`pnpm gate:ontology`) fails when a class does not pin it or pins a value other than `core`. It is class metadata in the YAML, not a runtime field: `SeamlineNode` in `packages/ontology/src/contract.ts` has no `profile` property, so the assertion under Consequences that no extractor emitted a non-`core` kind cannot be made by reading `profile` from emitted nodes. What holds instead is that every kind in `NODE_KINDS` is a `core` class and the same lint keeps that list equal to the YAML. The plain-language statement about inert kinds that this record asks of `README.md` is in `ontology/README.md` and `docs/reference/ontology.md` ("Kinds with no edges"), not in the root `README.md`. The "earlier internal project" cited under Alternatives is not published; see the note in the [index](README.md).
 
 ## Context
 
@@ -12,7 +13,7 @@ The predecessor design (an internal document, superseded and not published here)
 
 - §12 of v2 claimed 120 node kinds. §3 listed roughly **235**.
 - §4 claimed "~150 edge types". It listed **193 unique**.
-- The architect lens in v2's *own* prior review had demanded a "~35-kind core profile or adoption dies on day one". That mitigation existed only as prose: there was no `profile` field anywhere in §3, no gating of rules by profile, and §11 phase 0 still shipped all 16 domains in week one.
+- The architect lens in v2's _own_ prior review had demanded a "~35-kind core profile or adoption dies on day one". That mitigation existed only as prose: there was no `profile` field anywhere in §3, no gating of rules by profile, and §11 phase 0 still shipped all 16 domains in week one.
 
 Two consequences follow, and the second is the one that forced this ADR. First, a mitigation calibrated against a denominator that is wrong by roughly 2x is not a mitigation. Second, and worse: a vocabulary is the most expensive thing in the system to change after release, because breaking it invalidates persisted graphs, third-party extractors, and stored queries at the same time (ADR-0009 and the ontology compatibility policy cover that). v2 front-loaded the most irreversible decision in the design to the moment of minimum information.
 
@@ -44,15 +45,15 @@ The core kinds, by group: Code (`Repo`, `File`, `Module`, `Symbol`, `CodeField`,
 
 - **The core profile cannot express things adopters will want on day one.** No infrastructure, no deployment environment, no service mesh, no incident, no OKR. Some evaluations will end at "it doesn't model my architecture" and that is a real, accepted adoption cost.
 - Reserved-but-inert kinds are a documentation hazard: a reader can find `Lens` in the ontology and reasonably assume lenses work. The ontology must mark inert kinds unambiguously, and `README.md` must say so in plain language.
-- Deferring a kind is not free either. When `extended` kinds are eventually activated, their edge signatures have to be designed *then*, against a graph that already has persisted data, which is strictly harder than designing them now on a blank page. We accept this because designing them now against zero usage data is how v2 got 193 edge types nobody traversed (finding H5: ~57% of v2's edge types were referenced by no rule and no lens).
+- Deferring a kind is not free either. When `extended` kinds are eventually activated, their edge signatures have to be designed _then_, against a graph that already has persisted data, which is strictly harder than designing them now on a blank page. We accept this because designing them now against zero usage data is how v2 got 193 edge types nobody traversed (finding H5: ~57% of v2's edge types were referenced by no rule and no lens).
 - Two sources (`seamline.yaml` and `contract.ts`) must be kept in agreement. The lint makes drift loud, but it is still two files to edit for one change.
 
 ## Alternatives considered
 
-**Ship v2's full 16-domain vocabulary as designed.** Rejected: this is the option the council BLOCKED, and an earlier internal project's own review independently rejected a *smaller* version of the same design at fatal severity, before this council convened. Two independent reviews reaching the same verdict on different designs is corroboration, not an echo.
+**Ship v2's full 16-domain vocabulary as designed.** Rejected: this is the option the council BLOCKED, and an earlier internal project's own review independently rejected a _smaller_ version of the same design at fatal severity, before this council convened. Two independent reviews reaching the same verdict on different designs is corroboration, not an echo.
 
 **Keep the large vocabulary but mark a core subset in prose.** Rejected: this is exactly what v2 did, and §4 of the council review names the failure mode precisely. Dissent recorded and then discarded produces a document that looks reviewed. Prose is not enforcement; a `profile` field checked by lint is.
 
-**No fixed vocabulary at all: let extractors declare kinds dynamically.** Rejected for two reasons. Contradiction detection compares typed facts across domains (ADR-0005); without a fixed vocabulary there is nothing to compare across. And the whole value proposition is a *shared* vocabulary that third parties can target; a per-extractor vocabulary is a per-extractor tool.
+**No fixed vocabulary at all: let extractors declare kinds dynamically.** Rejected for two reasons. Contradiction detection compares typed facts across domains (ADR-0005); without a fixed vocabulary there is nothing to compare across. And the whole value proposition is a _shared_ vocabulary that third parties can target; a per-extractor vocabulary is a per-extractor tool.
 
-**Start smaller still, e.g. ~12 kinds covering only code.** Rejected: an earlier internal project already shipped almost exactly this scope (7 node kinds, 8 edge kinds, code-only), and its own review blocked further expansion on the finding that it has *no named consumer*. Code-only is not the wedge. The wedge is the field-level join across code, data, and contract (v3 §1), and that needs `Column`, `SchemaProperty`, and `CodeField` in one vocabulary at minimum.
+**Start smaller still, e.g. ~12 kinds covering only code.** Rejected: an earlier internal project already shipped almost exactly this scope (7 node kinds, 8 edge kinds, code-only), and its own review blocked further expansion on the finding that it has _no named consumer_. Code-only is not the wedge. The wedge is the field-level join across code, data, and contract (v3 §1), and that needs `Column`, `SchemaProperty`, and `CodeField` in one vocabulary at minimum.

@@ -4,6 +4,7 @@
 - **Date:** 2026-09-09
 - **Design:** [Semantic foundation](../design/semantic-foundation.md)
 - **Review:** [Council findings and verification](../audit/2026-09-09-semantic-council.md)
+- **Reader's note (2026-11-10):** "Atelier" is a cinematic story-composition application and "the companion bots" are a conversational character application. They are the two named consumers this foundation was designed for. Neither is published and this repository contains none of their code (see [the design set](../design/atelier-composition/README.md)). What is implemented is stated in [`docs/semantic-engine.md`](../semantic-engine.md), and [ADR-0015](ADR-0015-semantic-engine-optional-profile-layer.md) bounds the layer.
 
 ## Context
 

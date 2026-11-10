@@ -1,13 +1,14 @@
 # The ten-minute path, proven on a repository this organization did not write
 
 - **Date:** 2026-08-29
-- **Checklist item:** [`docs/PUBLIC-RELEASE-CHECKLIST.md`](../PUBLIC-RELEASE-CHECKLIST.md) G1 — "a recorded run on a public third-party TypeScript repository, timed, with the output pasted into the pull request that closes this item."
+- **Checklist item:** [`docs/PUBLIC-RELEASE-CHECKLIST.md`](../PUBLIC-RELEASE-CHECKLIST.md) G1, "The ten-minute path actually runs", which asked for "a recorded run on a public third-party TypeScript repository, timed, with the output pasted into the pull request that closes this item."
 - **Design gate:** [`docs/design/v3.md`](../design/v3.md) §1, "The 10-minute acceptance test."
-- **CLI under test:** `@seamline/cli` v0.0.1, run as `node packages/cli/dist/index.js` (the package's published `bin` target is `dist/bin.js`; `dist/index.js` is the equivalent library entry point — see the module doc comment in `packages/cli/src/index.ts`), built from the seamline source of 2026-08-29.
+- **CLI under test:** `@seamline/cli` v0.0.1 (an internal pre-release build, never published), run as `node packages/cli/dist/index.js` (the package's published `bin` target is `dist/bin.js`; `dist/index.js` is the equivalent library entry point — see the module doc comment in `packages/cli/src/index.ts`), built from the seamline source of 2026-08-29.
 - **Node:** v24.12.0.
+- **Status (2026-11-10):** historical record of a run made on 2026-08-29. The timings, counts and pasted output below are unchanged. What has changed since: the build under test was an internal pre-release (0.0.1) that was never published, and 0.1.0 is the first npm release; `seamline blast-radius` now exists as a CLI command (see "The blast-radius gap"); and the later measurement in [`docs/evaluation/dev-hardened-draft.md`](../evaluation/dev-hardened-draft.md) found all ten detectors dormant on its measured scope, so the `CLEAN` result below shows that the command runs end to end, not that a detector can fire. Nothing here has been re-run against 0.1.0.
 
-> **Redaction note.** The proof run's clone directory was named after this
-> project's internal tracker ID for this piece of work. That literal directory
+> **Redaction note.** The proof run's clone directory was named after a
+> private work-item identifier. That literal directory
 > name has been redacted throughout this document, including inside the
 > pasted terminal output below, and is denoted `<clone-dir>` everywhere it
 > appears. It was a local, temporary directory name only, with no other
@@ -20,8 +21,8 @@ This document is the evidence artifact G1 asks for. It is not itself part of the
 - **Name:** `boxyhq/saas-starter-kit` — "Enterprise SaaS Starter Kit," a real, maintained product boilerplate published by BoxyHQ.
 - **URL:** https://github.com/boxyhq/saas-starter-kit
 - **Commit tested:** `abc9b686823cbfb4973c79bc36fea37a3244be6c` (main branch HEAD at clone time; authored 2026-05-08).
-- **Why this repo:** neither Zylver nor this session wrote a line of it. It has a real Prisma schema (`prisma/schema.prisma`, backed by 2270 commits of migration history under `prisma/migrations/`), a real Zod validation layer used across 42 Next.js API routes (`lib/zod/schema.ts`, `lib/zod/primitives.ts`), and 272 plain TypeScript/TSX files — the SQL/Prisma-schema-plus-Zod-contracts-plus-TypeScript shape the bead asked for. No OpenAPI document is present; Zod is the contract source here, which satisfies the "OpenAPI or Zod" requirement.
-- **Size sanity check:** 272 TS/TSX files, ~3.4 MB of source (excluding `.git` and `node_modules`) — the same order of magnitude as this repo's own `packages/*/src` (229 files, ~2.0 MB), not 10x it.
+- **Why this repo:** neither Zylver (the maintaining organization) nor the author of this run wrote a line of it. It has a real Prisma schema (`prisma/schema.prisma`, backed by 2270 commits of migration history under `prisma/migrations/`), a real Zod validation layer used across 42 Next.js API routes (`lib/zod/schema.ts`, `lib/zod/primitives.ts`), and 272 plain TypeScript/TSX files — the SQL/Prisma-schema-plus-Zod-contracts-plus-TypeScript shape the task asked for. No OpenAPI document is present; Zod is the contract source here, which satisfies the "OpenAPI or Zod" requirement.
+- **Size sanity check:** 272 TS/TSX files, ~3.4 MB of source (excluding `.git` and `node_modules`) — the same order of magnitude as this repo's own `packages/*/src` (229 files, ~2.0 MB on 2026-08-29), not 10x it.
 - **Candidates rejected before this one:** `ixartz/SaaS-Boilerplate` (7387 stars, actively maintained, but zero API routes and zero contract surface — Zod appears only for environment-variable validation, so `extract-contracts` would have nothing to find); several older T3-stack demo repos rejected for being 2+ years stale (`Sairyss/fullstack-starter-template`, `leojuriolli7/t3-blog`, both last pushed 2023); several flagship products (`documenso/documenso`, `formbricks/formbricks`, `dubinc/dub`, `calcom/cal.com`, `midday-ai/midday`) rejected as far too large for a 10-minute run (100–1000x this repo's own source footprint by GitHub's reported repository size).
 - **Honesty note on "actively maintained":** GitHub's `pushed_at` for this repo reads 2026-07-20, but that reflects a push to a non-default ref; the `main` branch's actual HEAD commit is dated 2026-05-08 (about 3.5 months before this test), the most recent of 2270 commits. That is recent enough to be a live, non-abandoned project, not a multi-year-stale demo, and is disclosed here rather than left implicit.
 
@@ -47,6 +48,8 @@ time node .../seamline/packages/cli/dist/index.js check
 ```
 
 Real wall-clock: **`init && extract && why slug` = 1m4.527s**; **`check` = 0m13.764s**. Combined, the full documented path plus the ranked-contradiction command is **~78 seconds** — well under the 10-minute gate. `extract` alone (the dominant cost) was 23.7s CPU-timed in an isolated run and stayed in the same range inside the combined run.
+
+Note (2026-11-10): the per-extractor times printed in the `extract` output below sum to about 8.3s, so the 23.7s figure and the 64.5s combined time include work the transcript does not itemize. This record does not say what that work was; the wall-clock figures above are the primary measurement.
 
 ### `seamline init`
 
@@ -137,14 +140,20 @@ CLEAN  every detector ran; no contradictions found.
 
 Exit code `0`. This is a genuine result, not a cherry-picked clean repo: every detector executed against the full extracted graph (2831 nodes, 5165 edges) and found zero `critical`/`high`/`medium`/`low` disagreements between this codebase's schema, contracts, and TypeScript. `check` is not required to find a bug to prove the gate works — it is required to run the full detector catalog over real facts and report honestly, which it did.
 
+Note (2026-11-10): read this result as proof that the command runs end to end on a real repository, not as evidence that a detector can fire on one. The later measurement in [`docs/evaluation/dev-hardened-draft.md`](../evaluation/dev-hardened-draft.md) detected 0 of 11 injected mutants and found every detector dormant on its measured scope, and the root README says a quiet run is not evidence that a repository is clean.
+
 ## The blast-radius gap (as scoped, not fixed here)
 
-`docs/design/v3.md` §1 and this bead's own description list three outputs for the acceptance test: field lineage, a ranked contradiction list, and "blast radius for the working diff." I confirmed the third exists **only** as an MCP tool (`packages/mcp/src/tools/impact.ts`, reachability over dependency/join edges from explicitly supplied node ids) — there is no CLI command that computes it, and the MCP tool takes explicit node ids as input, not "the current git diff." The README's own "ten-minute path" section already scopes its CLI claim down to lineage plus contradictions and does not mention blast radius, so the CLI's documented surface is already narrower than v3 §1's prose promises. I did not add a CLI blast-radius command to close this gap: that would be net-new scope requiring its own design-spec pass and a named consumer per `AGENTS.md`'s deferral rule, not something to improvise inside a proof-and-documentation bead. This gap should be tracked as its own item (either narrow v3 §1's prose to match the CLI's real scope, or open a design-spec pass for a CLI blast-radius command with a named consumer).
+Note (2026-11-10): this gap was closed after 2026-08-29. `seamline blast-radius` (`packages/cli/src/commands/blast-radius.ts`) computes the blast radius of the working diff, or of node ids given with `--ids`, and the root README documents it. The paragraph below records the state on 2026-08-29.
+
+`docs/design/v3.md` §1 and this task's own description list three outputs for the acceptance test: field lineage, a ranked contradiction list, and "blast radius for the working diff." I confirmed the third exists **only** as an MCP tool (`packages/mcp/src/tools/impact.ts`, reachability over dependency/join edges from explicitly supplied node ids) — there is no CLI command that computes it, and the MCP tool takes explicit node ids as input, not "the current git diff." The README's own "ten-minute path" section already scopes its CLI claim down to lineage plus contradictions and does not mention blast radius, so the CLI's documented surface is already narrower than v3 §1's prose promises. I did not add a CLI blast-radius command to close this gap: that would be net-new scope requiring its own design-spec pass and a named consumer per `AGENTS.md`'s deferral rule, not something to improvise inside a proof-and-documentation task. This gap should be tracked as its own item (either narrow v3 §1's prose to match the CLI's real scope, or open a design-spec pass for a CLI blast-radius command with a named consumer).
 
 ## What was not fixed here
 
-`infer-join`'s `VALIDATED_BY` pass does not resolve a Zod object built from named constants imported from another module (`lib/zod/primitives.ts`) — it only walks members declared inline on the `z.object({...})` call. This produced 29 real "declares no members" diagnostics against this target repo (list above, first entry `teamSlugSchema`). It did not prevent `MAPS_TO_FIELD`/`BACKED_BY`/`EXPOSED_AS` inference (those still found 20 real join edges, including the `Team.slug` chain above), and every extractor still reported `PASS`, so it did not block the gate. Per this bead's constraint against touching `packages/*/src`, this was not fixed; it is reported here as a real, reproducible limitation for separate triage.
+`infer-join`'s `VALIDATED_BY` pass does not resolve a Zod object built from named constants imported from another module (`lib/zod/primitives.ts`) — it only walks members declared inline on the `z.object({...})` call. This produced 29 real "declares no members" diagnostics against this target repo (list above, first entry `teamSlugSchema`). It did not prevent `MAPS_TO_FIELD`/`BACKED_BY`/`EXPOSED_AS` inference (those still found 20 real join edges, including the `Team.slug` chain above), and every extractor still reported `PASS`, so it did not block the gate. Per this task's constraint against touching `packages/*/src`, this was not fixed; it is reported here as a real, reproducible limitation for separate triage.
+
+Note (2026-11-10): this describes the 2026-08-29 build ("v0.1" in the pasted output above means that pre-release). It has not been re-run against 0.1.0. `infer-join` has changed since (`packages/infer-join/src/infer.ts` now also consults lowered schema members), so the limitation may have narrowed; that is unverified.
 
 ## Cleanup
 
-`/tmp/<clone-dir>` (the clone, its `node_modules`, and its `seamline-out/`) is scratch and was not committed anywhere in this tree. It was deleted at the end of this session; the repository history above (URL, commit SHA, and this document) is what is retained.
+`/tmp/<clone-dir>` (the clone, its `node_modules`, and its `seamline-out/`) is scratch and was not committed anywhere in this tree. It was deleted at the end of this run; the repository history above (URL, commit SHA, and this document) is what is retained.

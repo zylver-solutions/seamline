@@ -79,7 +79,7 @@ test('sources that parse but declare no table also report UNAVAILABLE', async ()
 });
 
 test('diagnostics never embed the maintainer-machine absolute root path, even under malformed input', async () => {
-  // seamline-7tu: extractor.ts:124 (discover() failure) and :153 (parse
+  // extractor.ts:124 (discover() failure) and :153 (parse
   // failure) both report `String(err)`, the same shape as the confirmed H13
   // leak fixed in extract-contracts. Unlike that leak, discover() catches
   // every fs error internally (readdir/stat/readFile) rather than

@@ -2,6 +2,12 @@
   "name": "@seamline/infer-join",
   "version": "0.1.0",
   "description": "The zero-declaration cross-domain join: matches columns, fields, schema properties and validators by name, type and structure.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "join-inference"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

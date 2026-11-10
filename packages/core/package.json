@@ -2,6 +2,12 @@
   "name": "@seamline/core",
   "version": "0.1.0",
   "description": "Seamline's storage, identity, merge, traversal and evidence infrastructure, with an extensible semantic foundation.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "graph-store"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

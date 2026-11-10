@@ -24,7 +24,7 @@ git commit -s -m "fix: nullability detector no longer fires on generated columns
 Signed-off-by: Jane Contributor <jane@example.com>
 ```
 
-The name and email must be real and must match your commit author. A DCO check runs on every pull request and blocks the merge until every commit in the branch is signed off. If you forgot, `git rebase --signoff main` fixes the whole branch.
+The name and email must be real and should match your commit author. A DCO check runs on every pull request and blocks the merge until every commit in the branch carries a well-formed `Signed-off-by` line. The check does not compare that line with the commit author; a reviewer may. If you forgot, `git rebase --signoff <base>` fixes the whole branch, where `<base>` is the branch yours started from (for a fork, `upstream/main` after `git fetch upstream`).
 
 By signing off you certify the four clauses of the Developer Certificate of Origin 1.1 (reproduced in full at <https://developercertificate.org/>): in short, that you wrote the contribution or have the right to submit it under Apache-2.0, and that you understand it is public and will be redistributed.
 
@@ -38,8 +38,8 @@ Node >= 22.13 (this repo develops on 24) and pnpm >= 10.
 
 ```bash
 pnpm install
-./node_modules/.bin/tsc --build
-node --test 'packages/*/src/**/*.test.ts'
+pnpm build   # tsc --build
+pnpm test    # node:test over packages/*/src/**/*.test.ts and scripts/*.test.mjs
 ```
 
 Full conventions are in [`docs/toolchain.md`](docs/toolchain.md), which is binding on every package. Four of them bite immediately, so they are repeated here:
@@ -57,26 +57,32 @@ Enforcement happens in four layers, and the first three run on your machine. CI 
 
 1. **`pnpm typecheck`** builds every package. Most mistakes in this codebase are type errors by construction; `erasableSyntaxOnly` and the branded `NodeId` type are there to make them so.
 2. **`pnpm test`** runs the unit, property, and conformance suites.
-3. **`pnpm verify`** runs everything, in the order CI runs it:
+3. **`pnpm verify`** runs every local gate in one command:
 
    ```bash
-   pnpm verify   # typecheck + lint + test + gate:license + gate:ontology + gate:ontology-ref + gate:determinism + gate:pack + gate:dogfood
+   pnpm verify   # typecheck, lint, test, gate:license, gate:ontology, gate:ontology-ref, gate:determinism, gate:versions, gate:pack, gate:dogfood
    ```
 
-4. **CI** runs the same commands on every pull request, plus the release gates.
+4. **CI** (`.github/workflows/ci.yml`) runs on every pull request and on every push to `main`, on Node 22.13 and on Node 24: build, lint, test, then the license, versions, ontology, ontology reference, determinism and dogfood gates and the internal leak scan. On a pull request it also checks the DCO sign-off of every commit.
+
+CI and `pnpm verify` are not the same list. CI does not run `gate:pack`, and `pnpm verify` does not run the internal leak scan, so run `node scripts/internal-leak-scan.mjs` yourself before pushing. Formatting is not a gate either: `pnpm format` applies Prettier, and `pnpm format:check` is in neither `pnpm verify` nor CI.
+
+The release workflow (`.github/workflows/release.yml`) checks the tagged commit again before anything is published: build, test, the license, versions, pack, ontology and determinism gates, and the leak scan in its stricter `--publish` mode. It does not repeat lint, the ontology reference gate or the dogfood gate. How a release is cut, and how to verify one, is in [`docs/RELEASING.md`](docs/RELEASING.md).
 
 **If `pnpm verify` exits non-zero, the change does not merge and the release does not get tagged. No exceptions.** A gate is either enforced or it is decoration.
 
 ### The gates, and what each one actually asserts
 
-| Gate | Command | Asserts |
-|---|---|---|
-| License | `pnpm gate:license` | Every installed package resolves to a permissive SPDX identifier on the allow-list. A missing, `UNLICENSED`, or unrecognised license field **fails**: absent a grant, the default is "all rights reserved", which is not permissive. |
-| Ontology | `pnpm gate:ontology` | Every kind participates in at least one edge; no edge is used outside its declared domain and range; no breaking schema change without a major bump. |
-| Ontology reference | `pnpm gate:ontology-ref` | `docs/reference/ontology.md` is exactly what `scripts/gen-ontology-ref.mjs` renders from `ontology/seamline.yaml` and the extractor manifests. After an ontology or manifest change, run `pnpm gen:ontology-ref` and commit the result. |
-| Determinism | `pnpm gate:determinism` | Extraction run twice over the same tree produces byte-identical output. |
-| Pack | `pnpm gate:pack` | Each publishable package, packed with `pnpm pack` (offline, nothing is published), has no tests, fixtures, source maps, TypeScript source or test-support modules; every `main`, `types`, `bin` and `exports` target is in the tarball; `exports` lists only the reviewed entry points in `scripts/pack-check.mjs`; `engines.node` matches the root; the license is Apache-2.0; `LICENSE`, `README.md` and a `NOTICE` that is byte-equal to the root file ship; `repository`, `description`, `homepage` and `bugs` are set; every import in shipped code is a declared dependency and every shipped module is reachable from an entry point; and `@seamline/integration` stays private. Run `pnpm build` first. |
-| Dogfood | `pnpm gate:dogfood` | What Seamline finds about its own repository (its `check` findings, the `examples/` extraction, the unread TS/JS files) still matches the last reviewed baseline in `docs/dogfood/baseline/`. |
+| Gate               | Command                               | Asserts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| License            | `pnpm gate:license`                   | Every installed package resolves to a permissive SPDX identifier on the allow-list. A missing, `UNLICENSED`, or unrecognised license field **fails**: absent a grant, the default is "all rights reserved", which is not permissive.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Ontology           | `pnpm gate:ontology`                  | Every kind participates in at least one edge; no edge is used outside its declared domain and range; no breaking schema change without a major bump.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Ontology reference | `pnpm gate:ontology-ref`              | `docs/reference/ontology.md` is exactly what `scripts/gen-ontology-ref.mjs` renders from `ontology/seamline.yaml` and the extractor manifests. After an ontology or manifest change, run `pnpm gen:ontology-ref` and commit the result.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Determinism        | `pnpm gate:determinism`               | Extraction run twice over the same tree produces byte-identical output.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Versions           | `pnpm gate:versions`                  | The twelve published packages carry one version, and the version literals compiled into `packages/cli/src/version.ts`, `packages/mcp/src/server.ts` and `packages/mcp/src/bin.ts` equal it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Pack               | `pnpm gate:pack`                      | Each publishable package, packed with `pnpm pack` (offline, nothing is published), has no tests, fixtures, source maps, TypeScript source or test-support modules; every `main`, `types`, `bin` and `exports` target is in the tarball; `exports` lists only the reviewed entry points in `scripts/pack-check.mjs`; `engines.node` matches the root; the license is Apache-2.0; `LICENSE`, `README.md` and a `NOTICE` that is byte-equal to the root file ship; `repository`, `description`, `homepage` and `bugs` are set; every import in shipped code is a declared dependency and every shipped module is reachable from an entry point; and `@seamline/integration` stays private. Run `pnpm build` first. |
+| Dogfood            | `pnpm gate:dogfood`                   | What Seamline finds about its own repository (its `check` findings, the `examples/` extraction, the unread TS/JS files) still matches the last reviewed baseline in `docs/dogfood/baseline/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Internal leak scan | `node scripts/internal-leak-scan.mjs` | No tracked file sits under a path that must not be published (an `.env` file or a `seamline-out/` snapshot, among others), and no tracked file contains an identifier on the script's denylist. It is not part of `pnpm verify`; CI runs it on every pull request. The release workflow runs `node scripts/internal-leak-scan.mjs --publish`, the publication scan, in which findings that are only warnings in the default mode fail too. Run that form locally before proposing a release.                                                                                                                                                                                                                    |
 
 Three notes on gates, because they are the part contributors most often get wrong:
 
@@ -110,7 +116,9 @@ Extraction output is a CI gate, so when you write an extractor or a serializer:
 
 Every runtime dependency is supply-chain surface, and this project has publicly committed to keeping it small. Prefer the standard library.
 
-If you do add one, the pull request description must name the package, its exact SPDX license, and why the standard library will not do. The license gate enforces the allow-list mechanically (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, Unlicense, 0BSD, Zlib, PostgreSQL, and MPL-2.0 as an unmodified dependency with notice), but the gate cannot judge whether the dependency is worth having. That is the review's job.
+If you do add one, the pull request description must name the package, its exact SPDX license, and why the standard library will not do. The license gate enforces the allow-list mechanically (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, Unlicense, 0BSD, Zlib, PostgreSQL, BlueOak-1.0.0, Python-2.0, and MPL-2.0 as an unmodified dependency with notice), but the gate cannot judge whether the dependency is worth having. That is the review's job.
+
+**Update the notices when the dependency tree changes.** `THIRD-PARTY-NOTICES.txt` lists every package in the installed tree with its version and license. After adding, removing or upgrading a dependency, run `node scripts/license-gate.mjs --write-third-party-notices` and commit the regenerated file; the script refuses to write while a license violation is unresolved. No gate compares the committed file with the installed tree, so nothing fails if you skip this, and the file can fall behind. `node scripts/license-gate.mjs --notices` lists the dependencies whose license carries a notice obligation (Apache-2.0, MPL-2.0, BlueOak-1.0.0) and marks any that ship their own `NOTICE` file. If one does, add its notice to the root `NOTICE` and copy that file into each package again (`cp NOTICE packages/<name>/NOTICE`); `pnpm gate:pack` fails when a package's copy differs from the root file.
 
 **Copied code is not a dependency, and the gate cannot see it.** Implementing a published format or reusing a published vocabulary is fine. Pasting source from another project is not: Apache-2.0 code stays Apache-2.0 and carries its NOTICE with it, and no allow-list detects a copy-paste. If any part of your contribution is adapted from another codebase, say so explicitly in the pull request, name the upstream and its license, and expect that to be reviewed before anything else in the change.
 
@@ -118,19 +126,19 @@ If you do add one, the pull request description must name the package, its exact
 
 ## Commit messages
 
-Conventional Commits, because the changelog is generated from them.
+Conventional Commits, so the history reads consistently. `CHANGELOG.md` is written by hand in the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, not generated from commit messages: add an entry under `[Unreleased]` for a change a user would notice.
 
-| Prefix | For |
-|---|---|
-| `feat:` | new behaviour |
-| `fix:` | a bug fix |
-| `perf:` | performance, no behaviour change |
-| `refactor:` | no behaviour change |
-| `docs:` | documentation only |
-| `test:` | tests only |
-| `build:` / `ci:` | toolchain, dependencies, workflows |
-| `security:` | security-relevant; gets called out in the changelog |
-| `ontology:` | a change to `ontology/seamline.yaml` or the generated vocabulary |
+| Prefix           | For                                                              |
+| ---------------- | ---------------------------------------------------------------- |
+| `feat:`          | new behaviour                                                    |
+| `fix:`           | a bug fix                                                        |
+| `perf:`          | performance, no behaviour change                                 |
+| `refactor:`      | no behaviour change                                              |
+| `docs:`          | documentation only                                               |
+| `test:`          | tests only                                                       |
+| `build:` / `ci:` | toolchain, dependencies, workflows                               |
+| `security:`      | security-relevant; gets called out in the changelog              |
+| `ontology:`      | a change to `ontology/seamline.yaml` or the generated vocabulary |
 
 A breaking change gets a `!` (`feat!:`) and a `BREAKING CHANGE:` footer explaining the migration. Breaking the ontology simultaneously invalidates persisted graphs, third-party extractors, and every stored query, so an ontology break needs a major version and a migration note, not a footnote.
 
@@ -181,10 +189,13 @@ Deferred features are listed in `docs/design/v3.md` section 9, each gated on a n
 
 ## Branch protection
 
-- `main` is protected. No direct pushes; every change goes through a pull request.
-- Linear history: rebase or squash, no merge commits.
-- Required checks: CI (typecheck, lint, test, license gate, ontology gate, determinism gate, dogfood gate) and DCO.
-- Force pushes to `main` are forbidden.
+`main` is protected by a repository ruleset. As configured on 2026-11-10:
+
+- No direct pushes; every change goes through a pull request. The ruleset has no bypass list.
+- No approving review is required: the required approval count is 0 and code-owner review is not required. [`.github/CODEOWNERS`](.github/CODEOWNERS) records ownership; it does not enforce review.
+- Required status checks: `verify (node 22.13)` and `verify (node 24)` (the CI job on each Node version) and `DCO sign-off`. A branch does not have to be up to date with `main` to merge.
+- Force pushes to `main` and deletion of `main` are blocked.
+- Merge commits, squash merges and rebase merges are all enabled, and linear history is not enforced. On a squash merge, the commit messages of the branch, `Signed-off-by` lines included, become the body of the squash commit.
 
 ## License of your contribution
 

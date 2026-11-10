@@ -1,7 +1,13 @@
 {
   "name": "@seamline/align",
   "version": "0.1.0",
-  "description": "Alignment reports for Seamline: compares what a repository's documents claim with what its code and manifests show, and emits a versioned finding packet. Never gates a build.",
+  "description": "Alignment reports for Seamline: compares what a repository's documents claim with what its code and manifests show, and emits a versioned finding packet that never gates a build.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "documentation-drift"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

@@ -1,24 +1,45 @@
 # @seamline/security
+
 > **No measured precision or recall; do not rely on Seamline as a gate.** This is an early release. The one recorded measurement was made on a draft source tree: it produced zero findings and detected 0 of 11 injected mutants. Details are in the [repository README](https://github.com/zylver-solutions/seamline#what-works-today-and-what-does-not).
 
 The security primitives behind Seamline, as a package you can use on its own: a secret redactor, the delimiting that keeps third-party text from instructing an agent, and a public corpus of canary secrets and injection payloads that tests both.
 
 Use it if you serve any of Seamline's output (or your own repository text) into a model's context, or if you store extracted facts and need credential-shaped text kept out of them. If you are running Seamline itself, you want `@seamline/cli`; it uses this package for you.
 
-It depends on `@seamline/ontology` and nothing else. `@seamline/core` re-exports the redactor and the `delimit` family from here, name for name, so importers of `@seamline/core` are unaffected.
+## Install
+
+```bash
+npm install @seamline/security
+```
+
+Requires Node.js 22.13 or later. It depends on `@seamline/ontology` and nothing else. `@seamline/core` re-exports the redactor and the `delimit` family from here, name for name, so importers of `@seamline/core` are unaffected.
 
 ## The redactor
 
-```ts
-import { createRedactor, RedactionError } from '@seamline/security';
+```js
+import { createRedactor } from '@seamline/security';
 
-const redactor = createRedactor();
-const { nodes, edges, report } = redactor.redactGraph(rawNodes, rawEdges);
+// A graph node whose free-text prop holds a credential-shaped string (a fake one, split so no scanner matches this file).
+const node = {
+  id: 'shop:File:src/config.ts',
+  kind: 'File',
+  name: 'src/config.ts',
+  sensitivity: 'internal',
+  provenance: 'EXTRACTED',
+  confidence: 1,
+  props: { note: 'token ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8' },
+  firstSeenRun: 'run-1',
+  lastSeenRun: 'run-1',
+  deletedAt: null,
+};
+const { nodes, report } = createRedactor().redactGraph([node], []);
+console.log(nodes[0].props.note); // token «redacted:sha256:db08a6c3»
+console.log(report.totalFindings); // 1
 ```
 
 Free-text fields are scanned with the published credential rules (`SECRET_RULES`) and an entropy heuristic. A match is replaced by a stable reference, `«redacted:sha256:xxxxxxxx»`, never by the value; the same secret gets the same reference everywhere, and redacting twice is a no-op. Identity and path fields (node ids, edge endpoints, `path`, `sourceRef`, `srcFile`, `dstFile`) are never rewritten: a closed-format credential in one of them makes `redactGraph` throw `RedactionError`, because rewriting an id would break path-free identity (ADR-0013). The error names the rule and the field and never contains the credential.
 
-The redactor is a heuristic. It catches what it was taught and nothing else; see R1 in [THREATMODEL.md](../../THREATMODEL.md).
+The redactor is a heuristic. It catches what it was taught and nothing else; see R1 in [THREATMODEL.md](https://github.com/zylver-solutions/seamline/blob/main/THREATMODEL.md).
 
 ## Untrusted-content delimiting
 
@@ -36,7 +57,7 @@ Neither renderer tries to recognise malicious intent. A phrase blocklist is bypa
 
 ### Threat model for the delimiting
 
-This is distinct from the repository-level [THREATMODEL.md](../../THREATMODEL.md) (threat T4, control C6, residual risk R4).
+This is distinct from the repository-level [THREATMODEL.md](https://github.com/zylver-solutions/seamline/blob/main/THREATMODEL.md) (threat T4, control C6, residual risk R4).
 
 - **Asset:** the integrity of the agent's instruction channel. Text from a dependency, an issue, a commit or a comment must stay data.
 - **Adversary:** anyone who can put text in a field Seamline serves. They can read this source, so they know both wire formats; they do not know the nonce of a response in flight. They can write any Unicode, of any length, into one field.
@@ -75,16 +96,18 @@ Each of these passes through unchanged. The block is still the control; none of 
 - `corpus/secrets.json`: credential-shaped strings, one or more for every redactor rule. Each states whether it must be `redacted` (a free-text field) or `refused` (an identity or path field), why it cannot be live (`fakeBecause`), and the rule it exercises.
 - `corpus/injections.json`: prompt-injection payloads (instruction overrides, fake turn markers and chat templates, fake tool results, forged and split delimiters, zero-width, bidirectional and control characters, bracket runs, very long lines, and benign lookalikes that must survive unchanged). Each states the rule it exercises and, per renderer, what must (`present`) and must not (`absent`) be in the block body.
 
-`src/conformance.test.ts` runs every entry through the redactor and both renderers and asserts the outcome the entry states, plus structural invariants for every payload: exactly one opening and one closing delimiter, nothing in the body that could be read as either, no control or invisible character, a header the payload cannot influence, idempotent neutralisation, and independence from the nonce. `src/corpus.test.ts` keeps the corpus and the code in step: every redactor rule has a canary, every closed-format rule has a refused-in-identity canary, every default `delimit` neutralisation rule is expected to fire on some payload.
+The tests named here live in the repository and are not shipped in the npm package. `src/conformance.test.ts` runs every entry through the redactor and both renderers and asserts the outcome the entry states, plus structural invariants for every payload: exactly one opening and one closing delimiter, nothing in the body that could be read as either, no control or invisible character, a header the payload cannot influence, idempotent neutralisation, and independence from the nonce. `src/corpus.test.ts` keeps the corpus and the code in step: every redactor rule has a canary, every closed-format rule has a refused-in-identity canary, every default `delimit` neutralisation rule is expected to fire on some payload.
 
 Coverage is checked per rule, not per alternative inside a rule, so the payloads are chosen to reach the alternatives: each role word, each wrapper tag, each optional part of the sentinel, both ends of the tag range, a hostile `source` and `origin`. The one rule with no corpus payload is `injection-phrase`, which is opt-in (`neutraliseInjectionPhrases: true`) and therefore exempt from the per-rule test, which runs the defaults; it is covered in `src/untrusted.test.ts`. Gaps were found by mutating the two renderers' source and running the tests, and the payloads above exist because mutants survived without them.
 
-```ts
+```js
 import { loadSecretCanaries, loadInjectionCorpus } from '@seamline/security/corpus';
 
-for (const e of loadInjectionCorpus().entries) {
-  const rendered = yourRenderer(e.payload); // run your own renderer against the same payloads
+const yourRenderer = (text) => text; // replace with the renderer you want to test
+for (const entry of loadInjectionCorpus().entries) {
+  const rendered = yourRenderer(entry.payload); // run your own renderer against the same payloads
 }
+console.log(loadSecretCanaries().length, loadInjectionCorpus().entries.length);
 ```
 
 or read `@seamline/security/corpus/secrets.json` and `@seamline/security/corpus/injections.json` directly from any language.
@@ -95,7 +118,7 @@ Every value is invented. Documented examples (AWS's published example key id and
 
 ### Adding a case
 
-Edit the JSON; no TypeScript is needed. Run `node --test 'packages/security/src/**/*.test.ts'`.
+In a clone of the repository, edit the JSON; no TypeScript is needed. Then run `pnpm test`, or only this package's tests with `node --experimental-strip-types --test 'packages/security/src/**/*.test.ts'` (the flag is needed on Node versions that do not strip types by default).
 
 ```jsonc
 // corpus/secrets.json
@@ -125,7 +148,7 @@ Edit the JSON; no TypeScript is needed. Run `node --test 'packages/security/src/
 }
 ```
 
-Write invisible and control characters as `\uXXXX` escapes; a test rejects raw non-ASCII so nothing can hide in review. If a payload shows that a renderer lets something through, that is a finding: open a security report (see [SECURITY.md](../../SECURITY.md)) rather than weakening the entry.
+Write invisible and control characters as `\uXXXX` escapes; a test rejects raw non-ASCII so nothing can hide in review. If a payload shows that a renderer lets something through, that is a finding: open a security report (see [SECURITY.md](https://github.com/zylver-solutions/seamline/blob/main/SECURITY.md)) rather than weakening the entry.
 
 **Every entry must be written from scratch.** Do not derive a case from a private codebase, from a customer's data, or from a third-party attack list whose license you have not checked. A minimized repro of something real is still a published description of it.
 
@@ -134,3 +157,5 @@ Write invisible and control characters as `\uXXXX` escapes; a test rejects raw n
 The extractor sandbox, the export profiles and the sensitivity rules, and the store decorator that makes the redactor the sole writer (`wrapWithRedaction`) stay in `@seamline/core`: each is bound to the store, the export policy or the extractor manifest rather than to content. The corpus covers the redactor and the two renderers only.
 
 **Stability tier: library surface.** Published, importable, documented as unstable below 1.0. The corpus is append-only in spirit: entries may be added at any time, and an entry is changed or removed only when the behavior it records changes, in a release that says so.
+
+See the [repository README](https://github.com/zylver-solutions/seamline#security-posture-in-one-paragraph) and [THREATMODEL.md](https://github.com/zylver-solutions/seamline/blob/main/THREATMODEL.md). License: Apache-2.0 ([LICENSE](https://github.com/zylver-solutions/seamline/blob/main/LICENSE)).

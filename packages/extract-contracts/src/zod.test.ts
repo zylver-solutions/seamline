@@ -108,7 +108,7 @@ test('an in-file schema reference is followed and nested properties get real poi
   }
 });
 
-// seamline-8x5: `typescript` is an optional peer dependency of this package.
+// `typescript` is an optional peer dependency of this package.
 // `extractZod`'s fifth parameter is the injection seam that lets this test
 // simulate "not installed" without actually uninstalling it from the
 // monorepo, which would break every other package's build.

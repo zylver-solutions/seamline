@@ -4,25 +4,25 @@
 
 **Do not open a public issue, a discussion, or a pull request for a suspected vulnerability.**
 
-**Ramiro Enriquez** is the sole security contact and confirms that he monitors
-<security@zylver.com>.
+There are two private routes. Use either one.
 
-Report privately by email to that address. No PGP key is published. If your
-report requires encryption beyond ordinary email, send only a request for a
-secure channel first; do not include vulnerability details or secrets in that
-request.
+1. **GitHub private vulnerability reporting.** It is enabled on this
+   repository. Open
+   <https://github.com/zylver-solutions/seamline/security/advisories/new>, or
+   use **Report a vulnerability** on the repository's Security tab. The report
+   is visible only to you and to the repository's maintainers.
+2. **Email** to <security@zylver.com>. **Ramiro Enriquez** is the sole security
+   contact and confirms that he monitors that address. No PGP key is published.
+   If your report requires encryption beyond ordinary email, send only a request
+   for a secure channel first; do not include vulnerability details or secrets
+   in that request.
 
-The monitored email address is the accepted reporting route. GitHub private
-vulnerability reporting is available for public repositories; this repository
-must first have an explicitly authorized public release. After that transition,
-the operator will enable and verify the feature before it is advertised as an
-available route. See checklist item **H5** in
-[`docs/PUBLIC-RELEASE-CHECKLIST.md`](docs/PUBLIC-RELEASE-CHECKLIST.md) and
-[GitHub's availability documentation](https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/repository-security-advisories).
+Both routes reach the same single maintainer. If a report on one route is not
+acknowledged within the time stated under
+[Response expectations](#response-expectations), send it again on the other.
 
 Do not substitute a public issue, discussion or pull request for a private
-report. This email-first policy does not authorize publication or change the
-release-quality requirements.
+report.
 
 ### What to include
 
@@ -40,13 +40,13 @@ A report we can reproduce gets fixed faster than a report we have to interpret.
 
 These are commitments, not aspirations. This is a small project, so they are set at a pace that can actually be met.
 
-| Stage | Target |
-|---|---|
-| Acknowledge receipt | 3 business days |
-| Initial assessment: valid or not, and a provisional severity | 10 business days |
-| Fix or documented mitigation for critical and high | 30 days from confirmation |
-| Fix or documented mitigation for medium and low | 90 days from confirmation, or the next minor release |
-| Public advisory after a fix ships | within 7 days |
+| Stage                                                        | Target                                               |
+| ------------------------------------------------------------ | ---------------------------------------------------- |
+| Acknowledge receipt                                          | 3 business days                                      |
+| Initial assessment: valid or not, and a provisional severity | 10 business days                                     |
+| Fix or documented mitigation for critical and high           | 30 days from confirmation                            |
+| Fix or documented mitigation for medium and low              | 90 days from confirmation, or the next minor release |
+| Public advisory after a fix ships                            | within 7 days                                        |
 
 If we are going to miss one of these, you will be told before it slips rather than after.
 
@@ -60,12 +60,14 @@ There is **no bug bounty**. We have no budget for one and would rather say so th
 
 ## Supported versions
 
-| Version | Status |
-|---|---|
-| `0.x` (pre-1.0) | Fixes land on the latest published `0.x` only. There are no backports. |
-| `1.x` (when released) | The current minor, plus security fixes on the previous minor for 6 months after it is superseded. |
+| Version               | Status                                                                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0.x` (pre-1.0)       | `0.1.0`, published on 2026-11-10, is the first and only release so far. Fixes land on the latest published `0.x` only. There are no backports. |
+| `1.x` (when released) | The current minor, plus security fixes on the previous minor for 6 months after it is superseded.                                              |
 
 Seamline is pre-1.0. In practice this means: upgrade to the latest release to get a security fix. If that is not possible for you, say so in your report and we will work out what mitigation is available, but a patch release against an older `0.x` is not something we can currently commit to.
+
+Every release is published to npm with a provenance attestation. How to check that the packages you installed are an official release is in [`docs/RELEASING.md`](docs/RELEASING.md#verifying-a-release).
 
 ---
 
@@ -75,17 +77,17 @@ These are advisories in a dependency that ship with Seamline and that we have as
 
 ### `minimatch` 10.2.6: GHSA-g3hv-75wg-m249 (CVE-2026-118764), moderate
 
-| | |
-|---|---|
-| Advisory | [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), CVE-2026-118764, npm advisory 1244623, CWE-405. "minimatch has potential denial of service via globparts amplification." Severity: moderate. |
-| Affected range | `>=7.0.0 <11.0.1`. Patched in `>=11.0.1`. |
-| Version Seamline resolves | `minimatch@10.2.6` (the only `minimatch` in `pnpm-lock.yaml`), so it is in the affected range. |
-| How it ships | `@seamline/extract-code-ts` depends on `ts-morph@^28.0.0` (locked at 28.0.0), which depends on `@ts-morph/common@0.29.0`, which depends on `minimatch@^10.0.1`. The same `minimatch@10.2.6` also appears under ESLint and `@typescript-eslint` in the development toolchain; that copy is not published. |
-| Trigger | The flaw is in minimatch's pattern preprocessing and needs the option `optimizationLevel >= 2`. An attacker-supplied glob pattern then makes minimatch generate extra pattern entries and compare them pairwise, which consumes CPU and memory. |
-| Reachable in Seamline | Not by default. `@ts-morph/common@0.29.0` calls `minimatch(path, pattern)` without an options argument (`dist/ts-morph-common.js`, two call sites), so it does not request `optimizationLevel >= 2`. Seamline's own source does not import `minimatch` or set that option. The effect of the flaw is resource exhaustion in the local process, not code execution or disclosure. |
-| Upstream status | A fixed `minimatch` (11.0.1) exists, but `@ts-morph/common` declares `^10.0.1`, which excludes it. On 2026-11-05 `ts-morph` 28.0.0 and `@ts-morph/common` 0.29.0 were the latest published versions, so there is no `ts-morph` release to move to. |
-| What you can do | Nothing is required for the default configuration. If you also run your own code that calls `minimatch` with `optimizationLevel >= 2` on untrusted patterns, upgrade that use to 11.0.1 or later. A package-manager override to `minimatch@>=11.0.1` for the `@ts-morph/common` dependency is possible, but we have not tested it against Seamline. |
-| Our plan | Adopt a `ts-morph` release whose `@ts-morph/common` accepts `minimatch >=11.0.1` when one is published, and remove this entry in the release that does. |
+|                           |                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Advisory                  | [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), CVE-2026-118764, npm advisory 1244623, CWE-405. "minimatch has potential denial of service via globparts amplification." Severity: moderate.                                                                                                                                                           |
+| Affected range            | `>=7.0.0 <11.0.1`. Patched in `>=11.0.1`.                                                                                                                                                                                                                                                                                                                                        |
+| Version Seamline resolves | `minimatch@10.2.6` (the only `minimatch` in `pnpm-lock.yaml`), so it is in the affected range.                                                                                                                                                                                                                                                                                   |
+| How it ships              | `@seamline/extract-code-ts` depends on `ts-morph@^28.0.0` (locked at 28.0.0), which depends on `@ts-morph/common@0.29.0`, which depends on `minimatch@^10.0.1`. The same `minimatch@10.2.6` also appears under ESLint and `@typescript-eslint` in the development toolchain; that copy is not published.                                                                         |
+| Trigger                   | The flaw is in minimatch's pattern preprocessing and needs the option `optimizationLevel >= 2`. An attacker-supplied glob pattern then makes minimatch generate extra pattern entries and compare them pairwise, which consumes CPU and memory.                                                                                                                                  |
+| Reachable in Seamline     | Not by default. `@ts-morph/common@0.29.0` calls `minimatch(path, pattern)` without an options argument (`dist/ts-morph-common.js`, two call sites), so it does not request `optimizationLevel >= 2`. Seamline's own source does not import `minimatch` or set that option. The effect of the flaw is resource exhaustion in the local process, not code execution or disclosure. |
+| Upstream status           | A fixed `minimatch` (11.0.1) exists, but `@ts-morph/common` declares `^10.0.1`, which excludes it. On 2026-11-05 `ts-morph` 28.0.0 and `@ts-morph/common` 0.29.0 were the latest published versions, so there is no `ts-morph` release to move to.                                                                                                                               |
+| What you can do           | Nothing is required for the default configuration. If you also run your own code that calls `minimatch` with `optimizationLevel >= 2` on untrusted patterns, upgrade that use to 11.0.1 or later. A package-manager override to `minimatch@>=11.0.1` for the `@ts-morph/common` dependency is possible, but we have not tested it against Seamline.                              |
+| Our plan                  | Adopt a `ts-morph` release whose `@ts-morph/common` accepts `minimatch >=11.0.1` when one is published, and remove this entry in the release that does.                                                                                                                                                                                                                          |
 
 Your install resolves its own dependency tree. Seamline's lockfile does not govern what `npm install @seamline/extract-code-ts` selects, and every `minimatch` 10.x release is inside the affected range.
 
@@ -110,10 +112,10 @@ The controls below are load-bearing. A demonstrated bypass of any of them is a v
 
 ## What is out of scope
 
-- **Vulnerabilities in the code Seamline analyses.** Seamline reports on your repository; a finding in your repository is your finding, not ours. If Seamline reports it *incorrectly*, that is a bug, and a normal issue is the right place.
+- **Vulnerabilities in the code Seamline analyses.** Seamline reports on your repository; a finding in your repository is your finding, not ours. If Seamline reports it _incorrectly_, that is a bug, and a normal issue is the right place.
 - **The documented residual risks** in THREATMODEL.md section 7, when reported as-is. R1 (the redactor is heuristic), R2 (nothing controls what you do with an export), R4 (delimiting is not neutralisation), and R5 (the sandbox is process-level, not a VM) are known and stated. A concrete bypass that is materially worse than the documented limit is in scope; "heuristics can be evaded in principle" is not.
 - **Missing hardening with no demonstrated impact.** A missing header, a permissive file mode with no reachable consequence, or a tool's default output flagged by a scanner. Show the impact.
-- **Denial of service by an operator against their own local CLI.** Handing Seamline a hostile repository and crashing it is a robustness bug; file it as an issue. It becomes a security issue when a *third party* controls the input, for example through a dependency's metadata, and the effect exceeds a crash.
+- **Denial of service by an operator against their own local CLI.** Handing Seamline a hostile repository and crashing it is a robustness bug; file it as an issue. It becomes a security issue when a _third party_ controls the input, for example through a dependency's metadata, and the effect exceeds a crash.
 - **Social engineering, physical access, or attacks on the maintainers' accounts** by means other than a flaw in this project.
 - **Automated scanner output** submitted without a reproduction and an impact analysis.
 

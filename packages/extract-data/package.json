@@ -2,6 +2,12 @@
   "name": "@seamline/extract-data",
   "version": "0.1.0",
   "description": "Database schema facts for Seamline from SQL DDL, Drizzle, Prisma and migrations.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "sql-schema"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

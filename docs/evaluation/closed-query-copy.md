@@ -1,5 +1,7 @@
 # Closed query-copy implementation limits
 
+Status (2026-11-10): record of the implementation of 2026-10-24 and its measured refusal, kept as written. The implementation ships in 0.1.0 (code: `packages/extract-contracts/src/write-query-copy-callers.ts` and `write-query-copy-input.ts`). Its real-source acceptance remains unmet; related records are listed in [the X7 refusal evidence](x7-hardening-refusals.md).
+
 The [accepted certificate design](../design/get-query-copy-effects.md) permits only two exact element-access nodes after the complete proof succeeds. The implementation preserves strict computed-access checks everywhere else. This is a bounded source-analysis profile, with no application execution or new dependency.
 
 The admitted input is a fresh ordinary string record from intrinsic URL search parameters and Object.fromEntries, optionally through an immutable local URL alias. The loop must use one synchronous const key, one of the two reviewed decimal-suffix regex literals, the exact absence guard and the same source/destination key. Every possible parser caller must be accounted for, including incoming handler references and CommonJS parser namespaces. Framework method eligibility also requires the exact published Next 16.2.6 lock integrity; a version string with a missing, replaced or customized artifact resolution supplies no method evidence.
@@ -12,8 +14,8 @@ Only declaration-level `import type` and `export type` erase a module load uncon
 
 ## Measured development refusal
 
-[The machine-readable record](x7-query-copy-dev-refusal.json) describes the implementation of 2026-10-24, before subsequent review repairs. Production extraction and checking completed on both exact [development pins](../design/x7-upper-length.md#required-acceptance). Both runs produced zero X7 findings and `X7_NO_OBSERVABLE_LENGTH_PAIR`. Framework invocation closure first refused `scripts/build-geo.js:3`. Contracts reported partial coverage and withheld the validated-write bindings.
+[The machine-readable record](x7-query-copy-dev-refusal.json) describes the implementation of 2026-10-24, before subsequent review repairs. Production extraction and checking completed on both exact [development pins](../design/x7-upper-length.md#required-acceptance). Both runs produced zero X7 findings and `X7_NO_OBSERVABLE_LENGTH_PAIR`. Framework invocation closure first refused `scripts/build-geo.js:3` (a path inside the pinned upstream checkout, not this repository). Contracts reported partial coverage and withheld the validated-write bindings.
 
 The fixed checkout is unexamined for this rule, not an examined negative. The initial measurement harness failed after saving the parent pipeline because it treated the detector map as an array; the corrected harness completed both pins. The failed epoch remains separate and supplies no pair result.
 
-Original fixture success, engineering guard mutations and historical firing do not replace the required parent contradiction and examined fixed negative. Real-source acceptance remains unmet. Independent labels, calibration, sealed qualification, per-detector recall, final-head repository gates and publication authorization remain separate requirements.
+Original fixture success, engineering guard mutations and historical firing do not replace the required parent contradiction and examined fixed negative. Real-source acceptance remains unmet. Independent labels, calibration, sealed qualification, per-detector recall, final-head repository gates and publication authorization remain separate requirements. (Note, 2026-11-10: 0.1.0 has since been published as an early release without that evidence; the notice at the top of the root README says so.)

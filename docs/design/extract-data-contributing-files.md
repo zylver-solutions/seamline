@@ -1,6 +1,6 @@
 # extract-data: a table whose other contributing file is unread
 
-Status: design proposal for the open item on deleting tables whose contributing files are withheld; that item remains open. This document admits no implementation or residual-risk acceptance.
+Status: design proposal, not implemented (status checked 2026-11-10). It concerns the open item on deleting tables whose contributing files are withheld; that item remains open in 0.1.0 and is disclosed as a known limit in the root `README.md` ("A table can be tombstoned while an unread file still declares it"). This document admits no implementation or residual-risk acceptance.
 
 ## Consumer and reported problem
 
@@ -18,11 +18,11 @@ The extractor has no prior-run input. The current store does not already hold co
 
 ## Options and bounded decision
 
-| Option | Required design | Limits and cost evidence |
-|---|---|---|
-| A. Persist bounded contributor evidence and consult it during sweeps | Specify producer protocol, internal storage, migration and SQLite/in-memory evaluation | Does not inherently require changing node identity or public payload. A contributor join has not been benchmarked. |
-| B. Give the extractor declared prior-state input | Specify input identity, sandbox protocol and bounded prior evidence | Hidden history reads would violate reproducibility. Declaring prior state can preserve determinism. |
-| C. Document the current residual | Record the existing limitation | Does not resolve false burial or constitute accepted risk. A fully readable recovery run has no guaranteed deadline. |
+| Option                                                                        | Required design                                                                              | Limits and cost evidence                                                                                                             |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| A. Persist bounded contributor evidence and consult it during sweeps          | Specify producer protocol, internal storage, migration and SQLite/in-memory evaluation       | Does not inherently require changing node identity or public payload. A contributor join has not been benchmarked.                   |
+| B. Give the extractor declared prior-state input                              | Specify input identity, sandbox protocol and bounded prior evidence                          | Hidden history reads would violate reproducibility. Declaring prior state can preserve determinism.                                  |
+| C. Document the current residual                                              | Record the existing limitation                                                               | Does not resolve false burial or constitute accepted risk. A fully readable recovery run has no guaranteed deadline.                 |
 | D. Withhold deletion authority conservatively during unsafe partial discovery | Bound when `dataClaimFor` cannot safely attribute contributions; emit an explicit diagnostic | Delays genuine deletions too. Restricting only unread `.sql` paths misses unread directories and mixed SQL/Prisma/Drizzle ownership. |
 
 The existing 300-path, 12.6-second selector measurement on a 3.6k-node store does not measure A. There is no established universal cost ordering between C's unjustified burial and D's delayed deletions.
@@ -41,7 +41,7 @@ Specify replacement and retirement after authoritative reread, preservation duri
 
 `dataClaimFor` already returns `CLAIM_NOTHING` for unrepresentable or over-budget claims. This withholds authority without necessarily changing the producer status to `UNAVAILABLE`. A completed `PASS` scope is not proof of complete coverage.
 
-Under `currentObservationOf`, scope-only availability can be true for a completed `PASS` claim. Node-specific currentness additionally requires a live node, `lastSeenRun` equal to the current run and a claim covering that node. The `!**` claim covers no node. Retained live facts are not thereby freshly observed. Verify the named consumers' absence-sensitive behavior; do not assume every detector automatically becomes `UNKNOWN` or infer absence from withheld authority.
+Under `currentObservationOf`, scope-only availability can be true for a completed `PASS` claim. Node-specific currentness additionally requires a live node, `lastSeenRun` equal to the current run and a claim covering that node. The `CLAIM_NOTHING` claim (the data selector followed by `!**`, in `packages/extract-data/src/extractor.ts`) covers no node. Retained live facts are not thereby freshly observed. Verify the named consumers' absence-sensitive behavior; do not assume every detector automatically becomes `UNKNOWN` or infer absence from withheld authority.
 
 ## Future acceptance plan
 

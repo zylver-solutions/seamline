@@ -1,11 +1,39 @@
 # @seamline/mcp
+
 > **No measured precision or recall; do not rely on Seamline as a gate.** This is an early release. The one recorded measurement was made on a draft source tree: it produced zero findings and detected 0 of 11 injected mutants. Details are in the [repository README](https://github.com/zylver-solutions/seamline#what-works-today-and-what-does-not).
 
 The Seamline MCP server. Serves graph context (facts, contradictions, lineage) to AI coding agents over stdio, through a fixed set of parameterized tools — there is no raw query tool, because that would be arbitrary code execution wearing a friendly name. Traversal depth is bounded by construction and results are capped.
 
-Use this directly if you are wiring an AI coding agent to query a Seamline graph. If you are running Seamline from a shell or a script instead, use `@seamline/cli`.
+## Install
 
-Wiring: construct `McpDeps` with a `GraphSource` implementation and an export profile, call `createServer`, then `serveStdio(server, nodeStdio())`.
+```bash
+npm install @seamline/mcp
+```
+
+Requires Node.js 22.13 or later. **To serve a repository to an agent you do not need this package on its own:** install `@seamline/cli`, run `seamline extract`, and point your MCP client at `seamline mcp --profile <name>`. That command wires this server to the extracted store, the detectors and the export profile. Install this package directly only to embed the server in your own program, over a graph source you supply.
+
+The package also installs a `seamline-mcp` binary. It is the bare protocol surface with no store behind it: it takes no arguments, answers `initialize` and `tools/list`, and answers every tool call over an empty graph whose one scope is `UNAVAILABLE`, so an agent pointed at it gets no data. Use `seamline mcp` to serve a real graph.
+
+## Usage
+
+Construct `McpDeps` with a `GraphSource` and an export profile, call `createServer`, then `serveStdio(server, nodeStdio())`. A `GraphSource` hands the server a read-only `GraphView` and the latest run record; the `SqliteStore` of `@seamline/core` (a dependency of this package) is a `GraphView`:
+
+```js
+import { SqliteStore, PUBLIC_PROFILE } from '@seamline/core';
+import { createServer, nodeStdio, serveStdio } from '@seamline/mcp';
+
+const store = new SqliteStore({ path: 'seamline-out/graph.db' }); // written by `seamline extract`
+const server = createServer({
+  graph: {
+    view: async () => store,
+    latestRun: async () => (await store.listRuns(1))[0],
+  },
+  profile: PUBLIC_PROFILE,
+});
+await serveStdio(server, nodeStdio());
+```
+
+The server prints nothing on start; it reads MCP messages from stdin and exits when stdin closes. This minimal source has no `detect` function, so the `contradictions` tool answers `DETECTION UNAVAILABLE` and not a clean result; `seamline mcp` wires the detectors.
 
 The profile is required, because the server is default-deny in the same way `seamline export` is. It is an `ExportProfile` from `@seamline/core` (`PUBLIC_PROFILE`, `TEAM_PROFILE`, `AUDIT_PROFILE`, or your own allow-list in the same format, built with `parseExportProfile`). The format is the one `seamline export` reads ([design](https://github.com/zylver-solutions/seamline/blob/main/docs/design/export-profile.md), [JSON Schema](https://github.com/zylver-solutions/seamline/blob/main/docs/reference/export-profile.schema.json)). Every tool, and contradiction detection, reads the graph only through `profileView(view, profile)`: a node whose `(kind, sensitivity)` pair the profile does not list is never returned, never counted in a total, and never used as a hop between two admitted nodes, and the location fields (`path`, `sourceRef`, `srcFile`, `dstFile`) the profile does not name are stripped from admitted ones.
 
@@ -19,13 +47,15 @@ When a call fails inside the server (the graph source or a detector throws), the
 
 Five read-only tools, each with a closed parameter schema that is both advertised in `tools/list` and enforced (an unknown or out-of-range parameter is an error, never ignored). There is no raw query tool.
 
-| Tool | Parameters |
-|---|---|
-| `context` | `symbol` (required), `kind`, `depth` (1 to 8, default 1), `tokenBudget` |
-| `impact` | `ids` (required, up to 32), `depth` (1 to 8, default 2), `targets` (`nodes` or `tests`), `tokenBudget` |
-| `lineage` | `field` (required), `kind`, `depth` |
-| `contradictions` | `severity`, `codes`, `nodeId`, `limit` |
-| `explain` | `id` (required) |
+| Tool             | Parameters                                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `context`        | `symbol` (required), `kind`, `depth` (1 to 8 accepted, default 1), `tokenBudget`                                |
+| `impact`         | `ids` (required, up to 32), `depth` (1 to 8 accepted, default 2), `targets` (`nodes` or `tests`), `tokenBudget` |
+| `lineage`        | `field` (required), `kind`, `depth` (1 to 8 accepted)                                                           |
+| `contradictions` | `severity`, `codes`, `nodeId`, `limit`                                                                          |
+| `explain`        | `id` (required)                                                                                                 |
+
+The schema ranges are wider than the server ceilings. The ceilings are `DEFAULT_BOUNDS`: depth 4, 100 results, a 64 KiB response, strings of 2000 characters and 32 input ids. A request above a ceiling is clamped, and the response says so in `notices` (for example "Requested depth was clamped to the server ceiling of 4."). `McpDeps.bounds` can lower a ceiling when you embed the server and can never raise one; `seamline mcp` uses the defaults.
 
 Every response carries the same envelope: `result`, `truncated` and `truncation` (with the reasons and the true total), `unknown` (scopes whose extractor did not PASS), and `notices`.
 
@@ -56,33 +86,33 @@ Two shape differences in a budgeted `context` response: the container appears on
   - **Not walked, and why.** `ALIAS_OF` records a retired name (Alias to Symbol, Column or File); nothing depends on an alias and an Alias node has no step to continue along. `EXPORTS` (File or Module to Symbol) is emitted from the exporting file, which for a re-export is a barrel and not the symbol's container; leaving it out loses nothing, because `export ... from` also records a file-level `IMPORTS` edge from the barrel, and the walk follows that. A Module is a dead end, because Module/File containment is not crossed. `MIGRATED_BY`, `COVERS` and `OWNED_BY` are not dependencies: a table does not depend on the migration that altered it, a coverage record measures a symbol or file without depending on it, and an owner is an annotation. `targets: "nodes"` walks `MIGRATED_BY` and `COVERS` undirected, so it passes through a shared migration or coverage record to its siblings (every table one migration touched, every symbol one record covers); this mode refuses to. `TOUCHES` and `RENAMED_FROM` record what a commit changed and what a file or symbol used to be called, and `PRODUCED_BY` links a run to its extractor; none is a dependency. The `CONTAINS` pairs Repo/File, Repo/Module, Module/File, DataSource/Schema and Schema/Table group a whole repository, package or database; crossing them would make every file or table a dependent of every other, and file-level `IMPORTS` already gives the precise path. Module-level `IMPORTS` edges are therefore walked but stop at the Module. A `KNOWN` answer is a statement about the walked edge kinds only, and its notice says so.
 - **`depth`** bounds the dependency hops (the final `TESTS` hop is not counted); a walk that stopped at the cap says so with `depth-cap`.
 - **UNKNOWN is never "no tests".** `result.answer` is `KNOWN` only when all six of these hold; otherwise it is `UNKNOWN` and `notices` says which one failed.
-  1. *Test facts exist.* The latest run declared at least one scope that produces `TestCase` nodes (it lists `TestCase` among its authoritative kinds), every such scope PASSed, and the export profile releases `TestCase` nodes and `TESTS` edges. When no run declared a test-producing scope, the envelope's `unknown` list carries a `tests` scope with status `UNAVAILABLE` and extractor `none declared`, and the tests list is empty by construction. When a test-producing scope did not PASS, `unknown` carries it with its status, and any tests listed are justified by facts now in the graph but the list may be incomplete or stale.
-  2. *The edges the walk crosses exist.* `CALLS`, `IMPORTS` and the joins come from other scopes than the tests, and an extractor that failed leaves no edge behind to find. A scope that did not PASS makes the answer UNKNOWN when the node kinds it declared meet the kinds of the edges walked, or when it declared none (nothing then rules it out). This is the declared-kinds test `SqliteStore` makes for a traversal, without its "has written an edge of these kinds" test, which a graph view cannot make. Scopes are read from the latest run record only, as the other tools read them; `SqliteStore` also sees the scopes of earlier runs. A failed scope that declares only unrelated kinds (for example change history) is still listed in `unknown`, and a notice says the answer does not depend on it. Tests found over the edges that are present are still listed.
-  3. *The profile releases what the walk crosses.* If the export profile does not release a node kind or an edge kind the walk crosses, a path through it is invisible, and the answer is UNKNOWN with a notice naming the kinds. A single node withheld by its sensitivity while its kind is released cannot be told apart from an absent one: the walk sees only the profiled view, so for such a graph `KNOWN` means "no test in what the profile releases".
-  4. *Every given id was assessed.* It was within the server's input cap, resolved to a live node, and that node is a fact. An id that was dropped by the input cap, did not resolve, or resolved to an INFERRED or LLM_SUGGESTED node is listed in `missing`, is not walked, and makes the answer UNKNOWN; the ids that were assessed are still answered.
-  5. *No given id is a recognised test file or helper.* `TESTS` runs from a test case to the code it exercises, and the ontology has no `File` to `TestCase` edge, so nothing leads from a changed test file, or from a helper that only tests import, to the tests it affects. A given id is recognised as test code when it is a file that defines test cases (a `TestCase`'s `path`, or the file part of its name), something defined in such a file (also when no `CONTAINS` edge places it there but its own `path` does), or test support reached through imports. A file is test support when it has importers, every one of them is a test file or test support (at any depth, and a cycle of helpers counts, provided the cycle is reached from a test file), and no test exercises anything in it. The answer for such an id is UNKNOWN with a notice that changes to test files and test helpers are not traced. A given `TestCase` is not test code in this sense: it is returned as itself.
+  1. _Test facts exist._ The latest run declared at least one scope that produces `TestCase` nodes (it lists `TestCase` among its authoritative kinds), every such scope PASSed, and the export profile releases `TestCase` nodes and `TESTS` edges. When no run declared a test-producing scope, the envelope's `unknown` list carries a `tests` scope with status `UNAVAILABLE` and extractor `none declared`, and the tests list is empty by construction. When a test-producing scope did not PASS, `unknown` carries it with its status, and any tests listed are justified by facts now in the graph but the list may be incomplete or stale.
+  2. _The edges the walk crosses exist._ `CALLS`, `IMPORTS` and the joins come from other scopes than the tests, and an extractor that failed leaves no edge behind to find. A scope that did not PASS makes the answer UNKNOWN when the node kinds it declared meet the kinds of the edges walked, or when it declared none (nothing then rules it out). This is the declared-kinds test `SqliteStore` makes for a traversal, without its "has written an edge of these kinds" test, which a graph view cannot make. Scopes are read from the latest run record only, as the other tools read them; `SqliteStore` also sees the scopes of earlier runs. A failed scope that declares only unrelated kinds (for example change history) is still listed in `unknown`, and a notice says the answer does not depend on it. Tests found over the edges that are present are still listed.
+  3. _The profile releases what the walk crosses._ If the export profile does not release a node kind or an edge kind the walk crosses, a path through it is invisible, and the answer is UNKNOWN with a notice naming the kinds. A single node withheld by its sensitivity while its kind is released cannot be told apart from an absent one: the walk sees only the profiled view, so for such a graph `KNOWN` means "no test in what the profile releases".
+  4. _Every given id was assessed._ It was within the server's input cap, resolved to a live node, and that node is a fact. An id that was dropped by the input cap, did not resolve, or resolved to an INFERRED or LLM_SUGGESTED node is listed in `missing`, is not walked, and makes the answer UNKNOWN; the ids that were assessed are still answered.
+  5. _No given id is a recognised test file or helper._ `TESTS` runs from a test case to the code it exercises, and the ontology has no `File` to `TestCase` edge, so nothing leads from a changed test file, or from a helper that only tests import, to the tests it affects. A given id is recognised as test code when it is a file that defines test cases (a `TestCase`'s `path`, or the file part of its name), something defined in such a file (also when no `CONTAINS` edge places it there but its own `path` does), or test support reached through imports. A file is test support when it has importers, every one of them is a test file or test support (at any depth, and a cycle of helpers counts, provided the cycle is reached from a test file), and no test exercises anything in it. The answer for such an id is UNKNOWN with a notice that changes to test files and test helpers are not traced. A given `TestCase` is not test code in this sense: it is returned as itself.
 
      Recognition is structural, so it errs towards UNKNOWN **only in the false-positive direction**: a production module that only tests import and nothing exercises directly (a barrel, a constants file) is called test support. The other direction is not covered, and these are **known limits**: for an id in one of them the answer can be `KNOWN`, listing only the tests the walk found and possibly none.
-     - A *setup file that nothing imports* (pytest `conftest.py`, a jest `setupFiles` entry): the runner loads it implicitly, so no `IMPORTS` edge leads to it and it looks like unimported production code.
-     - A *helper that has tests of its own*: it looks like the production code those tests exercise, so the tests of the files that use it are not listed.
-     - A *test file with no extracted `TestCase`* (for example tests generated at run time): nothing marks it as a test file.
+     - A _setup file that nothing imports_ (pytest `conftest.py`, a jest `setupFiles` entry): the runner loads it implicitly, so no `IMPORTS` edge leads to it and it looks like unimported production code.
+     - A _helper that has tests of its own_: it looks like the production code those tests exercise, so the tests of the files that use it are not listed.
+     - A _test file with no extracted `TestCase`_ (for example tests generated at run time): nothing marks it as a test file.
 
      The check also fails closed on one input. If any live fact `TestCase` carries neither a `path` nor a `<file>::<name>` canonical name, the files that define tests cannot all be known, so every given id other than a `TestCase` is UNKNOWN and the notice names the test cases concerned. Test extractors should set `path` on every `TestCase`.
 
-  6. *The walk reached the end of what it was allowed to look at.* A walk that stopped at its depth cap or its node cap says which (`truncated`, with `depth-cap` or `result-cap`), and more dependents may lie beyond it. A list that is cut after a complete walk (the result cap on the tests, or a `tokenBudget`) keeps its answer, because `truncation.total` carries the true count.
+  6. _The walk reached the end of what it was allowed to look at._ A walk that stopped at its depth cap or its node cap says which (`truncated`, with `depth-cap` or `result-cap`), and more dependents may lie beyond it. A list that is cut after a complete walk (the result cap on the tests, or a `tokenBudget`) keeps its answer, because `truncation.total` carries the true count.
 
   As of this writing no extractor in this repository emits `TestCase` nodes or `TESTS` edges, so against a graph extracted by the shipped extractors this answer is always UNKNOWN. The scope's selector is not evaluated: a test-producing scope that PASSed is taken to cover the test files it was pointed at.
 
-It exports:
+Main exports:
 
 - `createServer`, `LATEST_PROTOCOL_VERSION`, `SERVER_INSTRUCTIONS`, `SUPPORTED_PROTOCOL_VERSIONS`, `toolResult`, and the `SeamlineMcpServer` type — server construction and the MCP protocol surface.
 - `nodeStdio`, `serveStdio`, and the `ServeOptions`, `StdioStreams` types — the stdio transport.
 - `BYTES_PER_TOKEN`, `estimateTokens`, `MIN_TOKEN_BUDGET`, `MAX_TOKEN_BUDGET`: the `tokenBudget` estimator and its range.
 - `DEFAULT_BOUNDS`, `resolveBounds`, and the `AuditEvent`, `Bounds`, `DetectionReport`, `GraphSource`, `McpDeps`, `UnknownDetection` types — the port contracts a host implements.
 - `capDepth`, `capList`, `capString`, `fitToByteBudget`, `mergeTruncation`, `NOT_TRUNCATED`, `truncation`, and the `Truncation`, `TruncationReason`, `TruncationState` types — result bounding.
-- `attemptedEscape`, `makeNonce`, `NEUTRALIZED`, `neutralize`, `UNTRUSTED_CLOSE_TOKEN`, `UNTRUSTED_OPEN_TOKEN`, `UNTRUSTED_PREAMBLE`, `wrapUntrusted`: delimiting for untrusted content rendered into agent context. They are defined in [`@seamline/security`](../security/README.md) and re-exported here name for name.
+- `attemptedEscape`, `makeNonce`, `NEUTRALIZED`, `neutralize`, `UNTRUSTED_CLOSE_TOKEN`, `UNTRUSTED_OPEN_TOKEN`, `UNTRUSTED_PREAMBLE`, `wrapUntrusted`: delimiting for untrusted content rendered into agent context. They are defined in [`@seamline/security`](https://github.com/zylver-solutions/seamline/blob/main/packages/security/README.md) and re-exported here name for name.
 - `toJsonSchema`, `validateParams`, and the `ParamSchema`, `ParamSpec`, `ValidationResult` types — tool parameter validation.
 
 **Stability tier: Agent and operator surface.** Tools and their parameters are semver-governed: removing or renaming a tool, or removing or tightening a parameter, is a breaking change requiring a major bump and a deprecation window. Adding a tool, parameter, or output field is not breaking.
 
-The published binary is `seamline-mcp`.
+See the [repository README](https://github.com/zylver-solutions/seamline#using-seamline-from-an-agent) for the agent setup and the [export profile design](https://github.com/zylver-solutions/seamline/blob/main/docs/design/export-profile.md). License: Apache-2.0 ([LICENSE](https://github.com/zylver-solutions/seamline/blob/main/LICENSE)).

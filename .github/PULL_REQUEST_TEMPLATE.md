@@ -14,7 +14,8 @@ one, say why not. "Ran it locally and it looked right" is not verification;
 this project's entire thesis is that presence is not proof.
 -->
 
-- [ ] `pnpm verify` passes locally (typecheck, lint, test, license gate, ontology gate, determinism gate, pack gate, dogfood gate)
+- [ ] `pnpm verify` passes locally (typecheck, lint, test, and the license, ontology, ontology reference, determinism, versions, pack and dogfood gates)
+- [ ] `node scripts/internal-leak-scan.mjs` exits 0 (CI runs it; `pnpm verify` does not)
 - [ ] A test asserts the **outcome**, not that a function exists
 - [ ] If this adds or changes a detector: a fixture pair (one that fires, one that does not) plus the meta-test
 - [ ] If this touches extraction or serialization: `pnpm gate:determinism` passes
@@ -35,7 +36,7 @@ Anything you could not run, and why:
 ## Surface checks
 
 Tick what applies, or write "n/a". These map onto the controls in
-[THREATMODEL.md](../blob/main/THREATMODEL.md); a reviewer will look at them
+[THREATMODEL.md](https://github.com/zylver-solutions/seamline/blob/main/THREATMODEL.md); a reviewer will look at them
 regardless, so filling them in makes the review faster rather than slower.
 
 - [ ] **Dependencies.** No new runtime dependency. If there is one, I named it, its exact SPDX license, and why the standard library will not do.
@@ -52,6 +53,6 @@ regardless, so filling them in makes the review faster rather than slower.
 - [ ] **Every commit in this branch is signed off** (`git commit -s`), and I certify the [DCO](https://developercertificate.org/).
 
 <!--
-Forgot? Fix the whole branch:  git rebase --signoff main
+Forgot? Fix the whole branch:  git rebase --signoff <base branch>
 Seamline uses the DCO, not a CLA. You keep your copyright.
 -->

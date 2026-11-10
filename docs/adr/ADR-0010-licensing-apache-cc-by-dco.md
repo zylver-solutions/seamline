@@ -4,6 +4,7 @@
 - **Date:** 2026-08-29
 - **Design reference:** `docs/design/v3.md` §10, §10.1, §10.2
 - **Council findings:** L1 (CRITICAL, licensing lens; also v3 §10.1), L4 (HIGH), H15 (HIGH, DevEx L-1). Supporting record: `docs/audit/2026-08-29-license-verification.md`.
+- **Status of implementation (2026-11-10):** the licences, the DCO check (the `dco` job in `.github/workflows/ci.yml`) and the transitive allow-list (`pnpm gate:license`, `scripts/license-gate.mjs`) are in place. Five statements in this record differ from the repository. (a) There is no `LICENSE-ontology` file. The CC-BY-4.0 terms for the ontology are stated in `NOTICE` (section 2), in `ontology/README.md`, and in the SPDX header of `ontology/seamline.yaml`; `LICENSE` is the Apache-2.0 text. (b) `SPDX-License-Identifier` is not at the top of every source file: on this date 58 of the 606 TypeScript files under `packages/*/src` carry it, and no gate checks for it. (c) `THIRD-PARTY-NOTICES.txt` is generated from the installed dependency tree by `node scripts/license-gate.mjs --write-third-party-notices`, not from the SBOM; the CycloneDX SBOM is generated separately in `.github/workflows/release.yml`. (d) No check asserts that an MPL-licensed file is unmodified in-tree. `scripts/license-gate.mjs` allows `MPL-2.0` as a dependency licence and requires a notice for it, and that is the whole mechanism. (e) The only artefact generated from `ontology/seamline.yaml` is `docs/reference/ontology.md` (see `ontology/README.md`). On the `CODE-DERIVED` case named in Decision 4: the project it refers to is not published, and the outcome recorded for this repository is `NOTICE` section 4, which states that no source code from another project is incorporated and that every prior-art row is `SPEC-COMPATIBLE`.
 
 ## Context
 
@@ -15,7 +16,7 @@ The licensing lens verified every claim in v2's prior-art and licensing sections
 
 v2's prior-art survey used "adopt", "borrow", and "reuse" interchangeably across nine Apache-2.0 projects. Those verbs describe two completely different acts:
 
-- Adopting FINOS CALM's *schema*, or Backstage's *vocabulary*, is **spec-compatible reimplementation**. It is fine, and it is the whole basis of interoperability.
+- Adopting FINOS CALM's _schema_, or Backstage's _vocabulary_, is **spec-compatible reimplementation**. It is fine, and it is the whole basis of interoperability.
 - Vendoring another project's merge driver, or its intel modules, is **code derivation**, and it carries the upstream licence into this repository with it.
 
 Under an MIT project licence the second act is a licence violation, and **no `license-checker` allow-list detects it**, because the offending code does not arrive as a dependency with a manifest entry. It arrives as a copy-paste. This is the FalkorDB class of error (a dependency whose licence would have made the package undistributable, caught before any code existed) in a subtler and much harder to detect form.
@@ -83,7 +84,7 @@ Contributions are certified with `git commit -s` under Developer Certificate of 
 
 **AGPL or SSPL to prevent a hosted competitor.** Rejected: it destroys the distribution model outright. Nobody embeds an AGPL library in a Backstage plugin or an IDE extension, and this project's own dependency allow-list excludes both licences, so adopting one would make the project fail its own gate.
 
-**Open-core: permissive core, commercial extensions.** Rejected for v0.1 and not foreclosed at the technical level, since the `profile` field (ADR-0001) is where such a boundary would naturally fall. It is foreclosed at the *licensing* level by choosing DCO over a CLA, and that trade is made deliberately: contribution volume now is worth more than a commercial option later, for a project whose primary risk is nobody using it.
+**Open-core: permissive core, commercial extensions.** Rejected for v0.1 and not foreclosed at the technical level, since the `profile` field (ADR-0001) is where such a boundary would naturally fall. It is foreclosed at the _licensing_ level by choosing DCO over a CLA, and that trade is made deliberately: contribution volume now is worth more than a commercial option later, for a project whose primary risk is nobody using it.
 
 **CC0 for the ontology.** Rejected: CC-BY costs an adopter one attribution line and gives a new project the one thing it cannot buy, which is provenance in other people's documents. LinkML's own model and runtime being CC0 does not oblige us to match it.
 

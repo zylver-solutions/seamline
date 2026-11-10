@@ -6,12 +6,13 @@
 - **Council findings:** C6 (CONFIRMED CRITICAL; devil's advocate DA-02/DA-03/DA-04, DevEx V-1/G-1, grill-me F5, QA F6) and C9 (CONFIRMED CRITICAL; devil's advocate DA-01/DA-06, DevEx V-1/W-1).
 - **Contract:** `packages/ontology/src/contract.ts` (`Contradiction`, `ContradictionDetector`, `CONTRADICTION_CODES`)
 - **Amended by:** [ADR-0014](ADR-0014-alignment-drift-classes-and-finding-packet.md) (narrows "Gaps are deferred entirely from v0.1"; the scope of the change is stated there)
+- **Status of implementation (2026-11-10):** all ten detectors are implemented and registered (`packages/contradictions/src/detectors/index.ts`), and the fixture-pair meta-test is `packages/contradictions/src/meta.test.ts`. Implemented is not the same as able to fire on a real repository: [`docs/contradictions/README.md`](../contradictions/README.md) gives the current status of each detector, including the ones whose input facts no shipped extractor emits. The fifth detector is `X5_UNWRITTEN_COLUMN` in the contract (a `NOT NULL` column with no default that no traced insert names), where the list below says "unexposed required column". The 10-minute acceptance test is not automated: no script or workflow in this repository times `seamline init && seamline extract && seamline why`. The record of it is one manual timed run, `docs/audit/2026-08-29-gate-proof.md`. `seamline blast-radius` is its own command, not part of `seamline why`.
 
 This is the core product decision. Everything else in this record is machinery in service of it.
 
 ## Context
 
-v2's primary output was the **gap**: a rule of the shape *kind × status → required edges* fires when a required edge is absent, and the absence is reported as a finding. Three separate lines of attack converged on the same conclusion, and the sharpest of them is worth quoting in full.
+v2's primary output was the **gap**: a rule of the shape _kind × status → required edges_ fires when a required edge is absent, and the absence is reported as a finding. Three separate lines of attack converged on the same conclusion, and the sharpest of them is worth quoting in full.
 
 **DA-03, named by the council as the sharpest finding in the review.** v2's `VERIFIES` relation was satisfied by a substring match in a test name. Therefore:
 
@@ -19,7 +20,7 @@ v2's primary output was the **gap**: a rule of the shape *kind × status → req
 it('[F-042] works', () => expect(true).toBe(true));
 ```
 
-clears an **error-severity CI gate**. The gate asserts that a link exists. It does not assert that anything was verified. This is a direct violation of the organization's own rule 15, *assert authoritative state, not presence*, and it is the exact failure mode that discredited a generation of enterprise traceability tooling.
+clears an **error-severity CI gate**. The gate asserts that a link exists. It does not assert that anything was verified. This is a direct violation of the principle _assert authoritative state, not presence_, and it is the exact failure mode that discredited a generation of enterprise traceability tooling.
 
 **DA-02, the arithmetic.** v2 defined per-column and per-schema-property rules. On a modest repo the council estimated **3,000 to 4,500 day-one gaps**, mostly at `error` severity. `Gap` becomes the largest single population in the graph. Zero-gap is unreachable, so the gate is permanently red, so the gate is permanently ignored.
 
@@ -33,14 +34,14 @@ clears an **error-severity CI gate**. The gate asserts that a link exists. It do
 
 A **contradiction** cites two authoritative facts that disagree. It carries both facts verbatim (`leftFact`, `rightFact`), the join path along which they were compared (`viaPath`), a claim in plain language, and a confidence.
 
-| | Gap (v2) | Contradiction (v3) |
-|---|---|---|
-| Says | "you failed to declare something" | "two things you already wrote disagree" |
-| Input | absence of a declared edge | two extracted, authoritative facts |
-| Count on a fresh repo | 3,000 to 4,500 (council estimate) | bounded by real disagreements |
-| Actionable | no: the fix is to write an annotation | yes: the fix is a code or schema change |
-| Gameable | yes: six documented escape hatches | no: you must change a fact |
-| Satisfies rule 15 | **no** | yes |
+|                             | Gap (v2)                              | Contradiction (v3)                      |
+| --------------------------- | ------------------------------------- | --------------------------------------- |
+| Says                        | "you failed to declare something"     | "two things you already wrote disagree" |
+| Input                       | absence of a declared edge            | two extracted, authoritative facts      |
+| Count on a fresh repo       | 3,000 to 4,500 (council estimate)     | bounded by real disagreements           |
+| Actionable                  | no: the fix is to write an annotation | yes: the fix is a code or schema change |
+| Gameable                    | yes: six documented escape hatches    | no: you must change a fact              |
+| Asserts state, not presence | **no**                                | yes                                     |
 
 A gap is a complaint about documentation. A contradiction is a bug.
 
@@ -48,7 +49,7 @@ Ten detectors ship in v0.1 (v3 §5), each naming the authoritative facts it comp
 
 Three rules make this real rather than rhetorical:
 
-1. **Detectors read facts only.** `isFact(p)` is `EXTRACTED || DECLARED`. Inference never feeds a gate (ADR-0007). The join that *finds* the pair to compare may be `INFERRED`; the two facts being compared may not be.
+1. **Detectors read facts only.** `isFact(p)` is `EXTRACTED || DECLARED`. Inference never feeds a gate (ADR-0007). The join that _finds_ the pair to compare may be `INFERRED`; the two facts being compared may not be.
 2. **A detector declares its required scopes.** If any required scope's producing extractor did not PASS, the detector emits `UNKNOWN` rather than a finding (ADR-0003). No detector may report a negative finding from missing data.
 3. **Every detector carries a fixture pair and a meta-test**: one fixture that makes it fire, one that does not, and a test asserting both. A detector that always fires and a detector that never fires are equally useless and equally invisible, and only a meta-test distinguishes them from a working one.
 
@@ -63,22 +64,22 @@ The needs matrix survives as a **design**, not as v0.1 behaviour (v3 §9). If it
 - **Day-one value with zero configuration.** This is the whole point. A contradiction list on a repo nobody annotated is useful immediately, which is the only way the annotations that would enable richer analysis ever get written.
 - Every finding is actionable by construction, because the remedy is a change to code or schema, and the finding names both sides of the disagreement.
 - Findings are ungameable in the way gaps were: you cannot suppress a contradiction by editing a rule's escape hatch, because there is no escape hatch to edit. You change one of the two facts, and changing a fact is the work.
-- It satisfies rule 15 structurally rather than by policy. The assertion is about state, not about presence.
+- It satisfies that principle structurally rather than by policy. The assertion is about state, not about presence.
 - The finding count is bounded by real disagreements, so the gate can plausibly reach zero, so the gate can plausibly stay on.
 
 ### Negative
 
 - **A repo with no contradictions gets nothing.** A well-maintained, internally consistent codebase produces an empty list, and "your codebase is fine" is a hard thing to charge for or to build a habit around. Gaps at least always had something to say. This is the central commercial risk of the decision and it is accepted knowingly.
 - **Coverage is narrow.** Ten detectors is not a platform. Whole categories of real problems (architectural drift, undocumented ownership, unverified requirements) are simply out of scope for v0.1.
-- **False positives are now *expensive*.** A gap that was wrong was noise in a pile of noise. A contradiction that is wrong is a claim that the user's code is broken when it is not, made by a tool whose entire pitch is that it only reports real disagreements. One bad detector damages the whole product's credibility, which is why the fixture-pair meta-test is mandatory rather than encouraged.
+- **False positives are now _expensive_.** A gap that was wrong was noise in a pile of noise. A contradiction that is wrong is a claim that the user's code is broken when it is not, made by a tool whose entire pitch is that it only reports real disagreements. One bad detector damages the whole product's credibility, which is why the fixture-pair meta-test is mandatory rather than encouraged.
 - Contradiction detection depends on the inferred join being right. A wrong join compares two facts that were never about the same thing, and produces a confident, well-formatted, completely fictitious finding. Confidence calibration on `MAPS_TO_FIELD` and friends is therefore load-bearing for correctness, not just for ranking.
-- Deferring gaps discards genuine work: the *shape* of v2's needs rules (data, not code, with status-dependent tightening, mirroring Sphinx-Needs and Backstage scorecards) survived refutation and is worth keeping. It is deferred, not deleted.
+- Deferring gaps discards genuine work: the _shape_ of v2's needs rules (data, not code, with status-dependent tightening, mirroring Sphinx-Needs and Backstage scorecards) survived refutation and is worth keeping. It is deferred, not deleted.
 
 ## Alternatives considered
 
 **Ship gaps as designed in v2.** Rejected: the CI gate is clearable by `expect(true).toBe(true)`, the day-one count is 3,000 to 4,500, and readiness is movable from 0.08 to 0.94 with zero facts changed. Any one of those is disqualifying; together they describe a tool that reports on its own documentation rather than on the system.
 
-**Ship gaps, but make them warnings rather than errors.** Rejected: a permanently warning-coloured list of 4,000 items is ignored just as completely as a red one, and it still fails rule 15. Lowering the severity of a meaningless signal does not make it meaningful.
+**Ship gaps, but make them warnings rather than errors.** Rejected: a permanently warning-coloured list of 4,000 items is ignored just as completely as a red one, and it still asserts presence rather than state. Lowering the severity of a meaningless signal does not make it meaningful.
 
 **Ship gaps with better suppression ergonomics (expiring waivers, owners, reasons).** Rejected for v0.1, and this is the closest call in the record. Expiring waivers genuinely fix DA-04. They do not touch DA-03 (presence is still not truth) or DA-02 (the day-one count is unchanged). Better suppression on an unactionable finding is better ergonomics for ignoring it. The waiver design is retained for the deferred needs matrix, where it belongs.
 

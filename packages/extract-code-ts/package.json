@@ -2,6 +2,12 @@
   "name": "@seamline/extract-code-ts",
   "version": "0.1.0",
   "description": "TypeScript and JavaScript code facts for Seamline, read through the ts-morph type checker.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "typescript"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

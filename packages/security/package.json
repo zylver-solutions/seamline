@@ -2,6 +2,12 @@
   "name": "@seamline/security",
   "version": "0.1.0",
   "description": "Seamline's security primitives: the secret redactor, the untrusted-content delimiting for agent context, and a public injection corpus that tests both.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "redaction"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

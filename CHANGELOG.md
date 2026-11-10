@@ -4,13 +4,15 @@ All notable changes to this project are recorded in this file. The format follow
 
 ## [Unreleased]
 
-## [0.1.0] - YYYY-MM-DD
+### Changed
 
-The date is a placeholder: replace it with the day the `v0.1.0` tag is pushed.
+- Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.
 
-This is the first release. All twelve published packages move from the internal `0.0.1` to `0.1.0` together and are released in lockstep; the first publish uses the npm dist-tag `next`. `seamline --version` and the MCP server version report `0.1.0`.
+## [0.1.0] - 2026-11-10
 
-**It is an early release.** Seamline has no measured precision or recall, and it should not be relied on as a gate. The only recorded measurement (under `docs/evaluation`, 2026-10-26) was made on a draft source tree, not on the code you install: it produced zero findings and detected 0 of 11 injected mutants (five missed, six UNKNOWN), with all ten detectors dormant on that scope. No passing sealed evaluation exists; it is deferred to 0.2.0. The known limits in the root README, including the tombstoning limitation, apply to this release.
+This is the first release. All twelve published packages move from the internal `0.0.1` to `0.1.0` together and are released in lockstep. They were published to npm on 2026-11-10 from the tag `v0.1.0`, each with a provenance attestation that names this repository, `.github/workflows/release.yml` and that tag (`npm audit signatures` verifies it; see `docs/RELEASING.md`). The release workflow published under the dist-tag `next`; the registry also sets `latest` on a first publish, so both tags point at 0.1.0 and `npm install @seamline/cli` installs it. `seamline --version` and the MCP server version report `0.1.0`.
+
+**It is an early release.** Seamline has no measured precision or recall, and it should not be relied on as a gate. The only recorded measurement (under `docs/evaluation`, the hardened draft of 2026-10-23) was made on a draft source tree, not on the code you install: it produced zero findings and detected 0 of 11 injected mutants (five missed, six UNKNOWN), with all ten detectors dormant on that scope. No passing sealed evaluation exists; it is deferred to 0.2.0. The known limits in the root README, including the tombstoning limitation, apply to this release.
 
 **Known dependency advisory.** `minimatch@10.2.6`, reached at runtime through `@seamline/extract-code-ts` > `ts-morph` 28.0.0 > `@ts-morph/common` 0.29.0, is affected by GHSA-g3hv-75wg-m249 (CVE-2026-118764, moderate; affected `>=7.0.0 <11.0.1`, patched `>=11.0.1`). The denial of service needs `optimizationLevel >= 2`, which `@ts-morph/common` does not request, so the default configuration does not trigger it. No `ts-morph` release accepts the patched version yet. See the "Known dependency advisories" section of `SECURITY.md`.
 
@@ -75,3 +77,6 @@ This section summarises what is on `main`, drawn from the development history, w
 - `@seamline/extract-contracts` no longer leaks absolute local paths into diagnostics.
 - `@seamline/extract-change`: the README and design table said rename detection used `git diff -M` through simple-git; it uses `git log --find-renames` in a plain git subprocess.
 - CLI text output escapes repository-controlled text: names, paths, findings, diagnostics, refs and error messages no longer reach the terminal with escape sequences, C0 or C1 controls, DEL, bidirectional overrides, zero-width characters or line separators, so a directory named with `ESC[31m` or `ESC]0;title BEL` cannot recolour the screen, set the window title or forge a line. Each is shown in escaped form (`\x1b`, `\u202e`). `--json`, exports, packets and the MCP server are unchanged. The helper is `printable` in `@seamline/security`.
+
+[Unreleased]: https://github.com/zylver-solutions/seamline/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/zylver-solutions/seamline/releases/tag/v0.1.0
