@@ -275,7 +275,8 @@ jobs:
                 pending+=("$pkg")
               fi
             done
-            echo "Registry propagation round ${round}: ${visible} of ${#packages[@]} served at ${version} (${SECONDS}s elapsed)"
+            # Progress goes to stderr: stdout carries only the verification result.
+            echo "Registry propagation round ${round}: ${visible} of ${#packages[@]} served at ${version} (${SECONDS}s elapsed)" >&2
             if [ "$visible" -eq "${#packages[@]}" ]; then
               break
             fi
@@ -291,17 +292,20 @@ jobs:
           # Audit the registry artifacts from this release, with no lifecycle scripts.
           # Retried because propagation can be uneven across CDN nodes: the
           # poll above can pass on one node and the install hit another.
+          # The last attempt's exit status is the step's exit status.
           install_attempts=5
           for attempt in $(seq 1 "$install_attempts"); do
-            if npm install --ignore-scripts --no-audit --no-fund --save-exact \
-              --registry=https://registry.npmjs.org/ -- "${specs[@]}"; then
+            install_status=0
+            npm install --ignore-scripts --no-audit --no-fund --save-exact \
+              --registry=https://registry.npmjs.org/ -- "${specs[@]}" || install_status=$?
+            if [ "$install_status" -eq 0 ]; then
               break
             fi
             if [ "$attempt" -eq "$install_attempts" ]; then
               echo "::error::npm install of the published packages failed ${install_attempts} times. The packages were published; do NOT re-run this job. Verify provenance by hand with 'npm audit signatures'."
-              exit 1
+              exit "$install_status"
             fi
-            echo "npm install attempt ${attempt} of ${install_attempts} failed; retrying in ${propagation_sleep_seconds}s"
+            echo "npm install attempt ${attempt} of ${install_attempts} failed; retrying in ${propagation_sleep_seconds}s" >&2
             sleep "$propagation_sleep_seconds"
           done
           npm audit signatures --json --include-attestations \

@@ -1082,6 +1082,28 @@ if (mode === 'invalid') report.invalid.push({name: records[0].name});
 if (mode === 'missing-signature') report.missing.push({name: records[0].name});
 process.stdout.write(JSON.stringify(report));
 `, { mode: 0o755 });
+  // The step polls the registry before it installs. This stands in for curl:
+  // a version document that names the requested version and a registry
+  // tarball, then 200 for the tarball. 'never-served' answers 404 throughout;
+  // 'served-late' answers 404 for the first round of version documents.
+  writeFileSync(join(bin, 'curl'), `#!/usr/bin/env node
+const fs = require('node:fs');
+const args = process.argv.slice(2);
+const mode = process.env.SEAMLINE_PROVENANCE_CASE;
+const url = args.at(-1);
+const out = args.includes('-o') ? args[args.indexOf('-o') + 1] : null;
+fs.appendFileSync(process.env.SEAMLINE_PROVENANCE_CURL_LOG, url + '\\n');
+const seen = fs.readFileSync(process.env.SEAMLINE_PROVENANCE_CURL_LOG, 'utf8').split('\\n').filter(Boolean);
+let code = '200';
+if (mode === 'never-served') code = '404';
+if (mode === 'served-late' && seen.filter((u) => u === url).length === 1 && !url.endsWith('.tgz')) code = '404';
+if (code === '200' && out && out !== '/dev/null') {
+  const match = /^https:\\/\\/registry\\.npmjs\\.org\\/(.+)\\/([^/]+)$/.exec(url);
+  fs.writeFileSync(out, JSON.stringify({ name: match[1], version: match[2],
+    dist: { tarball: 'https://registry.npmjs.org/' + match[1] + '/-/artifact-' + match[2] + '.tgz' } }));
+}
+process.stdout.write(code);
+`, { mode: 0o755 });
   try {
     const run = spawnSync('bash', ['-s'], {
       input: script,
@@ -1095,6 +1117,10 @@ process.stdout.write(JSON.stringify(report));
         GITHUB_REF_NAME: 'v0.0.1',
         SEAMLINE_PROVENANCE_CASE: mode,
         SEAMLINE_PROVENANCE_LOG: log,
+        SEAMLINE_PROVENANCE_CURL_LOG: join(root, 'curl.log'),
+        // No real waiting in tests: one extra round is allowed, with no sleep.
+        PROPAGATION_SLEEP_SECONDS: '0',
+        PROPAGATION_BUDGET_SECONDS: mode === 'never-served' ? '0' : '60',
       },
     });
     assert.equal(run.error, undefined, `workflow execution failed: ${String(run.error)}`);
@@ -1188,6 +1214,35 @@ for (const [mode, exit] of [['install-fails', 17], ['audit-fails', 19]]) {
       assert.ok(!run.stdout.includes('Verified provenance:'));
     });
 }
+
+test('release provenance: a registry that is not serving the new version yet is waited for, then verified',
+  { skip: process.platform === 'win32' }, () => {
+    const run = runProvenanceStep('served-late');
+    assert.equal(run.status, 0, run.stdout + run.stderr);
+    assert.match(run.stderr, /Registry propagation round 1: 0 of \d+ served at 0\.0\.1/);
+    assert.match(run.stderr, /Registry propagation round 2: (\d+) of \1 served at 0\.0\.1/);
+    assert.deepEqual(run.calls.map((call) => call.args[0]), ['install', 'audit']);
+    assert.deepEqual(run.stdout.trim().split('\n').sort(),
+      releaseTargets().map((name) => `Verified provenance: ${name}@0.0.1`));
+  });
+
+test('release provenance: a registry that never serves the version fails without installing and says not to re-run',
+  { skip: process.platform === 'win32' }, () => {
+    const run = runProvenanceStep('never-served');
+    assert.equal(run.status, 1, run.stdout + run.stderr);
+    assert.deepEqual(run.calls, [], 'nothing is installed or audited before the registry serves the release');
+    assert.match(run.stdout, /::error::The packages were published, but the registry did not serve all of them/);
+    assert.match(run.stdout, /Do NOT re-run this job/);
+    assert.ok(!run.stdout.includes('Verified provenance:'));
+  });
+
+test('release provenance: a failing install is retried a bounded number of times before it is fatal',
+  { skip: process.platform === 'win32' }, () => {
+    const run = runProvenanceStep('install-fails');
+    assert.equal(run.status, 17, run.stdout + run.stderr);
+    assert.deepEqual(run.calls.map((call) => call.args[0]), Array(5).fill('install'));
+    assert.match(run.stdout, /::error::npm install of the published packages failed 5 times/);
+  });
 
 test('release provenance: the former view-and-audit sequence accepts missing provenance that the workflow now rejects',
   { skip: process.platform === 'win32' }, () => {
