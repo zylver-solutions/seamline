@@ -43,7 +43,7 @@ Main exports:
 - `PACKET_SCHEMA`, `PACKET_SCHEMA_VERSION`, and the `Packet`, `PacketFinding`, `PacketProposal` types: schema version 1.
 - `gitTree`, `worktreeTree`, `memTree`, `resolveCommit`: the evaluated tree, read from the git object database.
 
-`typescript` is an optional peer dependency, as for `@seamline/extract-contracts`. The output-format, detector-liveness and control-wiring probes parse TypeScript, and `npm install @seamline/cli` does not install it. Without it the report is much thinner, and in 0.1.0 it does not say why: the summary, `--json` and the packet show the bare reason `probe-failed` for the claims a probe could not check, and many detector and control claims are not reported at all. Install `typescript` next to the CLI before reading a report.
+`typescript` is an optional peer dependency, as for `@seamline/extract-contracts`. The output-format, detector-liveness and control-wiring probes parse TypeScript, and `npm install @seamline/cli` does not install it. Without it the report is much thinner, and in 0.1.0 it does not say why: the summary, `--json` and the packet show the bare reason `probe-failed` for the claims a probe could not check, and many detector and control claims are not reported at all. Install `typescript@^6.0.3` next to the CLI before reading a report. The peer range is `^6.0.3`; with TypeScript 7 installed, `align` in 0.1.0 stops with an error and exit code 3.
 
 **Stability tier: library surface.** Published, importable, documented as unstable below 1.0. The packet schema is versioned independently: within version 1 a producer never removes, renames or retypes a field, and a consumer must ignore fields it does not know.
 

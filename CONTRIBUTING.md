@@ -173,7 +173,7 @@ Maintainers aim to respond to a pull request within a week. This is a small proj
 - **A new language extractor** built on regexes or an untyped parser. Confident nonsense is worse than an honest `UNAVAILABLE`.
 - **A raw query interface** on the MCP server or the store, in any form. It was removed deliberately; it is arbitrary code execution with a friendly name.
 - **Anything that widens export by default.** Export is default-deny and stays that way.
-- **Network calls from an extractor.** Extractors run with networking off under their capability manifest, and that is not a configuration detail. If you are writing an extractor, run it through `npx seamline conformance ./your-extractor.mjs` ([`docs/conformance.md`](docs/conformance.md)) before opening a pull request; a `contrib/` extractor is unsigned and refused unless the operator explicitly enables it, and a passing run changes neither.
+- **Network calls from an extractor.** Extractors run with networking off under their capability manifest, and that is not a configuration detail. If you are writing an extractor, run it through `npx --package @seamline/cli seamline conformance ./your-extractor.mjs` ([`docs/conformance.md`](docs/conformance.md)) before opening a pull request; a `contrib/` extractor is unsigned and refused unless the operator explicitly enables it, and a passing run changes neither.
 - **Gap-style findings that fire on the absence of an annotation.** See the design; this is the one thing v0.1 is explicitly not.
 - **A web viewer, a hosted service, or telemetry.**
 

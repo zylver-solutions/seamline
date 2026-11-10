@@ -129,6 +129,6 @@ These are deliberate and are unlikely to change. Knowing them saves you triage t
 - Seamline **does not connect to your database**, read Terraform state, or read a Terraform plan. It reads static files. Plan files contain sensitive values, and a previous design revision claimed otherwise; it was wrong.
 - **There is no query language** anywhere in the product. The store exposes a typed traversal API with depth bounded by construction, a result cap, and a statement timeout.
 - **The output directory is gitignored on `init`** and every node carries a sensitivity level. Export is default-deny.
-- **Third-party extractors are refused unless explicitly enabled**, and are unsigned by default.
+- **`seamline extract` runs only the bundled extractors.** Release 0.1.0 has no loader for third-party extractors, so there is nothing to enable. `seamline conformance <module>` runs an extractor module you name, inside the same sandbox.
 
 If you think one of these has quietly stopped being true, that is exactly the kind of report we want.
