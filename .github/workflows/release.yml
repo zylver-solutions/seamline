@@ -143,7 +143,10 @@ jobs:
     name: Publish to npm with provenance
     needs: verify
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # 45 = setup, build and publish (about 10) + the registry propagation
+    # wait in the verification step (up to 20) + install retries, audit and
+    # margin. The previous 20 could not contain the wait alone.
+    timeout-minutes: 45
     # A protected environment so a human approval sits between a pushed tag and
     # a published artifact, and so the npm token is scoped to this environment.
     environment: npm-publish
@@ -176,6 +179,14 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Do NOT re-run this job when Publish succeeded and a later step failed.
+      # npm versions are immutable and a re-run reaches this step again. On the
+      # 0.1.0 release (2026-11-10) publish was correct and only verification
+      # failed. pnpm's recursive publish skips a version it can resolve from
+      # the registry, but a registry that is not yet serving a new version is
+      # exactly when verification fails, so that skip is not relied on here.
+      # Verify by hand instead with `npm audit signatures` (see the
+      # verification step below).
       - name: Publish
         if: github.event_name == 'push'
         env:
@@ -224,11 +235,79 @@ jobs:
           for pkg in "${packages[@]}"; do
             specs+=("${pkg}@${version}")
           done
+          # The registry does not serve a brand-new package the moment publish
+          # returns. On 0.1.0 (2026-11-10) all 12 published correctly, the
+          # install below ran seconds later and got E404, and the registry
+          # needed about 9 minutes to serve every packument and tarball. So:
+          # wait, bounded, until every package in the list is served, then
+          # verify. Waiting changes when the assertions run, never what they
+          # assert. The two overrides exist for local testing; the workflow
+          # does not set them.
+          propagation_budget_seconds="${PROPAGATION_BUDGET_SECONDS:-1200}"
+          propagation_sleep_seconds="${PROPAGATION_SLEEP_SECONDS:-20}"
+          propagation_doc="$verification_dir/propagation.json"
+          # Served means: the version document returns 200 and names this
+          # version, and the tarball URL it carries returns 200.
+          registry_serves() {
+            local code tarball
+            code="$(curl -s -o "$propagation_doc" -w '%{http_code}' --max-time 20 \
+              "https://registry.npmjs.org/$1/${version}" || true)"
+            [ "$code" = "200" ] || return 1
+            tarball="$(node -e '
+              const doc = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+              const url = doc?.dist?.tarball;
+              if (doc?.version !== process.argv[2] || typeof url !== "string" ||
+                !url.startsWith("https://registry.npmjs.org/")) process.exit(1);
+              console.log(url);
+            ' "$propagation_doc" "$version")" || return 1
+            code="$(curl -s -I -o /dev/null -w '%{http_code}' --max-time 20 "$tarball" || true)"
+            [ "$code" = "200" ]
+          }
+          round=0
+          while :; do
+            round=$((round + 1))
+            visible=0
+            pending=()
+            for pkg in "${packages[@]}"; do
+              if registry_serves "$pkg"; then
+                visible=$((visible + 1))
+              else
+                pending+=("$pkg")
+              fi
+            done
+            # Progress goes to stderr: stdout carries only the verification result.
+            echo "Registry propagation round ${round}: ${visible} of ${#packages[@]} served at ${version} (${SECONDS}s elapsed)" >&2
+            if [ "$visible" -eq "${#packages[@]}" ]; then
+              break
+            fi
+            if [ $((SECONDS + propagation_sleep_seconds)) -gt "$propagation_budget_seconds" ]; then
+              echo "::error::The packages were published, but the registry did not serve all of them at ${version} within ${propagation_budget_seconds}s (still missing: ${pending[*]}). Do NOT re-run this job: a re-run runs Publish again against immutable versions. Verify provenance by hand: install the ${#packages[@]} packages at ${version} in an empty directory and run 'npm audit signatures'."
+              exit 1
+            fi
+            sleep "$propagation_sleep_seconds"
+          done
+          rm -f -- "$propagation_doc"
           cd "$verification_dir"
           printf '{"name":"seamline-provenance-verification","version":"0.0.0","private":true}\n' > package.json
           # Audit the registry artifacts from this release, with no lifecycle scripts.
-          npm install --ignore-scripts --no-audit --no-fund --save-exact \
-            --registry=https://registry.npmjs.org/ -- "${specs[@]}"
+          # Retried because propagation can be uneven across CDN nodes: the
+          # poll above can pass on one node and the install hit another.
+          # The last attempt's exit status is the step's exit status.
+          install_attempts=5
+          for attempt in $(seq 1 "$install_attempts"); do
+            install_status=0
+            npm install --ignore-scripts --no-audit --no-fund --save-exact \
+              --registry=https://registry.npmjs.org/ -- "${specs[@]}" || install_status=$?
+            if [ "$install_status" -eq 0 ]; then
+              break
+            fi
+            if [ "$attempt" -eq "$install_attempts" ]; then
+              echo "::error::npm install of the published packages failed ${install_attempts} times. The packages were published; do NOT re-run this job. Verify provenance by hand with 'npm audit signatures'."
+              exit "$install_status"
+            fi
+            echo "npm install attempt ${attempt} of ${install_attempts} failed; retrying in ${propagation_sleep_seconds}s" >&2
+            sleep "$propagation_sleep_seconds"
+          done
           npm audit signatures --json --include-attestations \
             --registry=https://registry.npmjs.org/ > audit.json
           # A valid registry signature alone does not establish provenance.
