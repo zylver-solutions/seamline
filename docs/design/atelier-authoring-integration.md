@@ -1,7 +1,11 @@
 # Atelier authoring integration
 
-Status: implementation specification, 2026-09-09. Named consumer: the Atelier
-composition studio and production timelines in the host application. This
+Status: implementation specification, 2026-09-09; implemented in 0.1.0 as the
+`authoring` pack, version 1.1.0 (code: `packages/core/src/semantic/packs.ts`,
+tests in `authoring.test.ts` beside it; status checked 2026-11-10). Named
+consumer: Atelier, a private downstream cinematic story-composition application
+that is not part of this repository (its composition studio and production
+timelines). This
 addendum extends the [semantic foundation](semantic-foundation.md); it leaves the
 legacy extraction ontology and its invariants unchanged.
 

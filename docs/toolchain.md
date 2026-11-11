@@ -6,7 +6,7 @@ Binding on every package in this repo. These were established by running them, n
 
 - **Node >= 22.13, developed on 24.** The floor is the `engines.node` field in the root `package.json`, and CI runs 22.13 and 24. ESM only; every `package.json` has `"type": "module"`.
 - **TypeScript is type-stripped by Node at runtime.** No transpile step is needed to run tests.
-- **No vitest, no jest, no esbuild, no ts-node, no tsx.** vitest pulls esbuild, whose platform binary is installed by a postinstall script that cannot run on this drvfs mount (it needs a chmod the filesystem does not support). The result is not an error but a **hang**, which is worse. The built-in runner has no native dependency and no postinstall.
+- **No vitest, no jest, no esbuild, no ts-node, no tsx.** vitest pulls esbuild, whose platform binary is installed by a postinstall script that needs a chmod some filesystems do not support (a WSL2 drvfs mount is one). The result there is not an error but a **hang**, which is worse. The built-in runner has no native dependency and no postinstall.
 - Fewer build dependencies is also the position this project takes publicly: see design v3 §2.7 and §10 on supply-chain surface.
 
 ## Imports — the one rule that bites
@@ -14,9 +14,9 @@ Binding on every package in this repo. These were established by running them, n
 **Relative imports must carry the `.ts` extension:**
 
 ```ts
-import { nodeId } from './contract.ts';        // correct
-import { nodeId } from './contract.js';        // WRONG — fails at runtime
-import { nodeId } from './contract';           // WRONG — fails at runtime
+import { nodeId } from './contract.ts'; // correct
+import { nodeId } from './contract.js'; // WRONG — fails at runtime
+import { nodeId } from './contract'; // WRONG — fails at runtime
 ```
 
 Node's type stripping does not rewrite specifiers, so `./contract.js` resolves to a file that does not exist in `src/`. TypeScript is configured with `allowImportingTsExtensions` + `rewriteRelativeImportExtensions`, so it rewrites `.ts` to `.js` in the emitted output. Source is runnable and `dist/` is valid.
@@ -33,7 +33,7 @@ Node's type stripping does not rewrite specifiers, so `./contract.js` resolves t
 ## Testing
 
 - `node:test` + `node:assert/strict`. Tests live beside their source as `src/**/*.test.ts`.
-- Run everything: `pnpm test` (`node --test 'packages/*/src/**/*.test.ts'`).
+- Run everything: `pnpm test`. The script passes `--experimental-strip-types` and `--experimental-test-module-mocks` to `node --test`, and runs `scripts/*.test.mjs` as well as `packages/*/src/**/*.test.ts`.
 - `fast-check` is available and is **required** for the merge and identity layers (design v3 §7): merge must be proven associative, commutative, and idempotent over randomized orderings, not merely spot-checked.
 - Assert authoritative outcomes, not presence. `assert.ok(typeof fn === 'function')` is not a test. This repo's own design (v3 §1) rejects presence-checking as a gate, and the test suite is held to the same standard.
 
@@ -85,10 +85,10 @@ packages/<name>/
 }
 ```
 
-Notes on the template. Everything in this list is enforced by `pnpm gate:pack` (`scripts/pack-check.mjs`), which packs each package with `pnpm pack` and checks the tarball:
+Notes on the template. Everything in this list is enforced by `pnpm gate:pack` (`scripts/pack-check.mjs`), which packs each package with `pnpm pack` and checks the tarball, except the `author` convention in the second item, which is reviewed by hand:
 
 - `engines.node` equals the root `package.json`'s. `sideEffects`, if present, is `false`, and a package that ships a `bin` leaves it out.
-- `repository.url` equals the root's and `repository.directory` is the package's path; `description`, `homepage` and `bugs.url` are present. Do not add a person, an email or any other contact field.
+- `repository.url` equals the root's and `repository.directory` is the package's path; `description`, `homepage` and `bugs.url` are present. The published packages also carry an `author` naming the organisation (`Zylver Solutions`, `seamline@zylver.com`); keep it identical to the other packages and do not add an individual's name or address.
 - `exports` lists only reviewed entry points: a new subpath, or a new package, is added to `PUBLIC_ENTRY_POINTS` in that script in the same review.
 - The only top-level entries are `dist/`, `package.json`, `README.md`, `LICENSE` and `NOTICE`, plus a `.json`-only data directory for a package named in `DATA_DIRECTORIES` in that script (today `@seamline/security`'s `corpus/`). Add the directory to the package's `files` and to that table in the same review.
 - No test, fixture, source map or TypeScript source ships, and every shipped `dist/*.js` is reachable from `main`, `exports` or `bin` through relative imports (a module that compiles to nothing is allowed). A test-support module under `src/` (a double or fixture builder that tests import) compiles into `dist/` but must not ship: add a `!dist/<file>.*` line to `files` for it, and keep it out of `index.ts`.
@@ -98,17 +98,17 @@ Notes on the template. Everything in this list is enforced by `pnpm gate:pack` (
 
 Reviewed by hand, not enforced: `"sideEffects": false` is only true when no module has top-level effects beyond declarations and pure builders, so check the new module's top-level statements before copying the line.
 
-Cross-package imports use the workspace protocol: `"@seamline/ontology": "workspace:*"`, and inside the workspace they resolve through `dist/`, so run `pnpm -w exec tsc --build` before a cross-package test.
+Cross-package imports use the workspace protocol: `"@seamline/ontology": "workspace:*"`, and inside the workspace they resolve through `dist/`, so run `pnpm build` before a cross-package test.
 
 ## The contract is shared and frozen
 
-`packages/ontology/src/contract.ts` is the seam every package is written against. **Do not edit it.** If you believe it is wrong or missing something, say so in your report and work around it locally; a contract change has to be coordinated because every other package compiles against it.
+`packages/ontology/src/contract.ts` is the seam every package is written against. **Do not edit it.** If you believe it is wrong or missing something, say so in the pull request description and work around it locally; a contract change has to be coordinated because every other package compiles against it.
 
 ## Dependencies
 
-- Permissive licenses only: MIT, Apache-2.0, BSD-2/3, ISC, CC0, Unlicense, 0BSD, Zlib, PostgreSQL, MPL-2.0 (unmodified dependency only). This is enforced by `pnpm gate:license` and is a release gate, not a guideline.
+- Permissive licenses only: MIT, Apache-2.0, BSD-2/3, ISC, CC0, Unlicense, 0BSD, Zlib, PostgreSQL, BlueOak-1.0.0, Python-2.0, MPL-2.0 (unmodified dependency only). This is enforced by `pnpm gate:license` and is a release gate, not a guideline.
 - **Prefer the standard library.** Every runtime dependency is a supply-chain liability this project has publicly committed to minimizing.
-- Adding a runtime dependency requires naming it and its license in your report.
+- Adding a runtime dependency requires naming it and its license in the pull request description, and regenerating `THIRD-PARTY-NOTICES.txt` ([CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-dependency)).
 
 ## Determinism is a gate
 
@@ -125,21 +125,21 @@ Design v3 §7 ("Dogfood" row), ADR-0009 §4 gate 4. `pnpm gate:dogfood`
 (`scripts/dogfood-gate.mjs`) runs `seamline extract`, `why` and `check` on
 Seamline's own repository and diffs what they report against the reviewed
 baseline under `docs/dogfood/baseline/`. This is a different check from the
-determinism gate above: determinism asks whether two runs *today* agree with
+determinism gate above: determinism asks whether two runs _today_ agree with
 each other (and still proves the full self-extraction is byte-reproducible);
 the dogfood gate asks whether today's run still agrees with the last
-*reviewed* run, so an unreviewed regression in what Seamline finds about its
+_reviewed_ run, so an unreviewed regression in what Seamline finds about its
 own codebase fails the build instead of landing on `main` unnoticed.
 
 The baseline is the reviewed regression surface, not a copy of the
 self-extraction, so an ordinary code change does not move it:
 
-| File | Holds |
-|---|---|
-| `findings.json` | what `seamline check` reports: every contradiction, every UNKNOWN, each extractor's PASS/FAIL/UNAVAILABLE status |
-| `examples.sif` | the part of the self-extraction that comes from `examples/`, byte for byte |
-| `code-ts-coverage.json` | the tracked TS/JS files no tsconfig project reads (`unread`), compared exactly |
-| `why-orders-customer-email.json` | `seamline why orders.customer_email`, the flagship chain |
+| File                             | Holds                                                                                                            |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `findings.json`                  | what `seamline check` reports: every contradiction, every UNKNOWN, each extractor's PASS/FAIL/UNAVAILABLE status |
+| `examples.sif`                   | the part of the self-extraction that comes from `examples/`, byte for byte                                       |
+| `code-ts-coverage.json`          | the tracked TS/JS files no tsconfig project reads (`unread`), compared exactly                                   |
+| `why-orders-customer-email.json` | `seamline why orders.customer_email`, the flagship chain                                                         |
 
 The baseline moves when what Seamline reports about itself moves: an
 extractor or detector change that alters a finding, a status or the `examples/`
@@ -154,11 +154,15 @@ deliberate friction on exactly the changes that most need review (ADR-0009).
 
 ## Commands
 
-| | |
-|---|---|
-| install | `pnpm install` |
-| build | `./node_modules/.bin/tsc --build` |
-| test | `node --test 'packages/*/src/**/*.test.ts'` |
-| single test file | `node --test packages/<pkg>/src/<file>.test.ts` |
+|                    |                                                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| install            | `pnpm install`                                                                                              |
+| build              | `pnpm build` (`tsc --build`)                                                                                |
+| test               | `pnpm test`                                                                                                 |
+| single test file   | `node --experimental-strip-types --test --experimental-test-module-mocks packages/<pkg>/src/<file>.test.ts` |
+| every local gate   | `pnpm verify`                                                                                               |
+| internal leak scan | `node scripts/internal-leak-scan.mjs` (CI runs it; `pnpm verify` does not)                                  |
 
-Use `./node_modules/.bin/<bin>` rather than `pnpm exec` — `pnpm exec` runs a dependency-status check that spawns a subprocess and fails on this mount. `npx` resolves to npm and warns about pnpm-specific `.npmrc` keys; do not use it.
+What `pnpm verify` runs, what CI runs and what the release workflow runs again are listed in [CONTRIBUTING.md](../CONTRIBUTING.md#verification-is-local-first-ci-second).
+
+`pnpm exec` runs a dependency-status check that spawns a subprocess, and that check has failed on a WSL2 drvfs mount; `./node_modules/.bin/<bin>` works there. `npx` resolves to npm, which warns about the pnpm-specific keys in `.npmrc`, so inside this repository use the pnpm scripts. (The release workflow uses `npx` once, for the SBOM generator, which is deliberately not a dependency.)

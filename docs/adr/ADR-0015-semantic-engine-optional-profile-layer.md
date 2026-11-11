@@ -4,7 +4,8 @@
 - **Date:** 2026-10-19
 - **Builds on:** [ADR-0012](ADR-0012-extensible-semantic-foundation.md), [ADR-0005](ADR-0005-contradictions-not-gaps.md)
 - **Scope sources:** `AGENTS.md` (Semantic extension scope), `docs/design/v3.md` section 9, `docs/design/aspirational-state.md` sections 5.3 and 6
-- **Independent of:** ADR-0014 (alignment). That record bounds drift classes inside the contradiction pipeline. Nothing here relies on its content.
+- **Independent of:** ADR-0014 (alignment). That record bounds drift classes inside the contradiction pipeline. Nothing here relies on its content. Correction (2026-11-10): [ADR-0014](ADR-0014-alignment-drift-classes-and-finding-packet.md) section 6 decides that alignment is a report family beside the contradiction pipeline, not inside it, and ADR-0014 governs on that point. The independence stated here is unaffected.
+- **Status of implementation (2026-11-10):** the tests this record names are `packages/integration/src/semantic-boundary.test.ts` and `semantic-boundary-runtime.test.ts`. Line numbers cited below are those of the tree at acceptance and have moved: the `./semantic` entry is in the `exports` map of `packages/core/package.json`, the two `AGENTS.md` paragraphs are "Semantic extension scope" and "Do not re-expand toward v2", and the deferred list is `docs/design/v3.md` section 9. The packages were unreleased (0.0.1) at acceptance; version 0.1.0 was released on 2026-11-10 with the layer reachable only through `@seamline/core/semantic`.
 
 ## Context
 
@@ -49,7 +50,7 @@ Those stay with the admission test and review.
 
 ## State at acceptance
 
-The boundary holds at acceptance. Before this change, `packages/core/src/index.ts` re-exported eleven names from the layer through the `@seamline/core` root, so every package that imported the root loaded all six layer modules on a default run. The run-time test's hook measured this: the one entering edge was `packages/core/dist/index.js` to `packages/core/dist/semantic/index.js`. No pipeline source imported the layer directly. This change deletes that re-export block and moves the only first-party user of the root names, `packages/integration/src/semantic-bridge.test.ts`, to `@seamline/core/semantic`. The packages are unreleased (0.0.1), so no published root surface changed. The tracked-deviation lists in both tests are empty; re-adding a root re-export fails both (the static scan sees it as an import of the layer by `packages/core/src/index.ts`).
+The boundary holds at acceptance. Before this change, `packages/core/src/index.ts` re-exported eleven names from the layer through the `@seamline/core` root, so every package that imported the root loaded all six layer modules on a default run. The run-time test's hook measured this: the one entering edge was `packages/core/dist/index.js` to `packages/core/dist/semantic/index.js`. No pipeline source imported the layer directly. This change deletes that re-export block and moves the only first-party user of the root names, `packages/integration/src/semantic-bridge.test.ts`, to `@seamline/core/semantic`. The packages were unreleased (0.0.1) at acceptance, so no published root surface changed. The tracked-deviation lists in both tests are empty; re-adding a root re-export fails both (the static scan sees it as an import of the layer by `packages/core/src/index.ts`).
 
 ## Consequences
 

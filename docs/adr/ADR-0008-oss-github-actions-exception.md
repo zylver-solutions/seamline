@@ -6,6 +6,8 @@
 - **Design reference:** `docs/design/v3.md` §8
 - **Council finding:** L10 (HIGH, licensing lens), raised again in §6 of the council review as one of three findings rising to CRITICAL level. Supporting record: `docs/audit/2026-08-29-license-verification.md` §5.
 - **Standing rule this modifies:** the maintaining organization's standing infrastructure policy (internal, not published), "ArgoCD only, never GitHub Actions. `.github/workflows/` is a forbidden path."
+- **Reader's note (2026-11-10):** the standing rule is a policy of the maintaining organization for its own private infrastructure. It is not published, and the Context section quotes all of it that this record relies on. The part of this record a reader can check without it is the npm provenance constraint quoted under Context and the two workflows in `.github/workflows/`.
+- **Status of implementation (2026-11-10):** this repository has two workflows. `.github/workflows/ci.yml` runs the build, lint, tests, the license, version, ontology, determinism and dogfood gates, the internal-identifier scan, and a DCO sign-off check on pull requests. `.github/workflows/release.yml` runs the release gates, generates a CycloneDX SBOM, publishes with `--provenance`, and then checks that every published package carries an attestation; release 0.1.0 was published through it on 2026-11-10. Neither workflow deploys anything, and the only secret either one reads is the npm publish token. Three things in this record differ from the code. (a) Limit 3 prefers OIDC trusted publishing over a stored npm token: `release.yml` authenticates with a stored token (`NPM_TOKEN`) and uses `id-token: write` only to mint the provenance attestation. (b) "Structural consequence for the product": there is no `packages/ci`, no `ci-core` / `ci-github` / `ci-argo` split, and no GitHub Action shipped for adopters; the gates are the scripts in `scripts/`, called from the workflows and from `pnpm verify`. (c) Limit 4: there is no Postgres adapter (see the note in [ADR-0004](ADR-0004-sqlite-relational-storage.md)), so the second pipeline it describes does not exist and there is one CI plane, not two.
 
 ## Context
 
@@ -47,7 +49,7 @@ The limits are the substance of this ADR, and they are enumerated rather than im
 
 ### Structural consequence for the product
 
-`packages/ci` ships the GitHub Action as a **product artifact for adopters**, split `ci-core` / `ci-github` / `ci-argo`, so the adapter is not GitHub-first. This resolves the internal contradiction the licensing lens flagged in v2 §7: shipping a GitHub Action as a deliverable for users is defensible, and wiring it into a *Zylver* repo's own CI was not. Now one of those is permitted and the other still is not, and the split makes the difference legible in the package layout.
+`packages/ci` ships the GitHub Action as a **product artifact for adopters**, split `ci-core` / `ci-github` / `ci-argo`, so the adapter is not GitHub-first. This resolves the internal contradiction the licensing lens flagged in v2 §7: shipping a GitHub Action as a deliverable for users is defensible, and wiring it into a _Zylver_ repo's own CI was not. Now one of those is permitted and the other still is not, and the split makes the difference legible in the package layout.
 
 ## Consequences
 

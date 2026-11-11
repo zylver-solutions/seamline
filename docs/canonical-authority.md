@@ -1,5 +1,7 @@
 # Canonical authority and format compatibility
 
+Status (2026-11-10): describes behavior implemented in 0.1.0 (code: `packages/core/src/store/canonical-authority.ts`, `canonical-selector.ts`, `current-observation.ts` and `schema.ts`). The decision record is ADR-0018. Terms: a run's authoritative scope ([v3](design/v3.md) §2.2) is the set of its claims, and a claim is one `(kind, selector)` pair.
+
 [ADR-0018](adr/ADR-0018-canonical-name-authority.md) confines a deletion claim to known canonical names in one literal source path. The path restricts the claim; it never becomes an identity input. Existing path selectors keep their meaning. This foundation supplies no new detector findings or real-repository support by itself.
 
 Use `encodeCanonicalSelector` to produce the reserved `/@canonical/v1/` encoding. It accepts literal `exact` and `prefix` rules, validates Unicode scalar strings and emits one compact representation. Readers refuse alternate encodings, unknown versions and invalid metadata. A run allows at most 65,536 encoded UTF-8 bytes and 2,048 rules across its canonical claims. Exhaustion cannot broaden into filename authority.

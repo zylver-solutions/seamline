@@ -70,8 +70,8 @@ Kind names are identity tokens: the same spelling is used in the YAML, in `packa
 | `Contradiction` | core | internal | `(repo, code, left_id, right_id)` | none declared | Two authoritative facts that disagree, citing both facts and the join path along which they were compared. A NODE referencing two facts, never an edge between edges: the predecessor design required three edges that put edges and types in node positions, which no property-graph store supports. |
 | `Extractor` | core | internal | `(extractor_name, version)` | none declared | An extractor and its capability manifest, including the provenance ceiling the host enforces. An extractor may not assert a provenance above its ceiling; infer-join therefore cannot emit EXTRACTED, and that is a runtime error rather than a code-review question. |
 | `Lens` | core | internal | `(repo, lens_name)` | none declared | A named saved view over the graph. |
-| `Run` | core | internal | `(repo, run_id)` | none declared | One extraction. Carries started_at and finished_at, which is the ONLY place wall-clock time appears. Every node and edge lifecycle field is a run id rather than a timestamp, which is what makes byte-identical output achievable. |
-| `ThreatModel` | core | restricted | `(repo, threat_model_id)` | none declared | A recorded threat model. Defaults to restricted. Seamline is its own first user: THREATMODEL.md is a Phase-0 deliverable, because a verification tool that does not model its own threats is making a claim it has not tested on itself. |
+| `Run` | core | internal | `(repo, run_id)` | none declared | One extraction. Carries started_at and finished_at, which is the ONLY place observation time (a wall-clock reading) appears. The Git author and committer dates on Commit and RENAMED_FROM are immutable source data, not observation time (docs/adr/ADR-0009). Every node and edge lifecycle field is a run id rather than a timestamp, which is what makes byte-identical output achievable. |
+| `ThreatModel` | core | restricted | `(repo, threat_model_id)` | none declared | A recorded threat model. Defaults to restricted. Seamline is its own first user: THREATMODEL.md is in the repository root, because a verification tool that does not model its own threats is making a claim it has not tested on itself. |
 
 ### People
 
@@ -84,7 +84,7 @@ Kind names are identity tokens: the same spelling is used in the YAML, in `packa
 | Kind | Profile | Default sensitivity | Natural key | Produced by | Description |
 |---|---|---|---|---|---|
 | `CoverageRecord` | core | internal | `(repo, commit, target_id)` | none declared | Coverage over a symbol or file, from a coverage report. |
-| `TestCase` | core | internal | `(repo, test_file, test_name)` | none declared | A test case. TESTS is the only EXTRACTED verification edge, and it is extracted from what the test imports and calls, never from a substring in its name. |
+| `TestCase` | core | internal | `(repo, test_file, test_name)` | none declared | A test case. TESTS is the only EXTRACTED verification edge, and it is extracted from what the test imports and calls, never from a substring in its name. No shipped extractor emits TestCase or TESTS. The natural-key annotation below names a test file, which conflicts with the path-free identity rule; docs/adr/ADR-0016 records that it is to be replaced by a path-free key. |
 | `TestRun` | core | internal | `(repo, commit, suite)` | none declared | The result of executing a test suite at a commit. |
 
 ### Kinds with no edges
@@ -218,14 +218,14 @@ Kind-specific values live in the open `props` map (string, number, boolean or nu
 The v0.1 contradiction catalogue. Each detector compares two authoritative facts and never the absence of a declaration. See docs/adr/ADR-0005.
 
 - [`X10_UNTESTED_PII_WRITE`](../contradictions/X10.md): A symbol writes a pii column and no TESTS or COVERS intersects it.
-- [`X1_NULLABILITY`](../contradictions/X1.md): Column.nullable disagrees with the SchemaProperty.required or CodeField optionality it is joined to.
-- [`X2_TYPE`](../contradictions/X2.md): Column.type, CodeField.type, and SchemaProperty.type disagree across a join.
-- [`X3_CONSTRAINT`](../contradictions/X3.md): Column length or check constraint disagrees with the validator enforcing it.
-- [`X4_UNBACKED_PROPERTY`](../contradictions/X4.md): A response SchemaProperty has no BACKED_BY column and no computing symbol.
-- [`X5_UNWRITTEN_COLUMN`](../contradictions/X5.md): A NOT NULL column with no default is never written by any traced write path.
-- [`X6_PII_UNAUTHENTICATED`](../contradictions/X6.md): A column with pii is reachable from an Operation with no declared auth.
-- [`X7_VALIDATOR_DIVERGENCE`](../contradictions/X7.md): A validator enforces a constraint the database does not, or the reverse.
-- [`X8_ORPHANED_MIGRATION`](../contradictions/X8.md): A Migration references a Table or Column that no longer exists.
+- [`X1_NULLABILITY`](../contradictions/X1.md): Column.nullable is true while the response SchemaProperty joined to it states nullable false. Presence (required) is not compared, and CodeField comparisons are withheld.
+- [`X2_TYPE`](../contradictions/X2.md): Column.type and the type of the SchemaProperty joined to it cannot represent each other. CodeField comparisons are withheld.
+- [`X3_CONSTRAINT`](../contradictions/X3.md): A Column and the validator Symbol guarding it state different values for the same constraint dimension.
+- [`X4_UNBACKED_PROPERTY`](../contradictions/X4.md): A response SchemaProperty that no Column or CodeField produces (over BACKED_BY or EXPOSED_AS), on a Contract whose other properties do resolve.
+- [`X5_UNWRITTEN_COLUMN`](../contradictions/X5.md): A NOT NULL Column with no default the writers supply, named by no traced insert into its table.
+- [`X6_PII_UNAUTHENTICATED`](../contradictions/X6.md): An Operation that declares no authentication (auth none, public or anonymous) reaches a Column classified as PII. An Operation with no extracted auth mode is not evaluated.
+- [`X7_VALIDATOR_DIVERGENCE`](../contradictions/X7.md): A source-proved validated write input accepts unbounded strings for a field whose storage Column declares a finite length.
+- [`X8_ORPHANED_MIGRATION`](../contradictions/X8.md): A local Table or Column is absent, in the declared replay order of its migration group, at the point a checked Migration reference requires it.
 - [`X9_CONTRACT_DRIFT`](../contradictions/X9.md): An Operation has no IMPLEMENTED_BY route handler, or a handler implements no declared operation.
 
 ### EdgeKindEnum
@@ -315,8 +315,8 @@ Where a fact came from. Total precedence order, highest first: EXTRACTED > DECLA
 
 - `DECLARED`: Asserted by a human, typically as an annotation, and reviewed.
 - `EXTRACTED`: Read directly from an authoritative source by a first-party extractor. Outranks a human annotation deliberately: an annotation that disagrees with the compiler is wrong.
-- `INFERRED`: Derived by name, type, or structure matching. Stored in the insert-only annotations table; never mutates a fact; never feeds a gate.
-- `LLM_SUGGESTED`: Proposed by a model. Lowest precedence. Promotion to DECLARED writes a new row retaining prov:wasAttributedTo; attribution is never overwritten.
+- `INFERRED`: Derived by name, type, or structure matching. Never feeds a gate: detectors compare only EXTRACTED and DECLARED facts. Stored in the same tables as facts and told apart by its provenance value; the separate insert-only annotations table decided in docs/adr/ADR-0007 is not implemented.
+- `LLM_SUGGESTED`: Proposed by a model. Lowest precedence, and it never feeds a gate. No shipped extractor emits it, and the promotion to DECLARED that docs/adr/ADR-0007 decides (a new row retaining prov:wasAttributedTo) is not implemented.
 
 ### SensitivityEnum
 

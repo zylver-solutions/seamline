@@ -1,7 +1,10 @@
 # Seamline code owners.
 #
-# Every path here gets a required review from the listed owner. GitHub matches
-# the LAST matching pattern, so the most specific rules go at the bottom.
+# Every path here names its code owner. This records ownership; it does not
+# enforce review. The ruleset on `main` requires no approving review and no
+# code-owner review, and GitHub does not request a review from the author of a
+# pull request. GitHub matches the LAST matching pattern, so the most specific
+# rules go at the bottom.
 #
 # Owner: @zylv3r, the organisation owner. A CODEOWNERS entry pointing at a team
 # that does not exist silently matches nobody, which produces a repository that

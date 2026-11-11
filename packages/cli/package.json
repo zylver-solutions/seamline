@@ -1,7 +1,13 @@
 {
   "name": "@seamline/cli",
   "version": "0.1.0",
-  "description": "The Seamline command-line interface: init, extract, why, check, export, diff, blast-radius and mcp.",
+  "description": "The Seamline command-line interface: init, extract, why, check, export, diff, blast-radius, mcp, align and conformance.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "cli"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

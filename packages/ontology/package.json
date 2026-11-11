@@ -2,6 +2,12 @@
   "name": "@seamline/ontology",
   "version": "0.1.0",
   "description": "The typed contract Seamline packages build against: node and edge kinds, sensitivity, provenance and identity rules.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "ontology"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

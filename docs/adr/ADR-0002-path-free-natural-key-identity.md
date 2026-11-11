@@ -4,8 +4,9 @@
 - **Date:** 2026-08-29
 - **Design reference:** `docs/design/v3.md` §2.1
 - **Council finding:** C3 (CONFIRMED CRITICAL), raised independently by five lenses: architect (A3), data (D3), grill-me (F2), QA (F9), devil's advocate (DA-11).
-- **Corroborating prior art:** an earlier internal project reached the same identity design independently, including the same rejection of a synthetic surrogate key.
+- **Corroborating prior art:** an earlier internal project reached the same identity design independently, including the same rejection of a synthetic surrogate key. That project is not published, so a reader cannot check this; it is context, and the decision does not rest on it (see the note in the [index](README.md)).
 - **Contract:** `packages/ontology/src/contract.ts` (`NodeId`, `nodeId()`, `parseNodeId()`)
+- **Status of implementation (2026-11-10):** the id format and `nodeId()` / `parseNodeId()` are as decided. Rename aliasing is implemented for `File` only: `fileRenameAliases` in `packages/cli/src/wiring.ts` records an `ALIAS_OF` for each committed rename git reports. Symbol-level rename detection (the `Symbol → Symbol` case in Decision item 3) is not implemented; `docs/design/v3.md` §9 defers it and ADR-0016 states what follows from that. The Postgres store named under Consequences does not exist; the only store is SQLite (see the note in [ADR-0004](ADR-0004-sqlite-relational-storage.md)).
 
 ## Context
 
@@ -21,7 +22,7 @@ The failure has a particular sting for this project: refactoring becomes taxed b
 
 The obvious remedy, and the one most systems reach for, is a synthetic surrogate id: a UUID or ULID minted the first time a node is seen, with the natural key stored as an attribute. This organization's own earlier internal project considered exactly that and rejected it. The reasoning is specific to derived graphs and is worth stating in full, because it is counterintuitive.
 
-**A synthetic id is only stable if the mint table is durable.** Seamline's central architectural claim is the inverse: *the registries are the truth and the graph is derived*, so the store must be deletable and rebuildable from source at any time. A ULID minted at first sight survives an incremental update and does not survive `rm -rf seamline-out && seamline extract`. Two rebuilds of the same commit would produce two different graphs, which breaks byte-reproducibility (ADR-0009), breaks `seamline diff`, and makes golden-file testing impossible. Keeping the ids stable would require persisting and versioning the mint table, which is a durable, non-derivable database, which is the CMDB-rot failure mode the design exists to avoid.
+**A synthetic id is only stable if the mint table is durable.** Seamline's central architectural claim is the inverse: _the registries are the truth and the graph is derived_, so the store must be deletable and rebuildable from source at any time. A ULID minted at first sight survives an incremental update and does not survive `rm -rf seamline-out && seamline extract`. Two rebuilds of the same commit would produce two different graphs, which breaks byte-reproducibility (ADR-0009), breaks `seamline diff`, and makes golden-file testing impossible. Keeping the ids stable would require persisting and versioning the mint table, which is a durable, non-derivable database, which is the CMDB-rot failure mode the design exists to avoid.
 
 ## Decision
 
@@ -50,7 +51,7 @@ The obvious remedy, and the one most systems reach for, is a synthetic surrogate
 
 - **Ids are long and can be unwieldy**, particularly for deeply nested schema properties addressed by JSON pointer. This is a real ergonomic cost against surrogate keys, and it shows up in index size on the SQLite and Postgres stores.
 - **A natural key can collide** where the underlying language permits two declarations to share a canonical name (declaration merging, overloads, conditional exports). Each such case needs an explicit, documented disambiguation rule, and getting one wrong silently merges two distinct nodes. This is strictly harder than a surrogate key, where collision is impossible by construction.
-- **Renames are detected heuristically**, because git's own rename detection is a similarity heuristic. A rename combined with a heavy edit can fall below the similarity threshold and be recorded as delete-plus-create, losing the alias link. The graph stays correct (the old node is tombstoned, the new one exists); the *history* across that rename is what is lost.
+- **Renames are detected heuristically**, because git's own rename detection is a similarity heuristic. A rename combined with a heavy edit can fall below the similarity threshold and be recorded as delete-plus-create, losing the alias link. The graph stays correct (the old node is tombstoned, the new one exists); the _history_ across that rename is what is lost.
 - A change to a canonical-name rule is a change to every id it produces, so such changes are ontology-breaking and require a major version (see `ontology/README.md`).
 
 ## Alternatives considered

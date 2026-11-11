@@ -1,9 +1,33 @@
 # @seamline/extract-code-ts
+
 > **No measured precision or recall; do not rely on Seamline as a gate.** This is an early release. The one recorded measurement was made on a draft source tree: it produced zero findings and detected 0 of 11 injected mutants. Details are in the [repository README](https://github.com/zylver-solutions/seamline#what-works-today-and-what-does-not).
 
 TypeScript/JavaScript facts at provenance `EXTRACTED`. Reads a TypeScript project through ts-morph's type-checker-backed resolution (through re-exports and barrels to the canonical declaration) and emits `Repo`, `File`, `Module`, `Symbol`, `CodeField`, `Parameter`, and `RouteHandler` nodes with the containment, import/export, call, heritage, type-use, decorator, route, and query edges between them.
 
-Most users should not import this directly — `seamline extract` in `@seamline/cli` runs it as part of the normal pipeline. Import it directly only if you are building a tool that needs to run this extractor standalone.
+## Install
+
+```bash
+npm install @seamline/extract-code-ts
+```
+
+Requires Node.js 22.13 or later. Most users should not install or import this directly: `seamline extract` in `@seamline/cli` runs it as part of the normal pipeline. Import it directly only if you are building a tool that needs to run this extractor standalone. Installing it brings in `ts-morph`, and `npm install` then reports a moderate advisory in its `minimatch` dependency; see [known dependency advisories](https://github.com/zylver-solutions/seamline/blob/main/SECURITY.md#known-dependency-advisories).
+
+## Usage
+
+```js
+import { extractCodeTs } from '@seamline/extract-code-ts';
+
+const { result, nodes, edges } = extractCodeTs({
+  repoRoot: process.cwd(), // a directory with a tsconfig.json, or a workspace of packages that have one
+  repo: 'my-repo',
+  runId: 'run-1',
+});
+console.log(result.status, nodes.length, edges.length);
+```
+
+From `seamline.config.json` you can set `tsConfigFilePath` in this extractor's `options`, and the top-level `include` and `exclude`. The `memoryBudget` and `dataModelIndex` options described below belong to the library function `extractCodeTs` and to the CLI's own wiring; they are not config keys.
+
+## Behaviour
 
 Two properties are load-bearing and both are tested in this package: identity is path-free for every kind except `File`, so a `git mv` within a package changes no symbol, field or parameter id (a moved `File` gets a new id, and `seamline extract` aliases the retired id to it when git reports the committed rename; moving a file to a different package changes the package part of its symbols' ids and is not aliased); and output is byte-identical across runs, so golden files and `seamline diff` mean something.
 
@@ -35,9 +59,9 @@ The estimate is 6% above the measurement on this repository, 16% on dokploy, 5% 
 
 **Writes the extractor could not turn into an edge.** The `Repo` node records, on every run, what a detector needs to tell "no traced write supplies this column" from "something writes this table that was not seen" (`docs/design/real-world-inputs.md`, 5.2). All of it is lexical: it never resolves a receiver or reads `node_modules`, and a name collision can only over-count. `untracedWriteCalls` is a number: the places that write something no edge can name (`$executeRawUnsafe`, `$queryRawUnsafe`, `.unsafe` and `sql.raw` with an argument it cannot read; a statement whose table is a substitution, `CALL` and `EXEC`; `"INSERT INTO " + table`; a `Prisma.raw` or `Prisma.sql` fragment spliced into the verb or table position; a write on a computed delegate; `.insert`, `.update` and `.delete` in a file that imports `drizzle-orm`, `@supabase/supabase-js`, `knex`, `kysely`, `typeorm`, `sequelize` or `@mikro-orm/core` and does not name a table export of the index). `writeHooks` is a number: Prisma `$use(...)` and a `$extends(...)` that may inject fields into every write. `unknownWriterTables` is a sorted, comma-separated list of table names, `''` when there are none: a statement the index cannot settle, an ORM-shaped write that names a Prisma delegate or a Drizzle table export, and every table that a TypeScript or JavaScript file in no loaded tsconfig project names (as a table, model, delegate or export, as a whole word) when that file holds an insert marker. It is absent when it could not be measured (no index, or the files outside every project could not be read). A `Repo` node that was not emitted carries none of them; a missing prop is not zero. Each run lists its first counted places in `diagnostics`.
 
-It exports:
+Main exports:
 
-- `extractCodeTs`, `defaultTableId`, and the `ExtractCodeTsOptions`, `ExtractCodeTsOutput` types — the extractor entry point.
+- `extractCodeTs`, `defaultTableId`, and the `ExtractCodeTsOptions`, `ExtractCodeTsOutput` types: the extractor entry point.
 - `CODE_TS_AUTHORITATIVE`, `CODE_TS_SCOPE`, `EXTRACTOR_NAME`, `EXTRACTOR_VERSION`, `PRODUCED_KINDS`, `manifest` — the extractor manifest.
 - `canonicalJson`, `canonicalize`, `toCanonicalSif`, `toSifLines` — deterministic serialization.
 - `assertPathFree`, `codeFieldCanonicalName`, `fileId`, `moduleId`, `parameterCanonicalName`, `repoId`, `routeCanonicalName`, `symbolCanonicalName`, `ROOT_MODULE` — identity construction.
@@ -48,3 +72,5 @@ It exports:
 - `isRepoRelativePosix`, `toRepoRelative` — path helpers enforcing the repo-relative POSIX path invariant.
 
 **Stability tier: library surface.** Published, importable, documented as unstable below 1.0.
+
+See the [repository README](https://github.com/zylver-solutions/seamline#readme) and [design v3](https://github.com/zylver-solutions/seamline/blob/main/docs/design/v3.md). File names such as `src/memory.ts` above refer to this package's source in the repository. License: Apache-2.0 ([LICENSE](https://github.com/zylver-solutions/seamline/blob/main/LICENSE)).

@@ -1,14 +1,14 @@
 # First dependency effect certificate
 
-Status: implementation under review (design: [library effect certificates](../design/library-effect-certificates.md)). This is a dependency of the required Cypress artifact, not a replacement development target. It supplies no Cypress initialization proof, X7 firing, independent labels or qualification.
+Status (2026-11-10): implemented in 0.1.0 (code: `packages/extract-contracts/src/write-effect-catalog.ts`; design: [library effect certificates](../design/library-effect-certificates.md)). Real-source acceptance remains unmet; see [the X7 refusal evidence](x7-hardening-refusals.md). The text below is the record written with the implementation and is otherwise unchanged. This is a dependency of the required Cypress artifact, not a replacement development target. It supplies no Cypress initialization proof, X7 firing, independent labels or qualification.
 
 The existing DEV lock resolves `ansi-regex@5.0.1` with full integrity `sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==`. Separately read [published metadata](https://registry.npmjs.org/ansi-regex/5.0.1) and the [published artifact](https://registry.npmjs.org/ansi-regex/-/ansi-regex-5.0.1.tgz) agree. The artifact is 2768 bytes, SHA256 `0e0eadcdaada805db5d85b53ad5cdca0760b996ee199ec9658e7b34aa6c8e0d9`. Its manifest and included license declare MIT. No package is installed, executed, copied into this repository or added as an engine dependency.
 
-| Published member | SHA256 |
-| --- | --- |
-| package.json | `8b2dc166f2b74d5098bad38bdd3dd2f4d4775c626199872f5e36dbb48c40931d` |
-| index.js | `c92312790eb1f246b7c4c1fe9c1247b15441bbca3c6cb64d167beefc45302753` |
-| license | `48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0` |
+| Published member | SHA256                                                             |
+| ---------------- | ------------------------------------------------------------------ |
+| package.json     | `8b2dc166f2b74d5098bad38bdd3dd2f4d4775c626199872f5e36dbb48c40931d` |
+| index.js         | `c92312790eb1f246b7c4c1fe9c1247b15441bbca3c6cb64d167beefc45302753` |
+| license          | `48da2f39e100d4085767e94966b43f4fa95ff6a0698fba57ed460914e35f94a0` |
 
 ## Initialization and calls
 

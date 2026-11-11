@@ -1,10 +1,10 @@
 # Extractor conformance suite
 
-`seamline conformance` runs an extractor you wrote through the same sandbox `seamline extract` uses, against fixture repositories it generates, and prints one `PASS`, `FAIL` or `UNAVAILABLE` line per property with the evidence for it. It is how an outside extractor author finds out, before anyone else does, whether their extractor honours the capability manifest it declares.
+`seamline conformance` runs an extractor you wrote through the same sandbox `seamline extract` uses, against fixture repositories it generates, and prints one `PASS`, `FAIL`, `UNAVAILABLE` or `NOT_APPLICABLE` line per property with the evidence for it. It is how an outside extractor author finds out, before anyone else does, whether their extractor honours the capability manifest it declares.
 
 ```text
 npm install @seamline/cli
-npx seamline conformance ./my-extractor.mjs
+npx --package @seamline/cli seamline conformance ./my-extractor.mjs
 ```
 
 It needs Node 22.13 or later (the sandbox is built on `node --permission`), runs offline, and runs your extractor only inside the sandbox, never in the `seamline` process.
@@ -152,7 +152,7 @@ The suite tells the two apart. An extractor that reads through a link out fails 
 ## CI
 
 ```yaml
-- run: npx seamline conformance ./my-extractor.mjs --seed ./test/seed --json > conformance.json
+- run: npx --package @seamline/cli seamline conformance ./my-extractor.mjs --seed ./test/seed --json > conformance.json
 ```
 
 A non-zero exit fails the job, for `FAIL` (1) and for `UNAVAILABLE` (3) alike. Do not treat 3 as a skip.

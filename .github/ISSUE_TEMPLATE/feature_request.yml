@@ -1,7 +1,7 @@
 name: Feature request
 description: Propose new behaviour, or ask for a deferred feature to be undeferred.
 title: '[feature] '
-labels: ['enhancement', 'needs-triage']
+labels: ['enhancement']
 body:
   - type: markdown
     attributes:

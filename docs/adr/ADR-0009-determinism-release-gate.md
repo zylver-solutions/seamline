@@ -1,10 +1,11 @@
 # ADR-0009: Determinism is a release gate, not an aspiration
 
-- **Status:** Accepted
+- **Status:** Accepted. The rename gate listed under the conformance gates is restated for `File` by [ADR-0016](ADR-0016-file-identity-carries-its-path.md). Extended by [ADR-0018](ADR-0018-canonical-name-authority.md): `SIF_VERSION` is now `2.0.0` and every SIF document begins with the framing line `seamline-sif/2.0.0` (`packages/core/src/sif/framing.ts`). The decision below is unchanged.
 - **Date:** 2026-08-29
 - **Design reference:** `docs/design/v3.md` §2.3, §7
 - **Council findings:** C11 (CONFIRMED CRITICAL; QA F1/F2/F3, platform P4) and H3 (CONFIRMED HIGH; QA F3, platform P4).
 - **Contract:** `packages/ontology/src/contract.ts` (`SeamlineNode`, `SeamlineEdge`, `SifLine`, `SIF_VERSION`)
+- **Status of implementation (2026-11-10):** the determinism gate is `scripts/determinism-gate.mjs` (`pnpm gate:determinism`), run in `.github/workflows/ci.yml` and in `.github/workflows/release.yml`. Section 3 names an in-memory graphology projection for seed-sensitive algorithms: no such projection exists and no community-detection or PageRank code is in the repository (see the note in [ADR-0004](ADR-0004-sqlite-relational-storage.md)), so that rule constrains future work only. No git merge driver for the graph file is implemented; this record says one becomes definable, not that it exists.
 
 ## Context
 
@@ -29,7 +30,7 @@ The council also observed that v2's own needs matrix would have failed v2 at `Fe
 
 This is the non-negotiable one, and it is enforced in the contract by omission: `SeamlineNode` and `SeamlineEdge` have **no `createdAt` and no `updatedAt`**, with the reason recorded as a comment at the declaration so it survives a reader who never opens this ADR. The ontology carries the same note.
 
-Time lives on the `RunRecord` (`startedAt`, `finishedAt`), where it belongs: a fact is not created at a time, it is *observed* at a time, and the observation is the run. Node and edge lifecycle is expressed in run ids instead: `firstSeenRun`, `lastSeenRun`, `deletedAt`. This composes with ADR-0003 rather than fighting it, because a run id is already the lifecycle key.
+Time lives on the `RunRecord` (`startedAt`, `finishedAt`), where it belongs: a fact is not created at a time, it is _observed_ at a time, and the observation is the run. Node and edge lifecycle is expressed in run ids instead: `firstSeenRun`, `lastSeenRun`, `deletedAt`. This composes with ADR-0003 rather than fighting it, because a run id is already the lifecycle key.
 
 Immutable source dates are data, not observation time. The existing Git history extractor emits only `Commit.props.authorDate`, `Commit.props.committerDate`, and `RENAMED_FROM.props.authorDate` as canonical second-resolution UTC ISO strings derived from Git epochs. SIF validates their commit hash and identity context as well as their textual form. This does not establish Git provenance from a hash alone; producer tests and consecutive-run byte comparisons remain required. No other timestamp-like prop, generated clock reading, or `Date` object is permitted by this exception.
 
@@ -84,7 +85,7 @@ The digest errs towards covering too much. An id that changes when no extractor 
 - `seamline diff` produces signal rather than noise, and a graph merge driver becomes definable.
 - Rebuild-from-scratch is provably equivalent to incremental extraction, which is what lets the store stay genuinely disposable and what makes "registries are truth, the graph is derived" an operational fact rather than a slogan.
 - A regression in an extractor shows up as a diff in a committed baseline, caught by the dogfood gate, rather than as a support question six weeks later.
-- The gate is a *test of output*, not a review of intent. It cannot be satisfied by a maintainer believing they were careful.
+- The gate is a _test of output_, not a review of intent. It cannot be satisfied by a maintainer believing they were careful.
 
 ### Negative
 
@@ -98,10 +99,10 @@ The digest errs towards covering too much. An id that changes when no extractor 
 
 **Keep timestamps and exclude them from comparison (normalize before diffing).** Rejected. It splits the artifact into a real one and a comparison-only one, and every consumer must then know which fields are "not really data". It also does not fix the underlying problem: the stored bytes still differ, so the store is not content-addressable, a git merge driver still has nothing to work with, and rebuild-from-scratch equivalence is still uncheckable.
 
-**Structural comparison instead of byte comparison (parse both, compare object graphs).** Rejected as the primary gate. A structural comparator is itself code that can be wrong, and it is code we would have to write and test, which makes the gate depend on the thing it is testing. Byte comparison is `diff`. Structural comparison is retained as a *secondary* assertion in golden-file tests, where its job is to produce a readable failure message.
+**Structural comparison instead of byte comparison (parse both, compare object graphs).** Rejected as the primary gate. A structural comparator is itself code that can be wrong, and it is code we would have to write and test, which makes the gate depend on the thing it is testing. Byte comparison is `diff`. Structural comparison is retained as a _secondary_ assertion in golden-file tests, where its job is to produce a readable failure message.
 
 **Determinism as a guideline with a nightly check.** Rejected: a nightly check that nobody's pull request depends on is switched off within a quarter, and by then the violations are load-bearing. C11 exists because v2 treated testing as something to schedule rather than to gate.
 
 **Content-hash the graph and compare hashes rather than bytes.** Rejected as insufficient on its own: a hash mismatch tells you the run was nondeterministic and nothing about where. Byte comparison hands the maintainer the offending line. The hash is fine as a fast pre-check.
 
-**Allow nondeterminism in inferred edges only, since confidence scores are approximate anyway.** Rejected: the confidence *value* may be approximate, but its computation must still be reproducible, or the same repository yields different findings on consecutive runs, which is the single fastest way to lose a user's trust in a tool that reports bugs in their code.
+**Allow nondeterminism in inferred edges only, since confidence scores are approximate anyway.** Rejected: the confidence _value_ may be approximate, but its computation must still be reproducible, or the same repository yields different findings on consecutive runs, which is the single fastest way to lose a user's trust in a tool that reports bugs in their code.

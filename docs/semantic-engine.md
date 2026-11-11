@@ -2,6 +2,8 @@
 
 The semantic foundation adds extensible domain state to Seamline while preserving the existing code-analysis ontology, extraction store and SIF behavior. It is a working local library with behavioral and integration tests. It is not a hosted service or a migration of existing applications. It is an optional layer: the contradiction pipeline does not import it and a default run does not load it ([ADR-0015](adr/ADR-0015-semantic-engine-optional-profile-layer.md)).
 
+Status (2026-11-10): this page describes what ships in 0.1.0 (`packages/core/src/semantic/`). Its implementation specification is [design/semantic-foundation.md](design/semantic-foundation.md). The broader target design in [design/atelier-composition/](design/atelier-composition/README.md) is a design record and is not implemented beyond what this page lists.
+
 ## Quick example
 
 After building the repository, run:
@@ -51,7 +53,7 @@ All writes flow through registered command handlers and the same final-state sch
 
 `authoring@1.1.0` supplies story, beat, scene, shot, take and edit-placement definitions. `authoring.record` atomically upserts an `entities` list and optional `relations`, with explicit `removeEntities` and `removeRelations` lists (at most 100 entries per list). Only authoring records can be changed by this command; world subjects are created separately. Omission preserves existing records. Ordinary engine revisions, retry receipts and final-state reference validation apply.
 
-Typed `hasScene`, `hasShot`, `hasTake` and `hasPlacement` edges support bounded traversal from a story to its edit placements. Edges must agree with the corresponding typed reference properties. `hasBeat` accepts an optional nonnegative `order`, unique within the story when supplied. Placements have positive durations and safe integer end ticks. See the [Atelier integration specification](design/atelier-authoring-integration.md) for the consumer and acceptance contract. Upgrading from 1.0.0 changes the registry fingerprint and requires a future explicit migration for existing universes.
+Typed `hasScene`, `hasShot`, `hasTake` and `hasPlacement` edges support bounded traversal from a story to its edit placements. Edges must agree with the corresponding typed reference properties. `hasBeat` accepts an optional nonnegative `order`, unique within the story when supplied. Placements have positive durations and safe integer end ticks. See the [authoring integration specification](design/atelier-authoring-integration.md), written for a private downstream application called Atelier, for the consumer and acceptance requirements. Upgrading from 1.0.0 changes the registry fingerprint and requires a future explicit migration for existing universes.
 
 Subjects and local relationships are typed. Snapshot tuples and external artifact strings are **authored references**, not proof that another world/revision or media artifact exists. Verification status is declared metadata; the engine does not inspect images. There is no genre or fixed cast in these definitions.
 

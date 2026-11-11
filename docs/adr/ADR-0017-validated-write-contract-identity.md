@@ -1,9 +1,9 @@
 # ADR-0017: natural identity for a locally bound write contract
 
-- Status: accepted. The bounded producer is implemented, with development parent/fix proof linked below. Independent qualification and release acceptance remain separate. Amends ADR0016 only for this local Zod producer; existing emitted identities stay unchanged.
+- Status: accepted. The bounded producer is implemented, with development parent/fix proof linked below. Independent qualification and release acceptance remain separate. Amends [ADR-0016](ADR-0016-file-identity-carries-its-path.md) only for this local Zod producer; existing emitted identities stay unchanged. Where the two differ on whether the producer is implemented, this record governs.
 - Date: 2026-10-22
 - Design: [X7 upper-length](../design/x7-upper-length.md).
-- Forced by: the X7 validated-write producer work, specifically the function-local schema in the pinned Umami PR4348 case (see `docs/design/x7-upper-length.md`). `POST.schema` recurs across route files. Adding a path, position or hash to disambiguate it would violate the identity boundary; silently sharing one Contract would combine unrelated facts.
+- Forced by: the X7 validated-write producer work, specifically the function-local schema in the pinned case, [Umami pull request 4348](https://github.com/umami-software/umami/pull/4348) (pinned commits in `docs/design/x7-upper-length.md` and `eval/corpus.json`). `POST.schema` recurs across route files. Adding a path, position or hash to disambiguate it would violate the identity boundary; silently sharing one Contract would combine unrelated facts.
 
 ## Decision
 
@@ -34,4 +34,4 @@ A path, source position, discovery ordinal or content digest would give convenie
 
 The minting function is `writeContractName` in `packages/extract-contracts/src/write-identity.ts`; `decodeWriteContractName` rejects noncanonical encodings. `proveLocalWrite` in `write-binding.ts` supplies the declared tuple after source analysis, and `extractValidatedWrites` in `write-extract.ts` emits only admitted bindings. Names-only reservations participate in duplicate rejection without emitting a contract.
 
-`write-identity.test.ts` covers scoped names, Unicode, punctuation and canonical round trips. `write-extract.test.ts` covers eligible file moves, duplicate keys and unsupported but identifiable reservations. `packages/cli/src/validated-write-lifecycle.test.ts` checks real-store retention and recovery with a repeated deterministic run id. The [development parent/fix proof](../evaluation/x7-parent-fix.md) records the emitted key, endpoint facts and binding witnesses. ADR0016's original table remains a historical implementation record; its supplement states this producer's permitted inputs.
+`write-identity.test.ts` covers scoped names, Unicode, punctuation and canonical round trips. `write-extract.test.ts` covers eligible file moves, duplicate keys and unsupported but identifiable reservations. `packages/cli/src/validated-write-lifecycle.test.ts` checks real-store retention and recovery with a repeated deterministic run id. The [development parent/fix proof](../evaluation/x7-parent-fix.md) records the emitted key, endpoint facts and binding witnesses. ADR-0016's original table remains a historical implementation record; its supplement states this producer's permitted inputs.

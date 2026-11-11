@@ -1,4 +1,5 @@
 # Atlas v2 — Licensing + External-Reality Review (Round 1)
+
 Reviewer lens: licensing / external reality. Method: refute-by-default, web-verified.
 Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines), not published in this repository.
 
@@ -7,10 +8,26 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
 > removed or generalized; the third-party license research below is otherwise
 > complete and unmodified. "Atlas" was this project's pre-rename working name at the
 > time of this review; the project has since been renamed Seamline.
+>
+> **Status (2026-11-10).** Historical record. The research and findings below are
+> unchanged and have not been re-fetched. Read every "MIT" below as the
+> predecessor design's plan: the project adopted Apache-2.0 for code, CC-BY-4.0
+> for the specification and DCO for contributions
+> ([ADR-0010](../adr/ADR-0010-licensing-apache-cc-by-dco.md)). The npm
+> provenance conflict in section 5 was resolved by a scoped GitHub Actions
+> exception ([ADR-0008](../adr/ADR-0008-oss-github-actions-exception.md)), and
+> `.github/workflows/release.yml` publishes with provenance; the CI policy that
+> section cites is an unpublished policy of the maintaining organization.
+> Section references (§N) in this record are to the unpublished predecessor
+> design, not to `docs/design/v3.md`, whose §10.2 applies the corrections.
+> The file name carries the date of the council this record supported
+> (2026-08-29); the header and the fetch dates in the text say 2026-08-30, and
+> those are the primary dates for the research.
 
 ## 1. DEFAULT GRAPH STORE — LadybugDB
 
 ### Provenance
+
 - Kuzu (Kùzu Inc., UWaterloo) GitHub repo **archived 2025-10-10**, same day v0.11.3 shipped as final release.
   https://www.theregister.com/2025/10/14/kuzudb_abandoned/
   https://biggo.com/news/202510130126_KuzuDB-embedded-graph-database-archived
@@ -20,6 +37,7 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
   https://gdotv.com/blog/kuzu-legacy-embedded-graph-database-landscape/
 
 ### LadybugDB hard facts (GitHub API, fetched 2026-08-30)
+
 - Repo: https://github.com/LadybugDB/ladybug
 - License: **MIT** (spdx_id MIT) — CLAIM CONFIRMED.
 - created_at: 2025-10-07 (repo is ~11 months old as an independent project)
@@ -30,6 +48,7 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
   https://github.com/LadybugDB/ladybug/releases
 
 ### Bus factor — THE REAL RISK
+
 - Top-15 contributor list is dominated by the ORIGINAL Kuzu team (andyfengHKU 1238,
   acquamarin 970, ray6080 884, mewim 507, semihsalihoglu-uw 128). These are INHERITED
   git-history contributions from the fork, NOT active Ladybug maintainers — those people
@@ -39,6 +58,7 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
   with drive-by contributors. Bus factor = 1. Pre-1.0 (v0.20.0).
 
 ### Feature claims in §7
+
 - "embedded" — CONFIRMED. https://docs.ladybugdb.com/
 - "Cypher" — CONFIRMED (openCypher).
 - "Arrow/Parquet attach" — CONFIRMED, and stronger than claimed: ATTACH for
@@ -48,10 +68,11 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
   external dependencies or managing it as a DBMS server." No Bolt, no server mode, no Neo4j
   driver compatibility found anywhere in docs or search. Upstream Kuzu never had Bolt either.
   This matters because §7 lists a `bolt` adapter ("optional; any Bolt server") and §9/§1 say
-  the Neo4j *driver* is the Apache-2.0 escape hatch. The Bolt path does not connect to the
+  the Neo4j _driver_ is the Apache-2.0 escape hatch. The Bolt path does not connect to the
   default store.
 
 ### Apache AGE (stated alternative)
+
 - ACTIVE. Release 2026-01-21 (Row Level Security, index on id columns, bug fixes).
   https://age.apache.org/release-notes/
 - Supports PostgreSQL 11–18; 2026 roadmap explicitly covers finalizing PG18 and moving
@@ -65,6 +86,7 @@ Date: 2026-08-30. Artifact: an internal predecessor design document (485 lines),
   is NOT free.
 
 ### RECOMMENDATION
+
 Invert the defaults. Ship **Apache AGE as the supported/default server store** and
 LadybugDB as the fast embedded option, OR keep Ladybug default but (a) pin an exact
 version, (b) vendor/fork-mirror it, (c) treat the GraphStore interface as a real
@@ -76,6 +98,7 @@ Also evaluate `bighorn` (Kineviz fork) as a second escape hatch.
 Doc claim: "Leiden via graspologic MIT", while §9 excludes `leidenalg`/`igraph` as GPL.
 
 ### The stated worry is UNFOUNDED — but a different, real defect sits underneath.
+
 - graspologic's Leiden comes from `graspologic-native`, a **self-contained Rust**
   implementation (PyO3/maturin) by Microsoft Research + JHU. It does **NOT** wrap or
   vendor leidenalg, and has **no igraph dependency**.
@@ -84,6 +107,7 @@ Doc claim: "Leiden via graspologic MIT", while §9 excludes `leidenalg`/`igraph`
 - So the GPL exclusion is NOT defeated by the Leiden algorithm itself. Good.
 
 ### BUT: graspologic transitively pulls LGPL-2.1.
+
 - graspologic 3.4.4 `requires_dist` includes **`gensim<5.0.0,>=4.3.3`**.
   https://pypi.org/pypi/graspologic/json
 - gensim license field is verbatim **"LGPL-2.1-only"**.
@@ -97,11 +121,13 @@ Doc claim: "Leiden via graspologic MIT", while §9 excludes `leidenalg`/`igraph`
   analyze package puts LGPL in the dependency tree and the SBOM.
 
 ### Also: graspologic release staleness
+
 - Latest PyPI release **3.4.4, 2024-02-26** — ~2.5 years with no release.
 - Repo NOT archived; pushed_at 2026-06-18. So: maintained-ish but not shipping.
 - Depending on it for a headline feature (Leiden) is a supply-chain risk.
 
 ### FIX
+
 Use `graspologic-native` directly (Rust/PyO3, no gensim), or call the Rust
 `network_partitions` crate, or use graphology-communities-louvain (already chosen) and
 drop Leiden from MVP. Alternatively pin graspologic with `--no-deps` + explicit deps.
@@ -109,6 +135,7 @@ drop Leiden from MVP. Alternatively pin graspologic with `--no-deps` + explicit 
 ## 3. NAME COLLISION — `atlas`
 
 SEVERE. The space is saturated, including inside the doc's own prior-art table.
+
 - **Apache Atlas** — data governance + metadata framework, Apache-2.0, 2,138 stars,
   NOT archived. Cited in the doc's OWN §1 table as prior art. Same category
   (metadata catalog / graph). Direct semantic collision.
@@ -138,6 +165,7 @@ developer-tooling category. Rename.
 §9 allows "MPL-2.0 (unmodified dependency only, with notice)". **This reading is
 CORRECT** but the doc understates the operational obligations.
 Source: https://www.mozilla.org/en-US/MPL/2.0/FAQ/
+
 - (1) File-level copyleft is correct. Copyleft attaches to the MPL-licensed FILES, not
   to your work. Q1.
 - (2) The Larger Work MAY be MIT. Per Q11, "New files containing no MPL-licensed code
@@ -159,6 +187,7 @@ Source: https://www.mozilla.org/en-US/MPL/2.0/FAQ/
 ## 5. OSS RELEASE MECHANICS (solo maintainer)
 
 ### npm provenance — HARD CONFLICT WITH THE MAINTAINING ORGANIZATION'S CI POLICY
+
 - npm provenance attestations are supported ONLY from **GitHub Actions** and
   **GitLab CI/CD**, and ONLY on **cloud-hosted runners**.
   https://docs.npmjs.com/generating-provenance-statements
@@ -174,16 +203,18 @@ Source: https://www.mozilla.org/en-US/MPL/2.0/FAQ/
   npm, does not use GitHub Actions, but adds a plane; (b) ship without provenance and
   compensate with Sigstore cosign signatures + a published SBOM + reproducible builds;
   (c) narrow policy exception for a publish-only GH Actions workflow. Must be an
-  explicit operator decision, not discovered at release time.
+  explicit maintainer decision, not discovered at release time.
 
 ### §7 internal contradiction
+
 `packages/ci/  GitHub Action + generic runner` — the design ships a GitHub Action as a
-product artifact. For OSS *consumers* that is defensible (they use GH). For the
+product artifact. For OSS _consumers_ that is defensible (they use GH). For the
 maintaining organization's own repo it collides with the "`.github/workflows/` is a
 forbidden path" rule. Resolve explicitly: build the GH Action as a deliverable for
 users, but never wire it into the maintaining organization's own repo CI.
 
 ### Other mechanics
+
 - **DCO over CLA.** For a solo maintainer + MIT, DCO (`git commit -s`, Developer
   Certificate of Origin 1.1) is the low-friction correct choice. A CLA only pays off if
   relicensing or selling an exception is a future option; it measurably depresses
@@ -204,6 +235,7 @@ users, but never wire it into the maintaining organization's own repo CI.
   Given §3, the safer move is picking a name you can actually own.
 
 ## 6. PRIOR-ART TABLE — corrections I verified directly
+
 - **LinkML** → doc says "CC0/permissive". Reality: **Apache-2.0**
   (https://github.com/linkml/linkml). Still permissive, still allowed, but it is an
   Apache-2.0 NOTICE obligation, not a public-domain dedication. Correct the table.
@@ -223,6 +255,7 @@ users, but never wire it into the maintaining organization's own repo CI.
 
 There are at least THREE competing MIT forks of archived Kuzu. Betting the default
 store on one of them, 11 months in, is a real bet:
+
 - **LadybugDB** (LadybugDB/ladybug) — most active; 1 real maintainer; v0.20.0;
   graph-lakehouse direction (DuckDB/Parquet/Arrow attach, SQL pushdown).
 - **bighorn** (Kineviz/bighorn) — MIT; announced 2025-10-10 but "the only contribution
@@ -240,6 +273,7 @@ the doc admits. It is the ONLY thing that makes a wrong fork bet survivable. It 
 ship in Phase 1 with a conformance test suite, not be assumed.
 
 ## 8. §7 ANALYSIS LIBRARIES — verified
+
 - `graphology-communities-louvain` **2.0.2, MIT** — CONFIRMED. Last publish 2024-12-17.
   https://registry.npmjs.org/graphology-communities-louvain
 - `NetworkX` — BSD-3-Clause. CONFIRMED (PyPI metadata parse was inconclusive; license is
@@ -254,6 +288,7 @@ ship in Phase 1 with a conformance test suite, not be assumed.
 ## 9. §6 VISUALIZATION STACK — verified (delegated deep-check)
 
 ### Wrong / stale
+
 - **Graphviz** → doc says EPL-1.0. Reality: **EPL-2.0**, relicensed 2026-03-07
   ("Change Eclipse Public License from version 1.0 to 2.0"), shipping 14.1.5+ through
   16.0.0. The commonly-cited CPL-1.0 is two generations stale.
@@ -281,6 +316,7 @@ ship in Phase 1 with a conformance test suite, not be assumed.
   https://registry.npmjs.org/zrender/latest
 
 ### React Flow / xyflow — MIT confirmed, with one trap
+
 - Core is genuinely MIT today: `@xyflow/react` 12.11.5, `@xyflow/svelte` 1.6.5, legacy
   `reactflow` 11.11.4 all declare `"license":"MIT"`; monorepo LICENSE is plain MIT
   ("Copyright (c) 2019-2025 webkid GmbH"). No dual-license, no BSL.
@@ -295,9 +331,10 @@ ship in Phase 1 with a conformance test suite, not be assumed.
   xyflow retains title; redistributing them as standalone examples/templates is
   PROHIBITED. **Never vendor a Pro example into the MIT repo.** https://xyflow.com/pro-license
 - No 2025–2026 license change to the core. The 2023-12-06 "Pro Platform goes open
-  source" event moved the Pro *platform* to MIT; Pro *content* license persists.
+  source" event moved the Pro _platform_ to MIT; Pro _content_ license persists.
 
 ### Confirmed correct as written
+
 Cytoscape.js (MIT 3.34.2) · Sigma.js (MIT 3.0.3) · Graphology (MIT 0.26.0) ·
 **D3 = ISC — the doc is RIGHT** (d3 switched BSD-3-Clause → ISC at v7.0.0) ·
 Mermaid (MIT 11.17.2) · ECharts core (Apache-2.0 6.1.0).
@@ -305,7 +342,8 @@ No recent license changes found for ECharts, Cytoscape.js, or Mermaid (confidenc
 MEDIUM — absence-of-announcement, not proof).
 
 ## 10. §7 RUNTIME DEPS — spot-verified via npm registry (2026-08-30)
-- `neo4j-driver` **6.2.0 = Apache-2.0** — CONFIRMED. §1's "Neo4j *driver* is Apache-2.0
+
+- `neo4j-driver` **6.2.0 = Apache-2.0** — CONFIRMED. §1's "Neo4j _driver_ is Apache-2.0
   and may be an optional adapter; the server is the user's choice" is CORRECT.
   https://registry.npmjs.org/neo4j-driver/latest
   BUT see §1 of this review: with LadybugDB having no Bolt server mode, the Bolt adapter
@@ -316,16 +354,18 @@ MEDIUM — absence-of-announcement, not proof).
 - `dependency-cruiser` 18.2.0 MIT — CONFIRMED.
 
 ## 11. THE BIGGEST STRUCTURAL RISK — "Adopt / borrow / reuse" is undefined,
-##     and Apache-2.0 -> MIT is a ONE-WAY DOOR THAT DOES NOT OPEN
+
+## and Apache-2.0 -> MIT is a ONE-WAY DOOR THAT DOES NOT OPEN
 
 §1's "Reuse decision" column is written in verbs that hide a licensing fork in the road:
 "**Adopt** as the L2/L3 interchange format", "**Adopt vocabulary + export**",
 "**Adopt traceability semantics**", "**Borrow** the environment/infra ontology and module
-pattern", "**Borrow** *affected* semantics and boundary-rule DSL", "**Borrow** rule
+pattern", "**Borrow** _affected_ semantics and boundary-rule DSL", "**Borrow** rule
 expression shape", "**Reuse** as an extractor via adapter; **borrow** provenance tagging
 and the **graph.json merge driver**".
 
 Each of those is one of two very different acts:
+
 - (A) **Implement an interoperable format from its public specification.** Formats,
   field names, protocols and ideas are not copyrightable. UNCONSTRAINED. Fine under MIT.
 - (B) **Copy source files, JSON schemas, or a merge-driver implementation.**
@@ -341,32 +381,35 @@ Cartography, OpenLineage, OpenFeature, CycloneDX, ArchUnit, DataHub/OpenMetadata
 
 This is exactly the class of error §12 congratulates itself for catching once
 (FalkorDB/SSPL), reappearing in a subtler form. The FalkorDB catch was about a
-*dependency*; this one is about *derivation*, and no `license-checker` allow-list in §9
+_dependency_; this one is about _derivation_, and no `license-checker` allow-list in §9
 will detect it — a copied schema file has no package.json entry.
 
 ### REQUIRED FIX
+
 Add a column or an explicit legend to §1 distinguishing **SPEC-COMPATIBLE
 (clean-room, from published spec)** from **CODE-DERIVED (carries upstream license)**.
 For every CODE-DERIVED row, keep the upstream LICENSE header in the derived file and add
 it to THIRD-PARTY-NOTICES. Default every row to SPEC-COMPATIBLE and require a deliberate
 decision to move one to CODE-DERIVED. Two rows that look CODE-DERIVED today and need a
 ruling before Phase 0:
+
 - Graphify's **graph.json merge driver** ("borrow" = almost certainly copy code).
 - Backstage's **catalog-info.yaml entity model** (if the JSON schemas are vendored
   rather than re-expressed in LinkML).
 
 ### Adjacent spec-IPR items the doc treats as settled but are not
+
 - **ArchiMate / The Open Group** — "ArchiMate" is a registered trademark of The Open
   Group and the specification carries its own usage terms. §1 lists the license as
   "Open Group spec" with no further detail. The doc's stance ("vocabulary alignment
   ... not implemented") is the safe one; keep it, and avoid claiming ArchiMate
   conformance or using the mark in the product name. UNVERIFIED: exact current terms.
 - **OSLC (OASIS)** — §1 says "Open spec". OASIS specifications carry OASIS IPR-policy
-  terms that vary by mode (RF on Limited Terms vs RAND). Reusing OSLC *verb names*
+  terms that vary by mode (RF on Limited Terms vs RAND). Reusing OSLC _verb names_
   (implements, validatedBy, satisfies) is naming, not copying, and is fine. UNVERIFIED:
   exact OSLC IPR mode.
 - **W3C PROV-O** — §1 says license "W3C". PROV-O's vocabulary URIs are intended for
-  reuse; the *document* is under a W3C license whose derivative-works permissions differ
+  reuse; the _document_ is under a W3C license whose derivative-works permissions differ
   between the older W3C Document License and the newer W3C Software and Document
   License. Using the property names (`wasDerivedFrom` etc.) is fine; copying spec prose
   into docs may not be. UNVERIFIED: which W3C license variant applies to PROV-O today.
@@ -376,17 +419,19 @@ ruling before Phase 0:
   that needs the right attribution. See delegated check.
 
 ## 12. Independent double-checks via PyPI (2026-08-30)
+
 - `sphinx-needs` **8.4.0**, classifier "License :: OSI Approved :: MIT License" — MIT
   CONFIRMED. §1 row is correct.
 - `linkml` **1.11.1**, `license_expression: Apache-2.0` — CONFIRMS the correction above.
   §1's "CC0/permissive" is WRONG on two independent sources (PyPI metadata + GitHub
   repo license). Apache-2.0 is still allowed by §9, but it changes the obligations:
   NOTICE propagation + patent-grant terms, not a public-domain dedication. It also
-  matters because §7 makes LinkML the *generator* of the ontology package — output of a
+  matters because §7 makes LinkML the _generator_ of the ontology package — output of a
   generator is normally not a derivative work, but the generator's own templates and any
   vendored runtime are.
 
 ## 13. EXCLUSION LIST — spot-verified (the ones most likely to have gone stale)
+
 - **FalkorDB** → doc says SSPL. **STILL SSPLv1 as of 2026**; no license change, even
   through the 2026 C-to-Rust rewrite. §12's FalkorDB story and the §9 exclusion both
   STAND. https://github.com/FalkorDB/FalkorDB
@@ -395,7 +440,7 @@ ruling before Phase 0:
   Apache-2.0. https://github.com/surrealdb/license
   NUANCE (LOW): SurrealDB's BSL explicitly permits embedding in applications you ship
   and running it internally; the only prohibition is offering it as a managed
-  DBaaS. So a blanket exclusion is slightly over-broad for a *user-supplied, optional*
+  DBaaS. So a blanket exclusion is slightly over-broad for a _user-supplied, optional_
   adapter — though correct for anything bundled or defaulted. If the doc wants the
   option back, it belongs in the "optional, user-installed externals" line, not
   "Excluded". Same logic does NOT rescue FalkorDB (SSPL §13 is far more aggressive).
@@ -424,6 +469,7 @@ not "grammar X is GPL"; it is that **the design has no per-grammar license gate*
 are often vendored as source/WASM rather than as npm dependencies with license metadata.
 
 ### FIX
+
 Do not depend on "most". Either (a) adopt a curated, license-gated pack such as
 tree-sitter-language-pack and inherit its policy, or (b) maintain an explicit
 per-grammar allow-list in the repo with the SPDX id and source URL for each grammar
@@ -433,6 +479,7 @@ project actually uses) rather than ~100 by default.
 ## 15. §1 PRIOR-ART TABLE — full delegated verification results
 
 ### CRITICAL
+
 - **Structurizr** → doc: "Apache-2.0 (structurizr-java, Lite)". Reality: `structurizr/lite`
   is **MIT and ARCHIVED 2026-02-01**; `structurizr/java` and `structurizr/cli` also
   ARCHIVED; `structurizr/dsl` now 404s. All superseded by `structurizr/structurizr`
@@ -441,10 +488,11 @@ project actually uses) rather than ~100 by default.
   https://github.com/structurizr/lite/blob/master/LICENSE | https://docs.structurizr.com/
   IMPACT: lens 24 (C4 levels) and the §7 `lens` exporter "export Structurizr DSL" and
   §11 Phase 6 "exports (… Structurizr …)" all rest on archived repos. Exporting the DSL
-  *text format* is still fine (format, not code), but any plan to embed or ship
+  _text format_ is still fine (format, not code), but any plan to embed or ship
   structurizr-java / Lite must be re-planned.
 
 ### HIGH
+
 - **tree-sitter grammars** → doc: "most grammars MIT". Headline true for the core orgs,
   but **named copyleft grammars exist**: `LhKipp/tree-sitter-nu` GPL-3.0,
   `hanazuki/tree-sitter-nftables` GPL-2.0, `foxyseta/tree-sitter-prolog` **AGPL-3.0**,
@@ -462,13 +510,14 @@ project actually uses) rather than ~100 by default.
   are MIT — a different license from the CLI binary.
 
 ### MEDIUM
+
 - **scip-python** → doc: all SCIP indexers Apache-2.0. Reality: **scip-python is MIT**
   (Pyright fork, (c) Microsoft). Also `scip`, `scip-java`, `scip-go`, `scip-rust`
   **moved org `sourcegraph` → `scip-code`** (still Apache-2.0); `scip-typescript` stayed.
   Update all repo URLs before Phase 5.
   https://github.com/sourcegraph/scip-python/blob/main/LICENSE.txt | https://github.com/scip-code/scip-java
 - **SPDX** → doc: "CC-BY". Reality: spec LICENSE is **Community Specification License
-  1.0**, CC-BY-3.0 only for pre-existing non-CSL contributions; SPDX *tools*
+  1.0**, CC-BY-3.0 only for pre-existing non-CSL contributions; SPDX _tools_
   (`spdx/tools-java`) are Apache-2.0. https://github.com/spdx/spdx-spec/blob/development/v3.0.1/LICENSE
 - **LinkML** → doc: "CC0/permissive". Reality is a **split**: `linkml/linkml` (the
   tooling you actually depend on) = **Apache-2.0**; `linkml-model` + `linkml-runtime` =
@@ -483,6 +532,7 @@ project actually uses) rather than ~100 by default.
   ARCHIVED, last push 2021-12-13. It is a dead project, not merely a license exclusion.
 
 ### LOW
+
 - **Lyft Cartography** → moved to **`cartography-cncf/cartography`** (now CNCF).
   License unchanged Apache-2.0. Update the name/URL.
 - **igraph** → doc groups it as "GPL". Precisely **GPL-2.0** (both C `igraph/igraph` and
@@ -493,7 +543,7 @@ project actually uses) rather than ~100 by default.
 - **OSLC** → doc: "Open spec". Precisely **CC-BY-4.0 with portions Apache-2.0**, OASIS
   Open Project, "RF on Limited Terms" IPR mode.
 - **W3C PROV-O** → PROV-O REC is under **W3C Document use rules** (document license,
-  NO derivative-works grant), *not* the W3C Software and Document License. Using
+  NO derivative-works grant), _not_ the W3C Software and Document License. Using
   property names is fine; copying spec prose is not.
 - **SonarQube** → Community Build LGPL-3.0 confirmed; Server Developer/Enterprise/Data
   Center and SonarQube Cloud are proprietary/commercial.
@@ -507,6 +557,7 @@ project actually uses) rather than ~100 by default.
   **BSL 1.1** — do not pull the enterprise package in.
 
 ### CONFIRMED CORRECT AS WRITTEN
+
 FINOS CALM · Backstage (+ community-plugins) · Sphinx-Needs core · Joern +
 `ShiftLeftSecurity/codepropertygraph` · SCIP protocol + scip-typescript/java/go/rust ·
 tree-sitter core · GitNexus (PolyForm Noncommercial 1.0.0) · OpenLineage · Marquez ·
@@ -515,6 +566,7 @@ DataHub · OpenMetadata · Apache Atlas · OpenSLO · leidenalg (GPL-3.0) ·
 jQAssistant (GPL-3.0) · FalkorDB (SSPLv1, unchanged) · Neo4j server (GPL-3.0/commercial).
 
 ### UNVERIFIED
+
 The SPDX **License List's own** license: no standalone LICENSE file exists in
 `spdx/license-list-XML` or `spdx/license-list-data`; presumed covered by the spec's
 Community-Spec-1.0 / CC-BY-3.0, but no authoritative statement located. If Atlas embeds

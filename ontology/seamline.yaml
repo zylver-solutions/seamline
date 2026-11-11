@@ -2,9 +2,9 @@
 #
 # Seamline core ontology: the normative vocabulary.
 #
-# This file is the single hand-edited source for the vocabulary. JSON Schema,
-# TypeScript types, SQL DDL, and reference documentation are generated from it;
-# none of those is edited by hand.
+# This file is the hand-edited specification of the vocabulary. One file is
+# generated from it: docs/reference/ontology.md (`pnpm gen:ontology-ref`). The
+# TypeScript contract named below is written by hand and checked against it.
 #
 # It must agree EXACTLY with `packages/ontology/src/contract.ts`, which is the
 # implementation seam every Seamline package compiles against. `ontology/lint.mjs`
@@ -44,7 +44,7 @@ imports:
 # LinkML permissible values are the right construct here. The prohibition on
 # `enum` in this project applies to TypeScript only, and for a specific reason:
 # Node strips types rather than transforming them, so a TS `enum` is not
-# erasable syntax. See docs/internal/toolchain.md. The TypeScript side expresses
+# erasable syntax. See docs/toolchain.md. The TypeScript side expresses
 # the same closed sets as `as const` arrays plus a derived union.
 # ---------------------------------------------------------------------------
 
@@ -68,9 +68,9 @@ enums:
       DECLARED:
         description: "Asserted by a human, typically as an annotation, and reviewed."
       INFERRED:
-        description: "Derived by name, type, or structure matching. Stored in the insert-only annotations table; never mutates a fact; never feeds a gate."
+        description: "Derived by name, type, or structure matching. Never feeds a gate: detectors compare only EXTRACTED and DECLARED facts. Stored in the same tables as facts and told apart by its provenance value; the separate insert-only annotations table decided in docs/adr/ADR-0007 is not implemented."
       LLM_SUGGESTED:
-        description: "Proposed by a model. Lowest precedence. Promotion to DECLARED writes a new row retaining prov:wasAttributedTo; attribution is never overwritten."
+        description: "Proposed by a model. Lowest precedence, and it never feeds a gate. No shipped extractor emits it, and the promotion to DECLARED that docs/adr/ADR-0007 decides (a new row retaining prov:wasAttributedTo) is not implemented."
 
   SensitivityEnum:
     description: "Export classification, defaulted per kind and required on every node. Export is default-deny: a profile is an allow-list and there is no export-everything flag. See docs/adr/ADR-0006."
@@ -106,21 +106,21 @@ enums:
     description: "The v0.1 contradiction catalogue. Each detector compares two authoritative facts and never the absence of a declaration. See docs/adr/ADR-0005."
     permissible_values:
       X1_NULLABILITY:
-        description: "Column.nullable disagrees with the SchemaProperty.required or CodeField optionality it is joined to."
+        description: "Column.nullable is true while the response SchemaProperty joined to it states nullable false. Presence (required) is not compared, and CodeField comparisons are withheld."
       X2_TYPE:
-        description: "Column.type, CodeField.type, and SchemaProperty.type disagree across a join."
+        description: "Column.type and the type of the SchemaProperty joined to it cannot represent each other. CodeField comparisons are withheld."
       X3_CONSTRAINT:
-        description: "Column length or check constraint disagrees with the validator enforcing it."
+        description: "A Column and the validator Symbol guarding it state different values for the same constraint dimension."
       X4_UNBACKED_PROPERTY:
-        description: "A response SchemaProperty has no BACKED_BY column and no computing symbol."
+        description: "A response SchemaProperty that no Column or CodeField produces (over BACKED_BY or EXPOSED_AS), on a Contract whose other properties do resolve."
       X5_UNWRITTEN_COLUMN:
-        description: "A NOT NULL column with no default is never written by any traced write path."
+        description: "A NOT NULL Column with no default the writers supply, named by no traced insert into its table."
       X6_PII_UNAUTHENTICATED:
-        description: "A column with pii is reachable from an Operation with no declared auth."
+        description: "An Operation that declares no authentication (auth none, public or anonymous) reaches a Column classified as PII. An Operation with no extracted auth mode is not evaluated."
       X7_VALIDATOR_DIVERGENCE:
-        description: "A validator enforces a constraint the database does not, or the reverse."
+        description: "A source-proved validated write input accepts unbounded strings for a field whose storage Column declares a finite length."
       X8_ORPHANED_MIGRATION:
-        description: "A Migration references a Table or Column that no longer exists."
+        description: "A local Table or Column is absent, in the declared replay order of its migration group, at the point a checked Migration reference requires it."
       X9_CONTRACT_DRIFT:
         description: "An Operation has no IMPLEMENTED_BY route handler, or a handler implements no declared operation."
       X10_UNTESTED_PII_WRITE:
@@ -555,7 +555,7 @@ classes:
 
   TestCase:
     is_a: SeamlineNode
-    description: "A test case. TESTS is the only EXTRACTED verification edge, and it is extracted from what the test imports and calls, never from a substring in its name."
+    description: "A test case. TESTS is the only EXTRACTED verification edge, and it is extracted from what the test imports and calls, never from a substring in its name. No shipped extractor emits TestCase or TESTS. The natural-key annotation below names a test file, which conflicts with the path-free identity rule; docs/adr/ADR-0016 records that it is to be replaced by a path-free key."
     slot_usage:
       kind: { equals_string: TestCase }
       profile: { equals_string: core }
@@ -628,7 +628,7 @@ classes:
 
   Run:
     is_a: SeamlineNode
-    description: "One extraction. Carries started_at and finished_at, which is the ONLY place wall-clock time appears. Every node and edge lifecycle field is a run id rather than a timestamp, which is what makes byte-identical output achievable."
+    description: "One extraction. Carries started_at and finished_at, which is the ONLY place observation time (a wall-clock reading) appears. The Git author and committer dates on Commit and RENAMED_FROM are immutable source data, not observation time (docs/adr/ADR-0009). Every node and edge lifecycle field is a run id rather than a timestamp, which is what makes byte-identical output achievable."
     slot_usage:
       kind: { equals_string: Run }
       profile: { equals_string: core }
@@ -685,7 +685,7 @@ classes:
 
   ThreatModel:
     is_a: SeamlineNode
-    description: "A recorded threat model. Defaults to restricted. Seamline is its own first user: THREATMODEL.md is a Phase-0 deliverable, because a verification tool that does not model its own threats is making a claim it has not tested on itself."
+    description: "A recorded threat model. Defaults to restricted. Seamline is its own first user: THREATMODEL.md is in the repository root, because a verification tool that does not model its own threats is making a claim it has not tested on itself."
     slot_usage:
       kind: { equals_string: ThreatModel }
       profile: { equals_string: core }

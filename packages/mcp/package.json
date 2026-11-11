@@ -2,6 +2,12 @@
   "name": "@seamline/mcp",
   "version": "0.1.0",
   "description": "The Seamline MCP server: serves graph context to AI coding agents over stdio through parameterized tools.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "mcp"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

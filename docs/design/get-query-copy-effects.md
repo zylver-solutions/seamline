@@ -1,6 +1,8 @@
 # Closed GET query-copy effects
 
-Implementation may rely on this amendment only after its design PR merges. That permission does not establish implementation, real-source acceptance, qualification or release readiness.
+Status: accepted amendment to the [X7 design](x7-upper-length.md), implemented in 0.1.0 (`packages/extract-contracts/src/write-query-copy-*.ts`; status checked 2026-11-10). [Closed query-copy implementation limits](../evaluation/closed-query-copy.md) records what the implementation admits and refuses; the real-source acceptance below is unmet.
+
+Implementation may rely on this amendment only after the amendment is accepted. That permission does not establish implementation, real-source acceptance, qualification or release readiness.
 
 ## Named consumer and problem
 
@@ -25,4 +27,4 @@ Keep the existing two forwarding boundaries, four-function client initialization
 
 Use original generic fixtures and actual pinned source without executing, installing or copying upstream application code. Required controls include the previous unguarded loop refusal; guarded but callable, shared, mutated, getter/proxy or escaped query records; unsupported schema artifacts; hidden or unknown callers; shadowed intrinsics; var or await loops; changed receivers, keys, operators and guards; extra effects; and computed extraction elsewhere in the same function and source world. Mutations removing provenance, all-caller closure, exact-node confinement and the digit guard must fail outcome assertions.
 
-Then rerun the exact required parent and fix through production extraction and evaluation on the isolated host. Show the parent contradiction and examined fixed negative, or preserve and report the measured refusal. A passing fixture, a parser-only result, different upstream revision, renamed target or historical firing cannot substitute for that proof. Preserve ADR0017 identity, ADR0018 authority, fresh councils, exact-head verification and the original sealed qualification and per-detector recall requirements. This amendment supplies no new detector result or qualification credit.
+Then rerun the exact required parent and fix through production extraction and evaluation on the isolated host. Show the parent contradiction and examined fixed negative, or preserve and report the measured refusal. A passing fixture, a parser-only result, different upstream revision, renamed target or historical firing cannot substitute for that proof. Preserve ADR-0017 identity, ADR-0018 authority, fresh independent source reviews, exact-head verification and the original sealed qualification and per-detector recall requirements. This amendment supplies no new detector result or qualification credit.

@@ -2,6 +2,12 @@
   "name": "@seamline/contradictions",
   "version": "0.1.0",
   "description": "Seamline's ten contradiction detectors: two extracted facts that disagree, never a missing declaration.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "contradiction-detection"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

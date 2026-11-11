@@ -2,6 +2,12 @@
   "name": "@seamline/extract-contracts",
   "version": "0.1.0",
   "description": "API-contract facts for Seamline from OpenAPI, JSON Schema and Zod.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "openapi"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

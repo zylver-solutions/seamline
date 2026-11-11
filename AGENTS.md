@@ -4,18 +4,18 @@
 
 A zero-declaration cross-domain join over a codebase. It extracts facts from code, database schema, and API contracts; infers the field-level joins between them (column ↔ ORM field ↔ schema property ↔ validator); and reports **contradictions** — where two extracted facts disagree — rather than gaps.
 
-**This repository will be published publicly under Apache-2.0.** It is the first public repository this organization has released. Everything written here should be readable by an external contributor with no internal context.
+**This repository is public under Apache-2.0** (since 2026-11-09), and version 0.1.0 of its twelve `@seamline` packages is published on npm. It is the first public repository this organization has released. Everything written here should be readable by an external contributor with no internal context.
 
 ## Read before working
 
-| | |
-|---|---|
-| `docs/design/v3.md` | **Authoritative.** The applied design. |
-| `docs/audit/2026-08-29-council-review-v2.md` | Why v3 looks the way it does. 9-lens council, 11 confirmed CRITICALs. |
-| `docs/toolchain.md` | Binding build conventions. The `.ts` import rule will break your code if you skip it. |
-| `packages/ontology/src/contract.ts` | The shared type contract every package builds against. |
-| `docs/adr/` | Decision records, each citing the finding that forced it. |
-| `docs/design/alignment.md` | The alignment report (`seamline align`): drift classes, claim kinds, probes and the finding packet. Governed by ADR-0014. |
+|                                              |                                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `docs/design/v3.md`                          | **Authoritative.** The applied design.                                                                                    |
+| `docs/audit/2026-08-29-council-review-v2.md` | Why v3 looks the way it does. 9-lens council, 11 confirmed CRITICALs.                                                     |
+| `docs/toolchain.md`                          | Binding build conventions. The `.ts` import rule will break your code if you skip it.                                     |
+| `packages/ontology/src/contract.ts`          | The shared type contract every package builds against.                                                                    |
+| `docs/adr/`                                  | Decision records, each citing the finding that forced it.                                                                 |
+| `docs/design/alignment.md`                   | The alignment report (`seamline align`): drift classes, claim kinds, probes and the finding packet. Governed by ADR-0014. |
 
 ## The one rule that matters most
 
@@ -35,7 +35,7 @@ These each fix a confirmed CRITICAL and are unretrofittable. All have conformanc
 2. **The graph can forget.** `run_id` on everything, tombstones not hard deletes, `deleted_at` cleared on re-insert, tombstoning confined to the run's authoritative scope.
 3. **UNAVAILABLE is never PASS.** A crashed extractor must never look like "the fact does not exist". This is what stops flakiness from manufacturing false findings and getting the gate switched off.
 4. **Extraction is byte-reproducible.** No wall-clock time in a node or edge body, sorted output, repo-relative POSIX paths only.
-5. **Findings come from facts.** `isFact()` gates every detector. `INFERRED` and `LLM_SUGGESTED` never justify a finding.
+5. **Findings come from facts.** `isFact()` gates every detector: the two nodes a finding compares must both be facts. The join between them may be an `INFERRED` edge, whose confidence is carried into the finding and caps its severity. An `LLM_SUGGESTED` node or edge never justifies a finding.
 6. **Export is default-deny.** No profile, no output. `seamline-out/` is gitignored by `init`.
 7. **No raw query surface.** Typed traversal only, bounded depth, capped results. There is no cypher tool and adding one needs an ADR.
 
@@ -43,6 +43,6 @@ These each fix a confirmed CRITICAL and are unretrofittable. All have conformanc
 
 - Work from the repository's GitHub Issues (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 - Tests assert authoritative outcomes. A test that asserts a function exists is not a test — this project's own design rejects presence-checking as a gate, and the suite is held to the same standard.
-- Before saying done: `./node_modules/.bin/tsc --build` and `node --test 'packages/*/src/**/*.test.ts'` both green.
+- Before saying done: `pnpm build` and `pnpm test` both green. Before opening a pull request: `pnpm verify` (typecheck, lint, tests and the local gates) and `node scripts/internal-leak-scan.mjs`, which CI runs and `pnpm verify` does not. [CONTRIBUTING.md](CONTRIBUTING.md) says what each gate asserts.
 - New runtime dependencies are a supply-chain liability this project publicly commits to minimizing. Prefer the standard library; a new dependency needs its license named and must pass `node scripts/license-gate.mjs`.
-- Before making the repo public, `docs/PUBLIC-RELEASE-CHECKLIST.md` must pass.
+- `docs/PUBLIC-RELEASE-CHECKLIST.md` is the record of what was checked before and after the first release, including the items still open. How a release is cut and verified is in `docs/RELEASING.md`.

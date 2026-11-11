@@ -2,6 +2,8 @@
 
 Date: 2026-09-09. Scope: generic, extensible, tested local semantic foundation in `@seamline/core/semantic`, with reusable domain packs and a real legacy extraction bridge. This review does not certify application migration, unrestricted scale, comprehensive new extractors or a hosted service.
 
+Status (2026-11-10): historical record of an internal review held on 2026-09-09. Its findings and figures are unchanged and were not re-run for this note. The reviewers were AI agents working inside the project; this is not an independent third-party review, and the project has none (see the root README). The reviewed layer shipped in 0.1.0 as `@seamline/core/semantic`; [ADR-0015](../adr/ADR-0015-semantic-engine-optional-profile-layer.md) (2026-10-19) later bounded it as an optional layer with five packs, and the [library guide](../semantic-engine.md) states its current capabilities and limits. The application consumers mentioned below are described in [the semantic foundation specification](../design/semantic-foundation.md).
+
 ## Review method
 
 Three separate agent reviewers examined architecture/extensibility, integrity/security, and software intelligence/verification. Reviewers contributed bounded modules, then cross-reviewed other modules and executed adversarial probes. The implementation was revised until reproduced blocking cases were closed; passing the existing suite alone was not treated as acceptance.
@@ -26,7 +28,7 @@ The self-extraction diff also exposed legacy extractor collisions between packag
 
 ## Acceptance and verification
 
-**Final council verdict: unanimous APPROVE for the genericity, extensibility and solidity of this documented trusted-local foundation.** Architecture and integrity reviewers approved after the deletion-barrier correction; the software-intelligence reviewer approved after the clean baseline review and successful self-extraction verification. The software-intelligence reviewer independently confirmed that the regenerated baseline adds 407 nodes and 917 edges, with zero removed or modified pre-existing nodes/edges; all additions retain EXTRACTED provenance. Contract/data statuses and the flagship lineage JSON remain unchanged. Final gate verification is recorded below.
+**Final council verdict: unanimous APPROVE for the genericity, extensibility and solidity of this documented trusted-local foundation.** Architecture and integrity reviewers approved after the deletion-barrier correction; the software-intelligence reviewer approved after the clean baseline review and successful self-extraction verification. The software-intelligence reviewer independently confirmed that the regenerated baseline adds 407 nodes and 917 edges, with zero removed or modified pre-existing nodes/edges; all additions retain EXTRACTED provenance. Contract/data statuses and the flagship lineage JSON remain unchanged. Final gate verification is recorded below. "Approve" covers the documented trusted-local foundation only. The figures are as of 2026-09-09.
 
 - Repository suite: **1,053 tests passed**, zero failures/skips (1,007-test baseline plus 46 tests).
 - TypeScript build, full ESLint, focused formatting and local documentation links passed. After the last fixture-only renames, the build and all affected engine/import/integration tests passed again.

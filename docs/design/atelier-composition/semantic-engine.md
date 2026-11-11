@@ -1,8 +1,10 @@
 # Seamline: extensible semantic and temporal engine
 
-Status: proposed expanded target, 2026-09-09. This specification extends the [shared-world design](design.md) and governs its general domain model. The [codebase intelligence requirements](codebase-intelligence.md) are an equally important consumer. This is a design deliverable; it does not describe capabilities already implemented in Seamline.
+Status: proposed expanded target, 2026-09-09. This specification extends the [shared-world design](design.md) and governs its general domain model. The [codebase intelligence requirements](codebase-intelligence.md) are an equally important consumer. This is a design deliverable, not a description of the implementation.
 
-**Seamline should define, store, relate, evolve and explain domain information across contexts and time.** Fictional worlds, inventories and codebases use the same engine, with different domain definitions, authority policies and operations. Atelier and the companion bot are applications of that engine, not the owners of its ontology.
+Status update (2026-11-10): a subset of this target is implemented in the optional `@seamline/core/semantic` layer and documented in [Using the semantic foundation](../../semantic-engine.md): profiles, universes, worlds, named integer-tick timelines, branches, valid-time history, typed relationships, and the `world`, `inventory`, `authoring`, `software` and `code` packs. Everything else here is not implemented, including contexts, perspectives, causal order, branch merges and calendar mappings. [ADR-0015](../../adr/ADR-0015-semantic-engine-optional-profile-layer.md) bounds the layer; the [README](README.md) of this set explains the names used.
+
+**Seamline should define, store, relate, evolve and explain domain information across contexts and time.** Fictional worlds, inventories and codebases use the same engine, with different domain definitions, authority policies and operations. The authoring application and the companion application are applications of that engine, not the owners of its ontology.
 
 “All types of information” means extensible modeling without changing the engine for each new domain. It does not mean all domains fit one flat entity type, all facts are automatically discoverable, or an untyped payload has been semantically understood.
 
@@ -25,7 +27,7 @@ flowchart BT
   W[World, spatial, inventory and relationship packs]
   S[Software intelligence packs]
   X[Other domain packs]
-  A[Atelier application profile]
+  A[Authoring application profile]
   B[Companion application profile]
   C[Code intelligence CLI, MCP and tools]
   D --> K
@@ -37,20 +39,22 @@ flowchart BT
   C --> S
 ```
 
+Note (2026-11-10): as implemented, the code intelligence CLI and MCP server do not run on this engine. [ADR-0015](../../adr/ADR-0015-semantic-engine-optional-profile-layer.md) keeps the layer optional, and no CLI command, MCP tool or config key exposes it. The `code@1.0.0` pack imports a finished extraction graph one way (`packages/core/src/semantic/legacy.ts`).
+
 Software does not need to inherit physical inventory or fictional-world rules. It uses general contexts, timelines, artifacts and relationships directly, then imports any other useful pack explicitly. Nor does every world require simulation: an inventory application can use authoritative transactions and observations alone.
 
 ## 2. Universes, worlds, branches and contexts
 
 These terms must have distinct operational meanings.
 
-| Concept | Definition | Example |
-|---|---|---|
-| Universe | Named coherence domain: available domain packs, rule-set versions, reference systems and shared definitions | A fictional continuity; a real-world enterprise model; a simulation ruleset |
-| World | Identifiable state-bearing population within a universe, with its own instances and history | One shared companion town; one story setting instance; a digital twin of a warehouse |
-| Branch | Alternative evolution from a pinned base revision | A story alternative; simulation experiment; proposed schema change |
-| Context | Scope qualifying an assertion or interpretation; can compose dimensions without implying physical containment | Agent belief, deployment environment, jurisdiction, scenario assumptions, observation scope |
-| Snapshot | Immutable selection of a branch revision and temporal coordinates | World state at story time 21:03 as known at revision 57 |
-| Perspective | Viewpoint/access interpretation over a context | What a character knows; what an operator is allowed to see |
+| Concept     | Definition                                                                                                    | Example                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Universe    | Named coherence domain: available domain packs, rule-set versions, reference systems and shared definitions   | A fictional continuity; a real-world enterprise model; a simulation ruleset                 |
+| World       | Identifiable state-bearing population within a universe, with its own instances and history                   | One shared companion town; one story setting instance; a digital twin of a warehouse        |
+| Branch      | Alternative evolution from a pinned base revision                                                             | A story alternative; simulation experiment; proposed schema change                          |
+| Context     | Scope qualifying an assertion or interpretation; can compose dimensions without implying physical containment | Agent belief, deployment environment, jurisdiction, scenario assumptions, observation scope |
+| Snapshot    | Immutable selection of a branch revision and temporal coordinates                                             | World state at story time 21:03 as known at revision 57                                     |
+| Perspective | Viewpoint/access interpretation over a context                                                                | What a character knows; what an operator is allowed to see                                  |
 
 Universes do not automatically merge because their entities have the same names. A definition can be imported across universes at a pinned version; importing it does not import all its instances or transfer ownership. Within a branched world, the same instance ID can have different contextual state. When deliberately copying an instance into a different world, mint a new identity with an explicit `derivedFrom` relationship. A cross-world identity correspondence is a typed mapping with evidence, not unconditional equality.
 
@@ -64,14 +68,14 @@ Branch ancestry is a DAG with pinned merge bases. A merge compares contextual ch
 
 One timestamp field is insufficient. Seamline must model these distinct temporal dimensions:
 
-| Dimension | Answers | Required representation |
-|---|---|---|
-| Valid/domain time | When does this fact hold in the modeled domain? | Instant, interval, uncertain interval or explicit unknown on a named timeline |
-| Recorded time/revision | When did Seamline receive or accept it? | Commit sequence and recorded timestamp |
-| Causal order | What depended on what? | Event dependencies / happens-before partial order |
-| Scenario branch | Under which alternate history is it true? | Branch and pinned ancestry |
-| Presentation time | Where does a scene/take occur in an edit? | Track/placement, start, duration and timebase |
-| Source revision | Which code tree, document or external state was observed? | Immutable source revision/snapshot identity |
+| Dimension              | Answers                                                   | Required representation                                                       |
+| ---------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Valid/domain time      | When does this fact hold in the modeled domain?           | Instant, interval, uncertain interval or explicit unknown on a named timeline |
+| Recorded time/revision | When did Seamline receive or accept it?                   | Commit sequence and recorded timestamp                                        |
+| Causal order           | What depended on what?                                    | Event dependencies / happens-before partial order                             |
+| Scenario branch        | Under which alternate history is it true?                 | Branch and pinned ancestry                                                    |
+| Presentation time      | Where does a scene/take occur in an edit?                 | Track/placement, start, duration and timebase                                 |
+| Source revision        | Which code tree, document or external state was observed? | Immutable source revision/snapshot identity                                   |
 
 A timeline definition declares its domain, units, origin/calendar when applicable, resolution, ordering and clock policy. It can represent wall-clock time, simulated time, relative story time, frames, samples, or logical event sequence. A Git commit graph supplies ancestry, not a trustworthy total timeline from author timestamps. Distributed observations may remain partially ordered.
 
@@ -91,23 +95,25 @@ Minimum temporal queries:
 
 Late evidence appends a correction with its valid interval and attribution. It does not erase earlier observations. Conflicting accounts can coexist as claims; canonical adoption depends on context and authority. History reconstruction requires retained events/checkpoints and pinned reducer/profile versions. An unavailable old reducer or expired evidence must be reported honestly.
 
+Note (2026-11-10): as implemented, the foundation stores a bounded full temporal snapshot for each revision and does not replay reducers from an event log; see "Temporal semantics" in [Using the semantic foundation](../../semantic-engine.md).
+
 ## 4. The extensible metamodel
 
 The definition system itself is modeled and versioned in Seamline. It needs:
 
-| Definition object | Specifies |
-|---|---|
-| `DomainPack` | Namespace, version, dependencies, compatibility and documentation |
-| `ObjectType` | Identity strategy, properties, facets, lifecycle and supported operations |
-| `ValueType` | Primitive/structured value semantics, units, validation and canonical serialization |
-| `PropertyDefinition` | Value type, requiredness, multiplicity, nullability, defaults and temporal behavior |
-| `RelationType` | Typed role signatures, direction, inverses, cardinality and contextual/temporal constraints |
-| `FacetDefinition` | Reusable capability, e.g. locatable, ownable, versioned, executable or observable |
-| `ConstraintDefinition` | Predicate, applicability, required evidence/coverage, severity and explanation |
-| `CommandDefinition` | Input, authorization, preconditions, reducer, effects and invariants |
-| `Query/ViewDefinition` | Inputs, output contract, temporal/context scope, bounded evaluation and completeness |
-| `MappingDefinition` | Source schema mappings, identity correspondences, units and information-loss rules |
-| `ProjectionDefinition` | Consumer detail requirements, dependency tracking and unresolved-field behavior |
+| Definition object      | Specifies                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `DomainPack`           | Namespace, version, dependencies, compatibility and documentation                           |
+| `ObjectType`           | Identity strategy, properties, facets, lifecycle and supported operations                   |
+| `ValueType`            | Primitive/structured value semantics, units, validation and canonical serialization         |
+| `PropertyDefinition`   | Value type, requiredness, multiplicity, nullability, defaults and temporal behavior         |
+| `RelationType`         | Typed role signatures, direction, inverses, cardinality and contextual/temporal constraints |
+| `FacetDefinition`      | Reusable capability, e.g. locatable, ownable, versioned, executable or observable           |
+| `ConstraintDefinition` | Predicate, applicability, required evidence/coverage, severity and explanation              |
+| `CommandDefinition`    | Input, authorization, preconditions, reducer, effects and invariants                        |
+| `Query/ViewDefinition` | Inputs, output contract, temporal/context scope, bounded evaluation and completeness        |
+| `MappingDefinition`    | Source schema mappings, identity correspondences, units and information-loss rules          |
+| `ProjectionDefinition` | Consumer detail requirements, dependency tracking and unresolved-field behavior             |
 
 Favor composition of facets over deep inheritance or one massive union. A garment can be an object instance with locatable, ownable, wearable and visually describable facets. A container image is an immutable artifact with executable and content-addressed facets. Both have identity and provenance, but only the garment has a worn-on-body relation.
 
@@ -134,7 +140,7 @@ Self-description does not allow arbitrary user-defined code to execute. Declarat
 
 ## 5. Domain object definition example
 
-Illustrative future DSL; no parser for this syntax is claimed to exist:
+Illustrative future DSL; no parser for this syntax is claimed to exist. Note (2026-11-10): as implemented, an extension is a TypeScript `Profile` object with exact-version `requires` on unprefixed pack ids (for example `requires: { world: '1.0.0' }` in `packages/core/src/semantic/packs.ts`), not this syntax; `examples/semantic-world/demo.mjs` defines an `equipment` profile that way.
 
 ```yaml
 pack: example.equipment
@@ -149,16 +155,16 @@ types:
     identity: persisted-instance
     facets: [locatable, ownable, lendable, maintainable]
     properties:
-      label: {type: localized-text, required: true}
-      serial: {type: string, required: false}
-      condition: {type: enum, values: [working, damaged, retired], temporal: true}
-      appearance: {type: ref, target: seamline.visual.AppearanceDefinition}
+      label: { type: localized-text, required: true }
+      serial: { type: string, required: false }
+      condition: { type: enum, values: [working, damaged, retired], temporal: true }
+      appearance: { type: ref, target: seamline.visual.AppearanceDefinition }
     constraints:
       - id: active-custody-exclusive
         rule: inventory.single-current-custodian
       - id: retirement-prevents-new-loan
         rule: inventory.disallow-loan-when
-        parameters: {property: condition, equals: retired}
+        parameters: { property: condition, equals: retired }
 commands:
   lend:
     uses: seamline.inventory.lend
@@ -167,7 +173,7 @@ views:
     uses: seamline.inventory.available-to-borrow
 ```
 
-The definition is intentionally domain-specific while reusing placement, lending and availability semantics. Atelier adds an appearance binding and a shot; the bot adds conversational names and salience. A workshop application adds maintenance tasks. None implements another custody store.
+The definition is intentionally domain-specific while reusing placement, lending and availability semantics. The authoring application adds an appearance binding and a shot; the companion application adds conversational names and salience. A workshop application adds maintenance tasks. None implements another custody store.
 
 The compiler must resolve every referenced pack and primitive against these declared dependencies. Omitted dependencies are errors, not implicit imports. Defaults are also explicit: a default condition can be an initialization rule, but an unknown imported condition must not silently become “working.”
 
@@ -175,14 +181,14 @@ The compiler must resolve every referenced pack and primitive against these decl
 
 Fungibility describes interchangeability **for a purpose under stated criteria**, not merely whether an object has an ID. It is not inherently a blockchain concept.
 
-| Model | Meaning | Required behavior |
-|---|---|---|
-| Unique instance | Particular identifiable object | Serial identity, placement, custody, ownership, condition and individual history |
-| Stock lot | Quantity interchangeable within criteria | Exact quantity/unit, lot properties, ownership/custody allocation and movements |
-| Material/batch | Aggregate with composition and production lineage | Transformation inputs/outputs, waste/yield and measurement precision |
-| Individuated unit | A formerly interchangeable unit given individual identity | Explicit extraction from a lot and origin link; decrement lot atomically |
-| Digital artifact | Identifiable information content or rendition | Copies and derivations do not imply physical quantity conservation |
-| Entitlement/capacity | Right to use a resource or bounded allocation | Separate entitlement holder, usage/reservation and expiry semantics |
+| Model                | Meaning                                                   | Required behavior                                                                |
+| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Unique instance      | Particular identifiable object                            | Serial identity, placement, custody, ownership, condition and individual history |
+| Stock lot            | Quantity interchangeable within criteria                  | Exact quantity/unit, lot properties, ownership/custody allocation and movements  |
+| Material/batch       | Aggregate with composition and production lineage         | Transformation inputs/outputs, waste/yield and measurement precision             |
+| Individuated unit    | A formerly interchangeable unit given individual identity | Explicit extraction from a lot and origin link; decrement lot atomically         |
+| Digital artifact     | Identifiable information content or rendition             | Copies and derivations do not imply physical quantity conservation               |
+| Entitlement/capacity | Right to use a resource or bounded allocation             | Separate entitlement holder, usage/reservation and expiry semantics              |
 
 Two sealed batteries may be interchangeable until one is installed or develops a fault. Two identical jackets can still be distinct instances. Medicine batches with different expiry dates need separate equivalence classes. Software copies share bytes but can have different deployment identities and access entitlements. A transferable game token, physical tool and API quota can all be modeled without assuming identical ownership or conservation rules.
 
@@ -244,9 +250,9 @@ The target is demonstrated when the engine can support all of these through doma
 2. Two branches of one world evolve the same item differently without state leakage.
 3. A late correction changes today's reconstruction of yesterday while preserving yesterday's recorded view.
 4. One stock lot becomes serialized units; concurrent reservation cannot allocate the same last unit twice.
-5. A bot changes custody and Atelier renders the exact resulting snapshot, then places the take on two different edit timelines.
+5. The companion application changes custody and the authoring application renders the exact resulting snapshot, then places the take on two different edit timelines.
 6. A code commit produces an artifact deployed to a runtime instance; an incident resolves to the observed artifact revision, not current `main`.
 7. A custom equipment domain adds maintenance and borrowing rules without kernel changes or another inventory implementation.
 8. A derived answer reports unavailable evidence rather than silently inventing a fact or declaring a requirement satisfied.
 
-The comprehensive software capabilities are specified separately in [codebase-intelligence.md](codebase-intelligence.md). The [implementation design](design.md) remains the starting engine migration and two-application integration slice; the breadth defined here is the architectural target, not an assertion that every domain ships in the first release.
+The comprehensive software capabilities are specified separately in [codebase-intelligence.md](codebase-intelligence.md). The [implementation design](design.md) remains the starting engine migration and two-application integration slice; the breadth defined here is the architectural target, not an assertion that every domain ships in the first release. Note (2026-11-10): the first release, 0.1.0, has since been published; it ships the foundation described in [Using the semantic foundation](../../semantic-engine.md), not this breadth.

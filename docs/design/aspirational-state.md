@@ -2,9 +2,10 @@
 
 - **Status:** Design. Subordinate to [`docs/design/v3.md`](v3.md), which is authoritative. Where this document and v3 disagree, v3 wins and this document is wrong.
 - **Date:** 2026-08-30
+- **Reconciled with the code:** 2026-11-10, the day 0.1.0 was published. The end state described here is still a target, not a description of 0.1.0. Statements about "today" that the release has overtaken carry a note with that date.
 - **Scope:** the end state of the library **strictly inside v3's cut**. Nothing here undefers an item from v3 §9, and nothing here adds a node kind, an extractor, a lens, or a store adapter.
 
-v3 answers *what Seamline is*. This document answers *what "finished" looks like for the thing v3 describes*, so that "finished" is a checkable condition rather than a feeling. It exists because the failure mode this project has already survived once is scope re-growth: a design that answers "what could this become" instead of "what does this owe its users". Section 6 restates the boundary in the terms a reader outside the project can check.
+v3 answers _what Seamline is_. This document answers _what "finished" looks like for the thing v3 describes_, so that "finished" is a checkable condition rather than a feeling. It exists because the failure mode this project has already survived once is scope re-growth: a design that answers "what could this become" instead of "what does this owe its users". Section 6 restates the boundary in the terms a reader outside the project can check.
 
 ---
 
@@ -30,25 +31,25 @@ Anything else is a feature, and features are governed by v3 §9.
 
 ### 1.1 Four tiers, and a consumer can always tell which one they are in
 
-| Tier | What it is | Promise |
-|---|---|---|
-| **Agent and operator surface** | the CLI (`init`, `extract`, `why`, `check`, `export`, `diff`, `blast-radius`) and the MCP server's tool set | semver-governed. A breaking change needs a major bump and a deprecation window. |
-| **Library surface** | `@seamline/core`, `@seamline/ontology`, the extractors, `@seamline/infer-join`, `@seamline/contradictions` | published, importable, and documented as **unstable below 1.0**. The exported names are curated (1.4), so a change is deliberate, but it is not yet a promise. |
-| **Specification surface** | `ontology/seamline.yaml`, the canonical SIF serialization, the contradiction catalog X1 to X10 | CC-BY-4.0, versioned independently of the code, adoptable without adopting the code. Breaking the ontology requires the evolution test in v3 §7 to flag it and a major bump to carry it. |
-| **Internal** | the integration test harness, the repo-root gate scripts | never published, never in a `files` allowlist, no promise of any kind. |
+| Tier                           | What it is                                                                                                                                 | Promise                                                                                                                                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent and operator surface** | the CLI (`init`, `extract`, `why`, `check`, `export`, `diff`, `blast-radius`, `mcp`, `align`, `conformance`) and the MCP server's tool set | semver-governed. A breaking change needs a major bump and a deprecation window.                                                                                                          |
+| **Library surface**            | `@seamline/core`, `@seamline/ontology`, the extractors, `@seamline/infer-join`, `@seamline/contradictions`                                 | published, importable, and documented as **unstable below 1.0**. The exported names are curated (1.4), so a change is deliberate, but it is not yet a promise.                           |
+| **Specification surface**      | `ontology/seamline.yaml`, the canonical SIF serialization, the contradiction catalog X1 to X10                                             | CC-BY-4.0, versioned independently of the code, adoptable without adopting the code. Breaking the ontology requires the evolution test in v3 §7 to flag it and a major bump to carry it. |
+| **Internal**                   | the integration test harness, the repo-root gate scripts                                                                                   | never published, never in a `files` allowlist, no promise of any kind.                                                                                                                   |
 
 The line that matters is the third one. The ontology is the part of this project most likely to outlive the tooling, and it is licensed and versioned so that it can.
 
 ### 1.2 Package naming, decided differently than first drafted here
 
-This section originally resolved on one installable name for humans (`seamline`, unscoped, carrying the CLI directly) and scoped names for everything else, reasoning that a wrapper package re-exporting `@seamline/cli` cannot reach that package's bin through its published `exports` map and is not portably resolvable across pnpm's isolated layout, npm hoisting, and Yarn PnP. That reasoning about *wrapper packages specifically* still holds — do not build one.
+This section originally resolved on one installable name for humans (`seamline`, unscoped, carrying the CLI directly) and scoped names for everything else, reasoning that a wrapper package re-exporting `@seamline/cli` cannot reach that package's bin through its published `exports` map and is not portably resolvable across pnpm's isolated layout, npm hoisting, and Yarn PnP. That reasoning about _wrapper packages specifically_ still holds — do not build one.
 
-**The operator decided otherwise for this release: the CLI ships as `@seamline/cli`, not bare `seamline`.** The two real defects that resolution actually fixed are fixed on their own terms, independent of which name wins:
+**The maintainers decided otherwise for this release: the CLI ships as `@seamline/cli`, not bare `seamline`.** The two real defects that resolution actually fixed are fixed on their own terms, independent of which name wins:
 
-- **Documented install commands name a package that exists.** README now reads `npm install -g @seamline/cli`. `bin: {"seamline": "./dist/bin.js"}` in that package's own `package.json` already means the installed shell command is `seamline` either way — this only ever affected the *install* line, never the commands a user types afterward.
+- **Documented install commands name a package that exists.** README now reads `npm install -g @seamline/cli`. `bin: {"seamline": "./dist/bin.js"}` in that package's own `package.json` already means the installed shell command is `seamline` either way — this only ever affected the _install_ line, never the commands a user types afterward.
 - **The publish pipeline's post-publish verification enumerates every artifact the run actually publishes and asserts provenance on each.** The reviewed list in `release.yml` includes `@seamline/security` and `@seamline/align`. Its "Verify every published package carries provenance" step audits a fresh installation of the exact release versions with lifecycle scripts disabled and rejects missing verified provenance for any listed package. See npm's [attestation verification documentation](https://docs.npmjs.com/cli/v11/commands/npm-audit/#audit-signatures).
 
-One residual point, now resolved by a finding rather than a decision: the unscoped `seamline` name on the npm registry was unclaimed as of 2026-09-08, and `@seamline/*` are libraries, `@seamline/cli` and `@seamline/mcp` (its own `seamline-mcp` bin) are the two installable entry points — no package occupies the bare name. A live publish attempt against it that day was rejected by the registry itself (`403 Package name too similar to existing package readline`, an edit distance of 2 on an 8-character name) — npm's own anti-abuse policy blocks anyone from claiming that name, not just this organization, which closes the typosquat concern this paragraph used to flag. Tracked as checklist item C5.
+One residual point, now resolved by a finding rather than a decision: the unscoped `seamline` name on the npm registry was unclaimed as of 2026-09-08, and `@seamline/*` are libraries, `@seamline/cli` and `@seamline/mcp` (its own `seamline-mcp` bin) are the two installable entry points — no package occupies the bare name. A live publish attempt against it that day was rejected by the registry itself (`403 Package name too similar to existing package readline`, an edit distance of 2 on an 8-character name) — npm's own anti-abuse policy blocks anyone from claiming that name, not just this organization, which closes the typosquat concern this paragraph used to flag. Recorded as item C5 of `docs/PUBLIC-RELEASE-CHECKLIST.md`.
 
 ### 1.3 Stability tiers, stated as what breaks a promise
 
@@ -78,7 +79,7 @@ This is a **pre-1.0 obligation**, because it is the one class of surface mistake
 
 ### 1.5 Every published package has its own README
 
-`npm pack` silently drops a `files` entry that matches nothing. A package whose `files` array lists `README.md` and which has no `README.md` publishes without one, with no error, and renders as a blank page on the registry. Nine of these are one command away from being published today.
+`npm pack` silently drops a `files` entry that matches nothing. A package whose `files` array lists `README.md` and which has no `README.md` publishes without one, with no error, and renders as a blank page on the registry. Nine of these are one command away from being published today. Note (2026-11-10): closed before 0.1.0. Each of the twelve published packages has a `README.md`, and `scripts/pack-check.mjs` fails a package whose tarball lacks one.
 
 The end state is one README per published package, each answering four questions in this order: what this package is, whether you should be using it directly (for most packages the answer is "use the CLI or the MCP server instead"), what it exports, and what its stability tier is. The tier line is what keeps 1.2's promise honest at the point a consumer actually reads it.
 
@@ -92,14 +93,14 @@ v3 §1's differentiator is the join: field-level cross-domain identity across a 
 
 Every extractor declares a capability manifest, and six controls are enforced against it rather than documented for it - a 1.0 release gate: no build ships while any of the six is unwired:
 
-| Control | Enforcement |
-|---|---|
-| Environment | an allow-list intersected with the manifest, then a deny-pass over credential-shaped names. `HOME` is deliberately excluded, so home-directory credential stores are not reachable even by path. |
-| Read paths | repo-relative declared globs, with realpath containment so a symlink cannot escape the repo root. |
-| Network | denied by default and asserted at the type level, not requested politely. |
-| Wallclock | an abort signal at the manifest's timeout. |
-| Memory | in-process sampling with abort, and a real hard cap available via a child process limit. |
-| Provenance ceiling | every emitted node and edge is gated against the manifest's declared ceiling before it reaches the store, so an inference pass cannot label a guess as extracted. |
+| Control            | Enforcement                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Environment        | an allow-list intersected with the manifest, then a deny-pass over credential-shaped names. `HOME` is deliberately excluded, so home-directory credential stores are not reachable even by path. |
+| Read paths         | repo-relative declared globs, with realpath containment so a symlink cannot escape the repo root.                                                                                                |
+| Network            | denied by default and asserted at the type level, not requested politely.                                                                                                                        |
+| Wallclock          | an abort signal at the manifest's timeout.                                                                                                                                                       |
+| Memory             | in-process sampling with abort, and a real hard cap available via a child process limit.                                                                                                         |
+| Provenance ceiling | every emitted node and edge is gated against the manifest's declared ceiling before it reaches the store, so an inference pass cannot label a guess as extracted.                                |
 
 Two properties of that list are the aspiration, beyond the controls existing:
 
@@ -117,6 +118,8 @@ The end state extracts this into **`@seamline/security`**, published, with three
 1. a documented threat model for the delimiting specifically, distinct from the repo-level threat model;
 2. a **public test corpus** of injection attempts, which outside contributors can add to, and which the package runs as its own gate;
 3. a stable API, so a downstream tool that serves any of Seamline's output into a model context uses this rather than reimplementing it.
+
+Status (2026-11-10): `@seamline/security` is published at 0.1.0. Its README carries a threat model for the delimiting, and the corpus is public in `packages/security/corpus/` and run by the package's own tests. Point 3 is open: the package documents itself as unstable below 1.0.
 
 Point 2 is the one that compounds. A defense against prompt injection whose test corpus only contains attacks its own author thought of is a defense against that author.
 
@@ -186,7 +189,7 @@ After 1.0: anything removed is deprecated for at least one minor release first, 
 
 ### 4.3 engines
 
-The supported runtime floor is declared at the root and enforced by the CI matrix across the supported lanes. The gap to close: **every published package repeats the `engines` field.** A consumer who installs one package standalone gets no version guard from the repository's root manifest, because they never see it. Repeating the field is redundant inside the monorepo and load-bearing outside it.
+The supported runtime floor is declared at the root and enforced by the CI matrix across the supported lanes. The gap to close: **every published package repeats the `engines` field.** A consumer who installs one package standalone gets no version guard from the repository's root manifest, because they never see it. Repeating the field is redundant inside the monorepo and load-bearing outside it. Note (2026-11-10): closed in 0.1.0; each of the twelve published packages declares `engines`.
 
 ### 4.4 npm provenance, and the CI exception it depends on
 
@@ -204,7 +207,7 @@ The end-state publish policy, in full:
 
 ### 4.5 CHANGELOG
 
-There is no changelog today, which is defensible for a pre-release and indefensible for a tagged one. The end state: a `CHANGELOG.md` maintained per release with a Breaking / Added / Fixed / Security split, where the Security section names the reported issue class rather than only crediting the reporter.
+There is no changelog today, which is defensible for a pre-release and indefensible for a tagged one. (Note, 2026-11-10: `CHANGELOG.md` now exists at the repository root, with an entry for 0.1.0.) The end state: a `CHANGELOG.md` maintained per release with a Breaking / Added / Fixed / Security split, where the Security section names the reported issue class rather than only crediting the reporter.
 
 ---
 
@@ -212,19 +215,19 @@ There is no changelog today, which is defensible for a pre-release and indefensi
 
 ### 5.1 The documentation set at 1.0
 
-| Document | Job |
-|---|---|
-| `README.md` | the ten-minute path, real captured output, and an unflinching "what does not work" section. |
-| Per-package `README.md` | what this package is, whether to use it directly, what it exports, and its stability tier (1.5). |
-| `docs/design/v3.md` | the authoritative design. |
-| This document | the end state and the promises. |
-| `docs/adr/` | one record per decision that is expensive to reverse. |
-| `THREATMODEL.md` | assets, boundaries, adversaries, controls, and unmitigated residual risk. |
-| The council review record | what has already been argued and lost, so it is not re-argued from scratch. |
-| An ontology reference | generated from the LinkML source, published under CC-BY-4.0, adoptable without the code. |
+| Document                  | Job                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`               | the ten-minute path, real captured output, and an unflinching "what does not work" section.                                                 |
+| Per-package `README.md`   | what this package is, whether to use it directly, what it exports, and its stability tier (1.5).                                            |
+| `docs/design/v3.md`       | the authoritative design.                                                                                                                   |
+| This document             | the end state and the promises.                                                                                                             |
+| `docs/adr/`               | one record per decision that is expensive to reverse.                                                                                       |
+| `THREATMODEL.md`          | assets, boundaries, adversaries, controls, and unmitigated residual risk.                                                                   |
+| The council review record | what has already been argued and lost, so it is not re-argued from scratch.                                                                 |
+| An ontology reference     | generated from the LinkML source, published under CC-BY-4.0, adoptable without the code.                                                    |
 | A contradiction reference | one page per code X1 to X10: what it means, what facts it reads, what a true positive looks like, and how to fix it rather than silence it. |
 
-The contradiction reference is the highest-leverage missing document. Every code the tool emits is a claim about the reader's codebase, and a claim with no explanation gets suppressed rather than fixed.
+The contradiction reference is the highest-leverage missing document. (Note, 2026-11-10: both references now exist. The contradiction reference is [`docs/contradictions/`](../contradictions/README.md), one page per code X1 to X10, and the ontology reference is [`docs/reference/ontology.md`](../reference/ontology.md).) Every code the tool emits is a claim about the reader's codebase, and a claim with no explanation gets suppressed rather than fixed.
 
 ### 5.2 Governance and contribution
 
@@ -234,7 +237,7 @@ The contradiction reference is the highest-leverage missing document. Every code
 - A published conduct contact.
 - Reviewed contribution paths, ordered by how much context they need: a contradiction reference page, a test case for the injection corpus (2.2), a fixture repository for a detector, a `contrib/` extractor, then core. The two fixture-shaped paths carry one standing condition, stated where a contributor reads rather than only in the non-goals: the content is synthesized from scratch and is never derived from a private codebase (6A.7).
 
-The first three are **human-owned release preconditions**. They cannot be satisfied by tooling, they block first publish, and naming them here keeps them from being discovered at tag time.
+The first three are **human-owned release preconditions**. They cannot be satisfied by tooling, they block first publish, and naming them here keeps them from being discovered at tag time. Note (2026-11-10): 0.1.0 has been published. `SECURITY.md` and `CODE_OF_CONDUCT.md` each name a contact, and the DCO check runs in `.github/workflows/ci.yml`; `.github/CODEOWNERS` names one owner, so the maintainers team of at least two does not exist yet and remains owed before 1.0.
 
 ### 5.3 The only roadmap this project is allowed to have
 
@@ -244,7 +247,9 @@ Everything in v3 §9, and everything in §6B, is deferred behind an **admission 
 2. **A named owner.** A person who commits to running the new capability against that repository and triaging what it finds, for a stated window. Triage cost, not stated demand, is the real expense, and this leg is what a self-nomination with no evidence behind it fails to clear.
 3. **The design-spec pass**, unchanged from before.
 
-The worked example is contradiction **X5_UNWRITTEN_COLUMN** (a required column with no default that no traced write path writes). Its detector is implemented and tested against a synthetic fixture, and it cannot fire on any real repository today, because code extraction records which *table* a symbol writes and not which *columns*. Emitting column-level writes is a new extraction capability spanning several distinct write paths, so it is a v3 §9 item, not a bug fix. It stays silent rather than guessing, the README says so, and the unblock is a cited instance plus a named owner for a specific write path (raw SQL, Prisma, Drizzle, or another ORM). This is what the gate looks like when it is working: a known, documented, non-secret gap that nobody quietly closed by writing a heuristic, and that a plausible-sounding volunteer does not open on principle alone.
+The worked example is contradiction **X5_UNWRITTEN_COLUMN** (a required column with no default that no traced write path writes). Its detector is implemented and tested against a synthetic fixture, and it cannot fire on any real repository today, because code extraction records which _table_ a symbol writes and not which _columns_. Emitting column-level writes is a new extraction capability spanning several distinct write paths, so it is a v3 §9 item, not a bug fix. It stays silent rather than guessing, the README says so, and the unblock is a cited instance plus a named owner for a specific write path (raw SQL, Prisma, Drizzle, or another ORM). This is what the gate looks like when it is working: a known, documented, non-secret gap that nobody quietly closed by writing a heuristic, and that a plausible-sounding volunteer does not open on principle alone.
+
+Note (2026-11-10): the example is out of date in one respect, and v3 §9 governs. `extract-code-ts` now records the columns of bounded raw-SQL inserts (`insertColumns` and `insertComplete` on `QUERIES` edges, `packages/extract-code-ts/src/raw-sql.ts`), so X5 can fire on a repository passed through real extraction. It is still dormant: no firing on an unmodified repository outside this project is verified, and its three historical findings were false positives ([`docs/contradictions/X5.md`](../contradictions/X5.md)). The admission legs for it remain unmet, and writes through Prisma, Drizzle or another ORM are still not extracted.
 
 ---
 
@@ -259,7 +264,7 @@ These do not reopen through §5.3's admission test. For 5, the fact does not cha
 1. **No web viewer, no hosted service, no server component, no telemetry, and no network calls.**
 2. **No live introspection of databases, clusters, or cloud accounts.** Extraction reads static files. Infrastructure state and plan files are never read, at any version, because they contain resolved secrets.
 3. **No query language and no raw query surface**, including through the MCP server. See 2.3.
-4. **No inference feeding a gate.** Contradiction detection reads facts only. Inferred and model-suggested rows live in separate insert-only storage and never mutate the facts tables. No language model is in the extraction path or the gate path.
+4. **No inference feeding a gate.** Contradiction detection reads facts only. Inferred and model-suggested rows live in separate insert-only storage and never mutate the facts tables. (Note, 2026-11-10: the separate storage is not implemented. In 0.1.0 those rows share the `nodes` and `edges` tables and are told apart by the `provenance` column; detectors take only extracted or declared nodes as facts and may follow an inferred join edge between two of them. See the dated note in v3 §2.4.) No language model is in the extraction path or the gate path.
 5. **No export by default.** There is no "export everything" profile, and `seamline-out/` stays gitignored by `init`. Aggregation makes the whole strictly more sensitive than any part.
 6. **No vendored third-party code.** Implementing a published specification is fine; copying source is a license event, requires a recorded compatibility decision and notice propagation before it lands, and an allow-list gate cannot detect it because the code arrives as a copy-paste rather than a dependency.
 7. **No contributed fixture, repro repository, or injection-corpus case derived from a private codebase.** Everything in the public injection corpus (2.2) and in every detector fixture repository is synthesized from scratch, or it does not go in. A minimized repro of a real contradiction in a private repository is still a published description of that repository's schema and of the disagreement sitting in it, and a contributor who has just watched the tool find something real is exactly the person most tempted to attach it. This is a whole-class refusal rather than a review step because "derived from" is not a property a reviewer can reliably see in a shrunk fixture: by the time a repro is small enough to read, the evidence of where it came from has usually been minimized away too. The rule protects contributors from this project rather than the other way round. A corpus that quietly accumulates real structure from the repositories it was tested against becomes a liability to everyone who contributed to it, and the one thing this project cannot offer is to un-publish it later.
@@ -279,13 +284,15 @@ These do not reopen through §5.3's admission test. For 5, the fact does not cha
 
 ## 7. Items that gate 1.0 and are not engineering work
 
+Status (2026-11-10): this list was written before the first publication. 0.1.0 was published on 2026-11-10 under the `@seamline` scope, which closes item 3. Item 2 is still listed as open in `docs/PUBLIC-RELEASE-CHECKLIST.md`. Item 5 is kept as written, as a record of what the review found.
+
 Stated separately because engineering effort will not move any of them, and a plan that hides them inside a task list will slip on all of them at once:
 
 1. A published security contact, a conduct contact, and a code-ownership team of at least two people (5.2).
 2. A written provenance confirmation for the code-derivation question that this project's own license standard raises about its TypeScript extractor: not because a lift is known to have happened, but because the standard requires confirmation rather than an assumption in either direction.
 3. Registry ownership of the package names in 1.2, before anything is published under them.
 4. The one-way-door decisions that belong to publish time and are deliberately not made early.
-5. A human review pass over every publicly tracked file for organization-identifying detail that `internal-leak-scan.mjs`'s denylist does not catch. Confirmed instances on file today: `docs/adr/ADR-0008`, `docs/adr/ADR-0004`, and `docs/design/v3.md` (its deployment-target and tooling references, plus the internal tracker id it names); an internal deployment path, found twice in `ADR-0008` and once in `v3.md` (now fixed by a concurrent stream); two stale `docs/internal/toolchain.md` references left over from the A1 path move, in `ADR-0004` and `scripts/license-gate.mjs` (now fixed); and the `seamline-xxx` internal issue-tracker ID format, cited in 14+ tracked files including production source comments (now being swept by a concurrent stream). The gate's own green run is not evidence for this class; it is a narrow denylist, not a correctness check, and this item exists so nobody reads the scan as having covered it. A council-reviewed pass fixed the instances named above (roughly a dozen files) on 2026-09-08, but this was keyword-driven, not the systematic line-by-line read every tracked file this item calls for; item 5 stays open.
+5. A human review pass over every publicly tracked file for organization-identifying detail that `internal-leak-scan.mjs`'s denylist does not catch. Confirmed instances on file today: `docs/adr/ADR-0008`, `docs/adr/ADR-0004`, and `docs/design/v3.md` (its deployment-target and tooling references, plus the internal tracker id it names); an internal deployment path, found twice in `ADR-0008` and once in `v3.md` (now fixed); two stale `docs/internal/toolchain.md` references left over from an earlier move of that file, in `ADR-0004` and `scripts/license-gate.mjs` (now fixed); and the `seamline-xxx` internal issue-tracker ID format, cited in 14+ tracked files including production source comments (a sweep that was under way when this was written; as of 2026-11-10 a few such ids remain in test comments under `packages/` and in `docs/PUBLIC-RELEASE-CHECKLIST.md`). The gate's own green run is not evidence for this class; it is a narrow denylist, not a correctness check, and this item exists so nobody reads the scan as having covered it. A reviewed pass fixed the instances named above (roughly a dozen files) on 2026-09-08, but this was keyword-driven, not the systematic line-by-line read every tracked file this item calls for; item 5 stays open.
 
 ---
 

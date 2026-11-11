@@ -1,7 +1,34 @@
 # @seamline/extract-data
+
 > **No measured precision or recall; do not rely on Seamline as a gate.** This is an early release. The one recorded measurement was made on a draft source tree: it produced zero findings and detected 0 of 11 injected mutants. Details are in the [repository README](https://github.com/zylver-solutions/seamline#what-works-today-and-what-does-not).
 
-Database schema facts at provenance `EXTRACTED`: `DataSource`, `Schema`, `Table`, `Column`, and `Migration` nodes, extracted from static files only — SQL DDL, Drizzle schema modules, `schema.prisma`, and ordered migration directories (design v3 §6). There is no live database introspection.
+Database schema facts at provenance `EXTRACTED`: `DataSource`, `Schema`, `Table`, `Column`, and `Migration` nodes, extracted from static files only: SQL DDL, Drizzle schema modules for Postgres (`pgTable`, `pgSchema`, `pgEnum`), `schema.prisma`, and ordered migration directories (design v3 §6). There is no live database introspection.
+
+## Install
+
+```bash
+npm install @seamline/extract-data
+```
+
+Requires Node.js 22.13 or later. Most users should not install or import this directly: `seamline extract` in `@seamline/cli` runs it as part of the normal pipeline. Import it directly only if you are building a tool that needs to run this extractor standalone.
+
+## Usage
+
+```js
+import { extractData } from '@seamline/extract-data';
+
+// Note the option is `root` here (the other extractors call it `repoRoot`), and the function is async.
+const { result, nodes, edges } = await extractData({
+  root: process.cwd(),
+  repo: 'my-repo',
+  runId: 'run-1',
+});
+console.log(result.status, nodes.length, edges.length);
+```
+
+## Configuration
+
+From `seamline.config.json`, this extractor's `options` accept `dataSource`, `defaultSchema`, `dialect`, `skipDirs` and `maxFileBytes`.
 
 A `Table` carries `ormModel` when exactly one ORM source declares it: the Prisma model name, or the name a Drizzle table is bound to. The `DataSource` node carries the `dialect` and the `defaultSchema` an unqualified name resolves in. Both are options of the extractor, in `seamline.config.json` (`public` and `postgres` when unset), and the code extractor binds an unqualified table name in a SQL string to the default schema only. A repository whose tables all live in one other schema (Prisma `multiSchema`, Drizzle `pgSchema('app')`) states it, or none of its raw SQL is bound to those tables:
 
@@ -11,11 +38,9 @@ A `Table` carries `ormModel` when exactly one ORM source declares it: the Prisma
 
 The dialect is not inferred from a Prisma `provider` or a Drizzle driver; set `"dialect": "mysql"` or `"sqlite"` for those repositories, or names are compared by PostgreSQL rules. A Drizzle table declared behind a namespace import (`export const user = pg.pgTable(...)`) is recorded under its binding name like a bare `pgTable`; its column builders (`pg.text('id')`) are not read.
 
-Most users should not import this directly — `seamline extract` in `@seamline/cli` runs it as part of the normal pipeline. Import it directly only if you are building a tool that needs to run this extractor standalone.
+Main exports:
 
-It exports:
-
-- `DATA_SCOPE`, `EXTRACTOR_NAME`, `EXTRACTOR_VERSION`, `MANIFEST`, `extractData`, and the `ExtractDataOptions`, `ExtractDataOutput` types — the extractor entry point and manifest.
+- `DATA_SCOPE`, `EXTRACTOR_NAME`, `EXTRACTOR_VERSION`, `MANIFEST`, `extractData`, and the `ExtractDataOptions`, `ExtractDataOutput` types: the extractor entry point and manifest.
 - `canonicalJson`, `canonicalSif` — deterministic serialization.
 - `buildDataModelIndex`, `DATA_MODEL_INDEX_VERSION`, `prismaDelegateName`: the data-model index, a canonical JSON document, built from this extractor's nodes, that `@seamline/extract-code-ts` reads to bind a table name in SQL to a `Table` node (its format is documented in `src/data-model-index.ts`). It travels as text, so it can cross a process boundary unchanged.
 - `normalizeSqlType`, `TYPE_CATEGORIES`, and the `NormalizedType`, `TypeCategory` types — SQL type normalization.
@@ -111,3 +136,5 @@ Two forms are true in one dialect only, so they apply only when the extractor's 
 A Prisma scalar list (`tags String[]`) is optional on create but reads `NOT NULL`, because the field is not marked `?`. Prisma Migrate creates such a column as a nullable array (`"tags" TEXT[]`, with a default only if the model has `@default([])`), so a statement that omits it, raw SQL included, stores `NULL` and succeeds; it is recorded as `db`, not `client`, and `hasDefault` is `true`. That does not depend on a default: `ALTER COLUMN ... DROP DEFAULT`, which Prisma emits when `@default([])` is removed, leaves the column `db`, because dropping a default does not make an array column NOT NULL. Only a migration that declares the column `NOT NULL` (in its `CREATE TABLE` or by `SET NOT NULL`, undone by `DROP NOT NULL`) makes it an ordinary required column, `none` unless something else supplies a default. The `nullable` prop keeps what the model says (`false`); reading a list as nullable would change what `X1` concludes about every list field and needs its own pass. MySQL backtick-quoted identifiers are not read (see the limits above), so `AUTO_INCREMENT` is recognised only in unquoted DDL. `ALTER TABLE ... ALTER COLUMN ... ADD GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY` (how `pg_dump` writes an identity column) is a database default, and `DROP IDENTITY` removes it.
 
 **Stability tier: library surface.** Published, importable, documented as unstable below 1.0.
+
+See the [repository README](https://github.com/zylver-solutions/seamline#readme) and [design v3](https://github.com/zylver-solutions/seamline/blob/main/docs/design/v3.md). File names such as `src/data-model-index.ts` above refer to this package's source in the repository. License: Apache-2.0 ([LICENSE](https://github.com/zylver-solutions/seamline/blob/main/LICENSE)).

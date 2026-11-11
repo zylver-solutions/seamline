@@ -2,6 +2,12 @@
   "name": "@seamline/extract-change",
   "version": "0.1.0",
   "description": "Git history facts for Seamline: commits, touched files and rename detection.",
+  "keywords": [
+    "seamline",
+    "static-analysis",
+    "code-graph",
+    "git-history"
+  ],
   "type": "module",
   "license": "Apache-2.0",
   "author": {

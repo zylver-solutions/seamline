@@ -1,9 +1,10 @@
 # ADR-0018: authority confined to a known contract identity
 
-- Status: accepted. The coordinated selector/store/SIF foundation is merged. Producer adoption and release evidence remain separate.
+- Status: accepted. The coordinated selector/store/SIF foundation is merged. Producer adoption and release evidence remain separate. Extends [ADR-0003](ADR-0003-run-lifecycle-tombstones-status.md) (a second selector form for an authoritative scope; store schema version 2) and [ADR-0009](ADR-0009-determinism-release-gate.md) (SIF version 2.0.0 and its framing line). Neither decision is replaced.
+- Status of implementation (2026-11-10): the selector codec is `packages/core/src/store/canonical-selector.ts`; the version-2 store schema and its migration are in `packages/core/src/store/schema.ts` (`SCHEMA_VERSION = 2`, `authority_claims_v2`); the SIF framing line is `packages/core/src/sif/framing.ts`, and `SIF_VERSION` in the contract is `2.0.0`. The validated-write producer emits canonical claims from `packages/extract-contracts/src/contract-authority.ts`. The body below was written before that code merged and is phrased as instructions to it: "must", "coordinate" and "Required acceptance before implementation merge" record what was required at the time. This note does not assert that every acceptance item was met. What X7 does on real repositories is stated in [`docs/contradictions/X7.md`](../contradictions/X7.md).
 - Date: 2026-10-23
 - Named consumer: the local validated-write producer and X7 (`docs/design/x7-upper-length.md`).
-- Forced by: the mixed supported/opaque retention finding in the X7 producer draft of 2026-10-23, at `packages/extract-contracts/src/write-extract.ts`, around line 122 of that draft. A filename-wide claim can retire an unproved contract beside a proved contract. Recognizing more parser spellings does not establish absence of every opaque binding.
+- Forced by: a review finding on a draft of the X7 validated-write producer (2026-10-23, in `packages/extract-contracts/src/write-extract.ts`; the draft is not published): one file can hold a contract the producer proves next to one it cannot read. A filename-wide claim can retire an unproved contract beside a proved contract. Recognizing more parser spellings does not establish absence of every opaque binding.
 
 ## Problem
 
@@ -18,7 +19,13 @@ Keep `AuthoritativeScope`'s existing shape. Coordinate a separate core/protocol 
 A canonical selector starts with the exact reserved prefix `/@canonical/v1/`. Its suffix is lowercase hexadecimal for the UTF-8 bytes of compact canonical JSON with exactly these keys, in this order:
 
 ```json
-{"path":"src/form.ts","rules":[["exact","abc"],["prefix","abc#/"]]}
+{
+  "path": "src/form.ts",
+  "rules": [
+    ["exact", "abc"],
+    ["prefix", "abc#/"]
+  ]
+}
 ```
 
 `path` is one literal repo-relative POSIX source path, never a glob. It must have no leading slash, backslash, control character, empty, dot or parent segment. `rules` is a nonempty array of two-element arrays. The first element is `exact` or `prefix`; the second is a nonempty literal canonical name or prefix without control characters. No wildcard, exclusion, brace expansion, expression or normalization is interpreted. Rules are sorted by operation then UTF-8 byte order of their value, with duplicates removed by the producer. Decoding must validate the exact object/tuple shape, strict UTF-8 and canonical round-trip encoding. Every decoded path and rule string must contain only Unicode scalar values: reject unpaired UTF-16 surrogates, including JSON-escaped ones. No Unicode normalization is performed. Alternate encodings, unknown keys or versions are rejected.

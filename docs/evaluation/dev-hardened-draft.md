@@ -1,6 +1,8 @@
 # Hardened development measurement (draft of 2026-10-23)
 
-This pinned draft measurement supersedes the firing coverage of the [earlier candidate draft](dev-candidate-draft.md). It is not a final-main result. The draft has an unresolved mixed-binding retention finding; [the proposed authority amendment](../adr/ADR-0018-canonical-name-authority.md) is a separate design, not a runtime fix. [The machine-readable summary](dev-hardened-draft.json) preserves pins, counts, digests and the command. Full report SHA-256: `bb050b14df210feb402326e607170d7a157b404e394d571ac13ba0d4754c4725`.
+Status (2026-11-10): historical development measurement, kept as written; its numbers are unchanged. It is the one measurement the root README cites, and it measured a pre-release state of the tool source, not the published 0.1.0 code. On the date: the title and the JSON record give 2026-10-23 as the date of the tool source, and the JSON record holds no recording date; the root README and `CHANGELOG.md` say the measurement was recorded on 2026-10-26. The two figures are not reconciled in any record here. The JSON record is primary for what was measured, and the recording date rests on the README alone. "Draft" names a dated pre-release state of the tool source, not an unfinished document, and "final-main" means the code released from `main`. The development history is squashed into the single public commit of 0.1.0 (see `CHANGELOG.md`), so the draft's own commit cannot be checked out from the public repository.
+
+This pinned draft measurement supersedes the firing coverage of the [earlier candidate draft](dev-candidate-draft.md). It is not a final-main result. The draft has an unresolved mixed-binding retention finding; [the proposed authority amendment](../adr/ADR-0018-canonical-name-authority.md) is a separate design, not a runtime fix. (Note, 2026-11-10: ADR-0018 is now accepted and its store and SIF foundation is merged; its status line says producer adoption and release evidence remain separate, so this draft's finding is not shown closed by it.) [The machine-readable summary](dev-hardened-draft.json) preserves pins, counts, digests and the command. Full report SHA-256: `bb050b14df210feb402326e607170d7a157b404e394d571ac13ba0d4754c4725`.
 
 The isolated verification host ran Node 24.22.0 and pnpm 10.34.5 on seven explicit DEV pins from four upstreams, with all eleven mutants. All seven analyses completed. No sealed source was selected, fetched or analysed, and no upstream install, build, test or application module ran. Ordinary engine limits stayed in effect. The command exited 1 because the existing sealed freeze is burned by 32 watched changes; it was not replaced or reinterpreted.
 
@@ -8,18 +10,18 @@ The isolated verification host ran Node 24.22.0 and pnpm 10.34.5 on seven explic
 
 There are zero findings and zero labelled components. Precision and Wilson bounds are undefined, not zero or one. Every detector is dormant on this measured non-self corpus; a clean detector result alone does not prove its missing input is observable.
 
-| Detector | DEV precision (n) | Wilson lower bound | Mutant recall | UNKNOWN pins | Dormancy reason |
-| --- | --- | --- | --- | --- | --- |
-| X1_NULLABILITY | n/a (0) | n/a | 0/1 | 6/7 | One checkout observable with no reported mismatch; six UNKNOWN from response-role or scope limits. |
-| X2_TYPE | n/a (0) | n/a | 0/1 | 5/7 | Two clean pins with no reported type conflict; five UNKNOWN from role/type or scope limits. |
-| X3_CONSTRAINT | n/a (0) | n/a | 0/1 | 2/7 | Validator Symbol constraint facts are not emitted; the X7 producer does not feed X3. |
-| X4_UNBACKED_PROPERTY | n/a (0) | n/a | 0/1 | 2/7 | Supported response, container and confidence checks supplied no eligible unbacked pair. |
-| X5_UNWRITTEN_COLUMN | n/a (0) | n/a | 0/1 | 7/7 | All seven UNKNOWN: runtime-DDL and other writer guards prevent the absence claim. |
-| X6_PII_UNAUTHENTICATED | n/a (0) | n/a | 0/1 | 2/7 | No supported explicit unauthenticated operation-to-query exposure was reported. |
-| X7_VALIDATOR_DIVERGENCE | n/a (0) | n/a | 0/2 | 7/7 | All seven UNKNOWN with no current proved length pair. Both parent/fix parser summaries refuse unknown computed property extraction at src/lib/request.ts:36. |
-| X8_ORPHANED_MIGRATION | n/a (0) | n/a | 0/1 | 0/7 | No supported orphan witness; migration target props are absent and tombstoned endpoints are hidden. |
-| X9_CONTRACT_DRIFT | n/a (0) | n/a | 0/1 | 4/7 | Available graphs supplied no reported supported route/contract conflict; four pins UNKNOWN. |
-| X10_UNTESTED_PII_WRITE | n/a (0) | n/a | 0/1 | 2/7 | No TestCase/TESTS or CoverageRecord/COVERS producer supplies verification facts. |
+| Detector                | DEV precision (n) | Wilson lower bound | Mutant recall | UNKNOWN pins | Dormancy reason                                                                                                                                              |
+| ----------------------- | ----------------- | ------------------ | ------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| X1_NULLABILITY          | n/a (0)           | n/a                | 0/1           | 6/7          | One checkout observable with no reported mismatch; six UNKNOWN from response-role or scope limits.                                                           |
+| X2_TYPE                 | n/a (0)           | n/a                | 0/1           | 5/7          | Two clean pins with no reported type conflict; five UNKNOWN from role/type or scope limits.                                                                  |
+| X3_CONSTRAINT           | n/a (0)           | n/a                | 0/1           | 2/7          | Validator Symbol constraint facts are not emitted; the X7 producer does not feed X3.                                                                         |
+| X4_UNBACKED_PROPERTY    | n/a (0)           | n/a                | 0/1           | 2/7          | Supported response, container and confidence checks supplied no eligible unbacked pair.                                                                      |
+| X5_UNWRITTEN_COLUMN     | n/a (0)           | n/a                | 0/1           | 7/7          | All seven UNKNOWN: runtime-DDL and other writer guards prevent the absence claim.                                                                            |
+| X6_PII_UNAUTHENTICATED  | n/a (0)           | n/a                | 0/1           | 2/7          | No supported explicit unauthenticated operation-to-query exposure was reported.                                                                              |
+| X7_VALIDATOR_DIVERGENCE | n/a (0)           | n/a                | 0/2           | 7/7          | All seven UNKNOWN with no current proved length pair. Both parent/fix parser summaries refuse unknown computed property extraction at src/lib/request.ts:36. |
+| X8_ORPHANED_MIGRATION   | n/a (0)           | n/a                | 0/1           | 0/7          | No supported orphan witness; migration target props are absent and tombstoned endpoints are hidden.                                                          |
+| X9_CONTRACT_DRIFT       | n/a (0)           | n/a                | 0/1           | 4/7          | Available graphs supplied no reported supported route/contract conflict; four pins UNKNOWN.                                                                  |
+| X10_UNTESTED_PII_WRITE  | n/a (0)           | n/a                | 0/1           | 2/7          | No TestCase/TESTS or CoverageRecord/COVERS producer supplies verification facts.                                                                             |
 
 Overall mutant recall is **0/11**: five missed and six UNKNOWN. Both the Board mutant and the historical regex-bearing website mutant are UNKNOWN and remain in the denominator. The original ten mutants are unchanged; no miss was removed or redefined.
 

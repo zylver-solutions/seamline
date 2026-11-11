@@ -1,6 +1,6 @@
 # The extractor conformance suite
 
-- **Status:** Design-spec pass, implemented in the pull request that adds it. Subordinate to `docs/design/v3.md`.
+- **Status:** Design-spec pass, implemented. The suite is the `seamline conformance` command (`packages/cli/src/conformance/`) and shipped in release 0.1.0 (2026-11-10). [`docs/conformance.md`](../conformance.md) is the description for someone running it; this document records the design. Subordinate to `docs/design/v3.md`.
 - **Date:** 2026-10-19
 - **Tracking:** the work toward [the aspirational state](aspirational-state.md). The named consumer is the maintainer who owns the project, and the admission test's second leg (a named owner) is recorded in `docs/design/aspirational-state.md` section 5.3.
 - **Scope:** the outside-runnable suite that `docs/design/aspirational-state.md` section 2.5 defines, and nothing past it. No new package, node kind, edge kind, extractor, store adapter or lens; no change to `packages/ontology/src/contract.ts`; no new runtime dependency; no subpath export.
@@ -44,7 +44,7 @@ Every property has a negative control (a misbehaving extractor the suite must `F
 
 ## 4. A look is not a read
 
-The guard records a probe (`stat`, `readdir`, `realpath`) of a repository path that leads out of the repository as fatal, so a run fails closed rather than report `PASS` with a file missing. That is the host's decision and this change keeps it. But the property is "honours its declared read globs", and a directory walker that follows a symlink has not read outside them. Without a distinction, `extract-code-ts`, whose TypeScript file discovery follows links, would fail `reads-confined`, and so would any extractor of the same shape, for a reason unrelated to what the property says.
+The guard records a probe (`stat`, `readdir`, `realpath`) of a repository path that leads out of the repository as fatal, so a run fails closed rather than report `PASS` with a file missing. That is the host's decision and the suite keeps it. But the property is "honours its declared read globs", and a directory walker that follows a symlink has not read outside them. Without a distinction, `extract-code-ts`, whose TypeScript file discovery follows links, would fail `reads-confined`, and so would any extractor of the same shape, for a reason unrelated to what the property says.
 
 So the guard now records whether a denial was a content access or a probe (`RecordedDenial.access`), and the host's observation says whether a run was stopped by probes alone (`probeOnly`). The suite treats a probe-only stop on the `links` fixture as `PASS` for `reads-confined` with the cost stated in the evidence ("it cannot finish on a repository that holds such a link"), and any content access, write, socket or process as `FAIL`. The `links` lures are a separate fixture from the `bait`, so a run stopped by a link does not stop the bait from being tested.
 
@@ -54,7 +54,7 @@ This is the one place the suite is more lenient than the strictest reading, and 
 
 Stated in `docs/conformance.md` and not repeated at length:
 
-- No signing, no trust, no endorsement. Community extractors stay unsigned and are refused unless explicitly enabled.
+- No signing, no trust, no endorsement. Community extractors stay unsigned, and `seamline extract` does not load one at all (section 1).
 - Behaviour on generated fixtures, not on every repository.
 - The guards are JavaScript in the extractor's process; they do not stop an extractor written to defeat them (`THREATMODEL.md` R5). A pass says the extractor behaved.
 - Correctness of the facts, determinism, identity and tombstoning are not asserted.
@@ -66,9 +66,9 @@ Stated in `docs/conformance.md` and not repeated at length:
 
 `UNAVAILABLE` is a first-class result. A property the fixtures could not exercise is never reported `PASS`: an extractor that emits nothing, opens nothing it declares, or was not run on the fixture a property needs gets `UNAVAILABLE`, and the exit code is not `0`.
 
-## 6. Amendments made by the implementing pull request
+## 6. Documents amended with the implementation
 
 - `docs/conformance.md`, linked from the README and `CONTRIBUTING.md`; a CHANGELOG entry.
 - `docs/design/aspirational-state.md` section 2.5: a pointer to the implemented suite.
-- `THREATMODEL.md`: C4 points at the suite as the way an outside author checks an extractor against it, and R5 no longer says that no loader for another program exists: `seamline conformance` is one, with the limits stated there.
+- `THREATMODEL.md`: C4 points at the suite as the way an outside author checks an extractor against it, and R5 states that `seamline extract` has no loader for another program while `seamline conformance` runs a module the operator names, with the limits stated there.
 - `packages/cli/src/commands/store-selection.test.ts`: `conformance` joins `init` as a command that takes no `--store`, because it reads no store.

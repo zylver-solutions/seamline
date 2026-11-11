@@ -2,8 +2,8 @@
 /**
  * Pre-publication leak scan.
  *
- * This will be the first public repository this organization has released, so
- * there is no in-house precedent for what "internal material" looks like once
+ * This is the first public repository this organization has released, so
+ * there was no in-house precedent for what "internal material" looks like once
  * it is on the open internet. This script makes the answer mechanical instead
  * of a judgment call made by a tired person at 6pm.
  *
