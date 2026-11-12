@@ -195,6 +195,20 @@ Unchanged — none of these are actionable before the repository is actually pub
       **Update 2026-11-10: open, awaiting a maintainer.** Not done. It needs a message sent to each address from an account outside the organization, and the date of receipt recorded here.
 - [ ] **H4.** Re-run all three scans on the published tag, from a fresh clone rather than the working directory.
       **Update 2026-11-10: partly done, open.** In a fresh clone of tag `v0.1.0` (`git clone --depth 1 --branch v0.1.0`, commit `af1d3aca53a6b25a3d1539852bd685e12f783a51`), `node scripts/internal-leak-scan.mjs --publish` exits `0` over 837 tracked files. The license gate and the determinism gate need an install and a build, and were not re-run in that clone. Both passed on the same tag in the release run's `Re-verify the tagged tree` job on 2026-11-09, which works from a fresh checkout, but that was before publication. To close: run the other two in a fresh clone of the tag.
+      **Update 2026-11-12: all three scans re-run on the tag; the checkbox is left for the maintainer.** In a second fresh clone checked out at tag `v0.1.0` (`git rev-parse v0.1.0^{commit}` prints `af1d3aca53a6b25a3d1539852bd685e12f783a51`; `git status` was clean after the commands below), with Node 22.22.2 (inside the `engines` range `>=22.13.0` and the CI matrix) and pnpm 10.34.5:
+
+      | Command                                         | Exit | Key output line                                                            |
+      | ----------------------------------------------- | ---- | -------------------------------------------------------------------------- |
+      | `pnpm install --frozen-lockfile`                | `0`  | `Packages: +105`                                                           |
+      | `pnpm build` (`tsc --build`)                    | `0`  | no output                                                                  |
+      | `node scripts/license-gate.mjs --notices`       | `0`  | `license-gate: scanned 105 installed packages`, `license-gate PASSED`      |
+      | `node scripts/license-gate.mjs`                 | `0`  | `license-gate PASSED`                                                      |
+      | `node scripts/determinism-gate.mjs`, run 1      | `0`  | `determinism-gate PASSED: 2 output file(s) byte-identical across two runs` |
+      | `node scripts/determinism-gate.mjs`, run 2      | `0`  | `determinism-gate PASSED: 2 output file(s) byte-identical across two runs` |
+      | `node scripts/internal-leak-scan.mjs --publish` | `0`  | `837 tracked files`, `internal-leak-scan PASSED`                           |
+
+      The license gate counted 78 MIT, 13 Apache-2.0, 6 BSD-2-Clause, 6 ISC, 1 BlueOak-1.0.0 and 1 BSD-3-Clause packages, with 14 notice obligations. Both determinism runs reported a total of 61324566 bytes. The install printed a warning that it could not link the `seamline-mcp` bin, because `@seamline/mcp` was not built yet; `pnpm build` then completed without error. **Not verified:** only Node 22.22.2 was used (CI covers 22.13 and 24), and only on Linux. **Not ticked:** the legend at the top asks for a person's initials on each item, so the checkbox is left for the maintainer to tick after reading this record.
+
 - [ ] **H5.** After an explicitly authorized public-visibility transition, enable GitHub private vulnerability reporting and verify the reporting route before advertising it as available. The confirmed security email remains the reporting route until that verification.
       **Update 2026-11-10: half done, open, awaiting a maintainer.** The feature is enabled (`gh api repos/zylver-solutions/seamline/private-vulnerability-reporting` returns `{"enabled":true}`). The route has not been tested end to end: nobody has filed a test report and confirmed that it arrives. `SECURITY.md` nevertheless lists the route as of 2026-11-10, on the strength of the setting alone, so this item's own ordering was not followed. To close: file a test report from a second account, confirm receipt, and record the date here.
 
