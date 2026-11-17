@@ -12,8 +12,16 @@
 
 import { memo, noParserFact, parserReason, type ProbeEnv } from '../env.ts';
 import { lineOf, literalText, parseSource } from '../source.ts';
-import type { TS } from '../ts.ts';
-import { absent, holds, unknownFact, type FactSource, type ProbeFact } from '../types.ts';
+import { AlignError } from '../errors.ts';
+import { faultText, type TS } from '../ts.ts';
+import {
+  absent,
+  holds,
+  unknownFact,
+  type FactSource,
+  type ProbeFact,
+  type UnknownReason,
+} from '../types.ts';
 import { compareCodeUnits, dirname, joinPosix } from '../util.ts';
 import { entryPoints, otherLanguageReason, sourceFilesOf, type Pkg } from '../workspace.ts';
 
@@ -214,63 +222,124 @@ export function analyseDetector(
   };
 }
 
-/**
- * Why the registry of this tree cannot be read, or `null` when it was read or the tree has none.
- * A tracked registry that no parser read is not an empty registry: which codes it holds is
- * unknown, so a document's detector code can be neither confirmed nor dropped.
- */
-export function registryUnread(env: ProbeEnv): string | null {
-  if (env.ts !== null || !env.tree.tracked.includes(DETECTOR_REGISTRY_PATH)) return null;
-  return parserReason(env);
+/** Why the registry, or a part of it, was not read: the closed reason and the detail of the Unknown it causes. */
+export interface RegistryUnread {
+  readonly reason: UnknownReason;
+  readonly detail: string;
 }
 
-/** Load the registry (`ALL_DETECTORS`) and each detector's analysis (4.3 step 1). */
-export function loadDetectors(env: ProbeEnv): Map<string, DetectorInfo> {
-  return memo(env, 'detectors', () => {
-    const out = new Map<string, DetectorInfo>();
-    const ts = env.ts;
-    if (ts === null || !env.tree.tracked.includes(DETECTOR_REGISTRY_PATH)) return out;
-    const index = parseSource(env, DETECTOR_REGISTRY_PATH);
-    if (index.status !== 'ok') return out;
-    const imports = new Map<string, string>();
-    let elements: string[] = [];
-    for (const statement of index.sf.statements) {
-      if (
-        ts.isImportDeclaration(statement) &&
-        statement.importClause?.namedBindings !== undefined &&
-        ts.isNamedImports(statement.importClause.namedBindings) &&
-        ts.isStringLiteral(statement.moduleSpecifier)
-      ) {
-        for (const el of statement.importClause.namedBindings.elements)
-          imports.set(el.name.text, statement.moduleSpecifier.text);
-      }
-      if (ts.isVariableStatement(statement)) {
-        for (const declaration of statement.declarationList.declarations) {
-          if (
-            ts.isIdentifier(declaration.name) &&
-            declaration.name.text === 'ALL_DETECTORS' &&
-            declaration.initializer !== undefined
-          ) {
-            const init = unwrap(ts, declaration.initializer);
-            if (ts.isArrayLiteralExpression(init)) {
-              elements = init.elements
-                .filter((e): e is TS.Identifier => ts.isIdentifier(e))
-                .map((e) => e.text);
-            }
-          }
+export interface Registry {
+  /** The detectors that were read, by code. */
+  readonly detectors: ReadonlyMap<string, DetectorInfo>;
+  /**
+   * Non-null when the tree tracks the registry file and some of it could not be read. Which codes
+   * it holds is then not fully known: a code that is not in `detectors` may still be a detector,
+   * so it is neither confirmed nor shown to be outside the registry. `null` when the registry was
+   * read in full or the tree has none.
+   */
+  readonly unread: RegistryUnread | null;
+}
+
+const UNREAD_STATUS: Readonly<Record<'unreadable' | 'too-large', UnknownReason>> = {
+  unreadable: 'source-unreadable',
+  'too-large': 'limit-exceeded',
+};
+
+function parseRegistry(env: ProbeEnv, ts: NonNullable<ProbeEnv['ts']>): Registry {
+  const detectors = new Map<string, DetectorInfo>();
+  const index = parseSource(env, DETECTOR_REGISTRY_PATH);
+  if (index.status !== 'ok')
+    return { detectors, unread: { reason: UNREAD_STATUS[index.status], detail: index.detail } };
+  const imports = new Map<string, string>();
+  let elements: readonly TS.Expression[] | null = null;
+  for (const statement of index.sf.statements) {
+    if (
+      ts.isImportDeclaration(statement) &&
+      statement.importClause?.namedBindings !== undefined &&
+      ts.isNamedImports(statement.importClause.namedBindings) &&
+      ts.isStringLiteral(statement.moduleSpecifier)
+    ) {
+      for (const el of statement.importClause.namedBindings.elements)
+        imports.set(el.name.text, statement.moduleSpecifier.text);
+    }
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (
+          ts.isIdentifier(declaration.name) &&
+          declaration.name.text === 'ALL_DETECTORS' &&
+          declaration.initializer !== undefined
+        ) {
+          const init = unwrap(ts, declaration.initializer);
+          if (ts.isArrayLiteralExpression(init)) elements = init.elements;
         }
       }
     }
-    for (const name of elements) {
-      const specifier = imports.get(name);
-      if (specifier === undefined || !specifier.startsWith('.')) continue;
-      const file = joinPosix(dirname(DETECTOR_REGISTRY_PATH), specifier);
-      if (!env.tree.tracked.includes(file)) continue;
-      const info = analyseDetector(env, ts, file);
-      if (info !== null) out.set(info.code, info);
+  }
+  if (elements === null) {
+    return {
+      detectors,
+      unread: {
+        reason: 'reads-unresolvable',
+        detail: `${DETECTOR_REGISTRY_PATH} does not declare ALL_DETECTORS as an array literal`,
+      },
+    };
+  }
+  // An element that does not lead to an analysed detector file is a detector whose code is not known.
+  let unresolved: string | null = null;
+  for (const element of elements) {
+    const name = ts.isIdentifier(element) ? element.text : null;
+    const specifier = name === null ? undefined : imports.get(name);
+    const file =
+      specifier === undefined || !specifier.startsWith('.')
+        ? null
+        : joinPosix(dirname(DETECTOR_REGISTRY_PATH), specifier);
+    const info =
+      file === null || !env.tree.tracked.includes(file) ? null : analyseDetector(env, ts, file);
+    if (info === null) unresolved ??= name ?? 'an element that is not an identifier';
+    else detectors.set(info.code, info);
+  }
+  return {
+    detectors,
+    unread:
+      unresolved === null
+        ? null
+        : {
+            reason: 'reads-unresolvable',
+            detail: `${DETECTOR_REGISTRY_PATH}: ${unresolved} in ALL_DETECTORS does not resolve to a detector file whose code can be read`,
+          },
+  };
+}
+
+/**
+ * Read the registry (`ALL_DETECTORS`) and each detector's analysis (4.3 step 1). Never throws: a
+ * tracked registry that no parser read, that does not parse, that is over a bound, whose array or
+ * elements do not resolve, or whose reading stopped on a parser fault is `unread`, not empty.
+ */
+export function readRegistry(env: ProbeEnv): Registry {
+  return memo(env, 'registry', (): Registry => {
+    const none = new Map<string, DetectorInfo>();
+    if (!env.tree.tracked.includes(DETECTOR_REGISTRY_PATH)) return { detectors: none, unread: null };
+    const ts = env.ts;
+    if (ts === null)
+      return { detectors: none, unread: { reason: 'probe-failed', detail: parserReason(env) } };
+    try {
+      return parseRegistry(env, ts);
+    } catch (error) {
+      if (error instanceof AlignError) throw error;
+      return {
+        detectors: none,
+        unread: {
+          reason: 'probe-failed',
+          detail: `reading ${DETECTOR_REGISTRY_PATH} stopped: ${faultText(error)}`,
+        },
+      };
     }
-    return out;
   });
+}
+
+/** The detectors of the registry that were read, by code. */
+export function loadDetectors(env: ProbeEnv): ReadonlyMap<string, DetectorInfo> {
+  return readRegistry(env).detectors;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,8 +433,11 @@ function buildExtractorScan(
 export function probeDetectorLiveness(env: ProbeEnv, code: string): ProbeFact {
   const ts = env.ts;
   if (ts === null) return noParserFact(env);
-  const detector = loadDetectors(env).get(code);
+  const registry = readRegistry(env);
+  const detector = registry.detectors.get(code);
   if (detector === undefined) {
+    if (registry.unread !== null)
+      return unknownFact(registry.unread.reason, registry.unread.detail);
     return unknownFact(
       'reads-unresolvable',
       `${code} is not in the detector registry of this tree`,

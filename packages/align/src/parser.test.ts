@@ -11,7 +11,14 @@ import * as ts from 'typescript';
 import { COMMIT, caseFiles, factsFor, run } from './__fixtures__/build.ts';
 import { runAlign, type AlignRequest } from './run.ts';
 import { summaryObject, summaryText } from './summary.ts';
-import { SUPPORTED_TYPESCRIPT_RANGE, TYPESCRIPT_MISSING, resolveParser } from './ts.ts';
+import {
+  PARSER_FUNCTIONS,
+  PARSER_SYNTAX_KINDS,
+  SUPPORTED_TYPESCRIPT_RANGE,
+  TYPESCRIPT_MISSING,
+  parserLoadFailure,
+  resolveParser,
+} from './ts.ts';
 import { memTree } from './tree.ts';
 import { redactPacket } from './redact.ts';
 import type { AlignSink } from './write.ts';
@@ -68,7 +75,7 @@ test('resolveParser accepts the installed parser and refuses every other value w
   assert.deepEqual(resolveParser(null), { ts: null, unavailable: TYPESCRIPT_MISSING });
   assert.deepEqual(resolveParser(undefined), { ts: null, unavailable: TYPESCRIPT_MISSING });
   assert.deepEqual(resolveParser(TYPESCRIPT_7), { ts: null, unavailable: OUT_OF_RANGE });
-  for (const version of ['5.9.3', '6.0.2', '7.0.0-dev.20261101', '60.0.3']) {
+  for (const version of ['5.9.3', '6.0.2', '7.0.0', '60.0.3']) {
     const refused = resolveParser({ ...ts, version });
     assert.equal(refused.ts, null, version);
     assert.equal(
@@ -76,17 +83,13 @@ test('resolveParser accepts the installed parser and refuses every other value w
       `the installed typescript ${version} is outside the supported range ^6.0.3`,
     );
   }
-  for (const version of ['6.0.3', '6.1.0', '6.9.12']) {
+  for (const version of ['6.0.3', '6.0.4', '6.1.0', '6.9.12']) {
     assert.equal(resolveParser({ ...ts, version }).unavailable, null, version);
   }
   // In range by its version, but without the API: refused by what it lacks, not trusted by its label.
   assert.equal(
     resolveParser({ version: '6.0.3' }).unavailable,
     'the installed typescript 6.0.3 lacks the parser API the probes need (createSourceFile); the supported range is ^6.0.3',
-  );
-  assert.match(
-    resolveParser({ ...ts, version: '6.0.3', ScriptTarget: undefined }).unavailable ?? '',
-    /lacks the parser API the probes need \(ScriptTarget\)/,
   );
   // A version that is not a plain semver string is not echoed into a report.
   for (const hostile of [
@@ -153,22 +156,41 @@ for (const [name, parser, reason] of [
     assert.equal(without.packet.summary.classes['Unexplained gap'], 0);
   });
 
-  test(`${name}: an unread registry keeps a code it cannot place, as Unknown`, () => {
+  test(`${name}: an unread registry reads claims for catalog codes only, never for prose`, () => {
     const extra: Record<string, string> = {
       ...files,
-      'docs/notes.md': 'X9 does not fire on real repositories yet.\n',
+      'docs/notes.md':
+        'X9 does not fire on real repositories yet.\n\nx64 builds are not yet supported.\n',
+      'docs/catalog.md': '| Code | Meaning |\n| --- | --- |\n| X1 | a |\n| X2 | b |\n| X7 | c |\n',
     };
-    assert.equal(run(extra).find('detector:X9'), undefined, 'outside the registry: no claim');
-    const finding = run(extra, { ts: parser }).find('detector:X9');
-    assert.equal(finding?.class, 'Unknown');
-    assert.equal(finding?.unknown?.detail, reason);
-    const probe = run(extra, { ts: parser }).packet.inputs.probes.find(
-      (p) => p.probe === 'detector-liveness',
+    const withParser = run(extra);
+    const without = run(extra, { ts: parser });
+    for (const ran of [withParser, without]) {
+      assert.equal(ran.find('detector:X64'), undefined, 'x64 in prose is not a detector');
+      assert.equal(ran.find('detector:X9'), undefined, 'a marker for a code no catalog names');
+    }
+    // The registry holds X1 to X3. X7 is named by a catalog only: a claim when the registry is unread.
+    assert.equal(withParser.find('detector:X7'), undefined);
+    const x7 = without.find('detector:X7');
+    assert.equal(x7?.class, 'Unknown');
+    assert.equal(x7?.unknown?.detail, reason);
+    assert.equal(without.packet.summary.claims, withParser.packet.summary.claims + 1);
+    const probe = without.packet.inputs.probes.find((p) => p.probe === 'detector-liveness');
+    assert.ok(
+      probe?.diagnostics.some(
+        (d) =>
+          d.startsWith('registry: not read in full (probe-failed: ') &&
+          d.includes('a catalog table names: X1, X2, X3, X7;'),
+      ),
+      (probe?.diagnostics ?? []).join('\n'),
     );
-    assert.ok(probe?.diagnostics.some((d) => d.startsWith('registry: not read')));
     // A tree with no registry has no detector claims at all, with or without a parser.
     const { 'packages/contradictions/src/detectors/index.ts': _registry, ...bare } = extra;
-    assert.equal(run(bare, { ts: parser }).find('detector:X9'), undefined);
+    for (const ran of [run(bare), run(bare, { ts: parser })])
+      assert.deepEqual(
+        ran.findings.filter((f) => f.claimKind === 'DETECTOR_LIVENESS'),
+        [],
+      );
   });
 
   test(`${name}: the human summary states once why the report is thin`, async () => {
@@ -221,4 +243,178 @@ test('with a usable parser the summaries say nothing about it', () => {
   });
   assert.doesNotMatch(summaryText(sealed), /typescript/);
   assert.doesNotMatch(run(files).bytes, /parser unavailable/);
+});
+
+test('the supported range has one definition: the bounds follow the range string', () => {
+  assert.equal(resolveParser({ ...ts, version: '7.1.2' }, '^7.1.0').unavailable, null);
+  assert.equal(resolveParser({ ...ts, version: '7.2.0' }, '^7.1.0').unavailable, null);
+  for (const version of ['7.0.9', '6.9.9', '8.0.0']) {
+    assert.equal(
+      resolveParser({ ...ts, version }, '^7.1.0').unavailable,
+      `the installed typescript ${version} is outside the supported range ^7.1.0`,
+    );
+  }
+  // A range that is not a caret range with a major of at least 1 admits nothing.
+  for (const range of ['>=6.0.3', '6.x', '^0.6.3', '~6.0.3', ''])
+    assert.equal(resolveParser({ ...ts, version: '6.0.3' }, range).ts, null, range);
+});
+
+test('a prerelease or nightly build is outside the range, whatever its base version', () => {
+  for (const version of ['6.0.3-rc', '6.1.0-beta', '6.1.0-dev.20261101', '7.0.0-dev.20261101']) {
+    const refused = resolveParser({ ...ts, version });
+    assert.equal(refused.ts, null, version);
+    assert.equal(
+      refused.unavailable,
+      `the installed typescript ${version} is outside the supported range ^6.0.3 (a prerelease or nightly build is not in it)`,
+    );
+  }
+});
+
+test('an in-range module without any one member the probes use is refused by name', () => {
+  for (const name of PARSER_FUNCTIONS) {
+    assert.equal(
+      resolveParser({ ...ts, version: '6.0.3', [name]: undefined }).unavailable,
+      `the installed typescript 6.0.3 lacks the parser API the probes need (${name}); the supported range is ^6.0.3`,
+    );
+  }
+  for (const kind of PARSER_SYNTAX_KINDS) {
+    const refused = resolveParser({
+      ...ts,
+      version: '6.0.3',
+      SyntaxKind: { ...ts.SyntaxKind, [kind]: undefined },
+    });
+    assert.match(refused.unavailable ?? '', new RegExp(`\\(SyntaxKind\\.${kind}\\)`));
+  }
+  assert.match(
+    resolveParser({ ...ts, version: '6.0.3', ScriptTarget: {} }).unavailable ?? '',
+    /\(ScriptTarget\.Latest\)/,
+  );
+  // Inspecting a module never throws.
+  const trap = new Proxy(
+    {},
+    {
+      get: () => {
+        throw new Error('trap');
+      },
+    },
+  );
+  assert.equal(
+    resolveParser(trap).unavailable,
+    'the installed typescript could not be inspected: trap',
+  );
+});
+
+test('an in-range module that lacks a used member gives Unknown with the reason, and no throw', async () => {
+  const lacking = { ...ts, version: '6.0.3', isSatisfiesExpression: undefined };
+  const reason =
+    'the installed typescript 6.0.3 lacks the parser API the probes need (isSatisfiesExpression); the supported range is ^6.0.3';
+  const ran = run(files, { ts: lacking });
+  for (const suffix of PARSER_FINDINGS) {
+    assert.equal(ran.find(suffix)?.class, 'Unknown', suffix);
+    assert.equal(ran.find(suffix)?.unknown?.detail, reason, suffix);
+  }
+  assert.ok((await output({ ts: lacking })).includes(`Unknown: ${reason}, so 2 probe(s)`));
+});
+
+test('a parser that faults while a probe runs gives Unknown with the fault, and no throw', async () => {
+  const faulty = {
+    ...ts,
+    version: '6.0.3',
+    createSourceFile: () => {
+      throw new TypeError('boom in /srv/app/node_modules/typescript/lib/typescript.js\nat line 2');
+    },
+  };
+  const ran = run(files, { ts: faulty });
+  const csv = ran.find('output-format:csv');
+  assert.equal(csv?.class, 'Unknown');
+  assert.equal(csv?.reason, 'probe-failed');
+  assert.equal(csv?.unknown?.detail, 'the format-witness probe stopped: boom in <path>');
+  const x1 = ran.find('detector:X1');
+  assert.equal(x1?.class, 'Unknown');
+  assert.equal(
+    x1?.unknown?.detail,
+    'reading packages/contradictions/src/detectors/index.ts stopped: boom in <path>',
+  );
+  assert.doesNotMatch(ran.bytes, /srv\/app/);
+  assert.equal(ran.find('RUNTIME_FLOOR:runtime:node')?.class, 'Observed drift');
+  assert.match(await output({ ts: faulty }), /Unknown\s+7\n/);
+});
+
+const REGISTRY = 'packages/contradictions/src/detectors/index.ts';
+for (const [name, registry, reasonCode, detail, known] of [
+  [
+    'with syntax errors',
+    'export const ALL_DETECTORS = [x1, x2,;\n',
+    'source-unreadable',
+    `${REGISTRY} has syntax errors`,
+    [],
+  ],
+  [
+    'whose ALL_DETECTORS is not an array literal',
+    "import { build } from './build.ts';\n\nexport const ALL_DETECTORS = build();\n",
+    'reads-unresolvable',
+    `${REGISTRY} does not declare ALL_DETECTORS as an array literal`,
+    [],
+  ],
+  [
+    'with an element that does not resolve',
+    "import { detector as x1 } from './x1.ts';\nimport { detector as x2 } from './x2.ts';\nimport { detector as x3 } from './gone.ts';\n\nexport const ALL_DETECTORS = [x1, x2, x3];\n",
+    'reads-unresolvable',
+    `${REGISTRY}: x3 in ALL_DETECTORS does not resolve to a detector file whose code can be read`,
+    ['X1', 'X2'],
+  ],
+] as const) {
+  test(`a registry ${name} is unread, not empty: its catalog codes are Unknown, with a parser present`, () => {
+    const ran = run({
+      ...files,
+      [REGISTRY]: registry,
+      'docs/notes.md': 'x64 builds are not yet supported.\n',
+    });
+    for (const code of ['X1', 'X2', 'X3']) {
+      const finding = ran.find(`detector:${code}`);
+      if ((known as readonly string[]).includes(code)) {
+        assert.notEqual(finding?.unknown?.detail, detail, `${code} was read and is probed`);
+        continue;
+      }
+      assert.equal(finding?.class, 'Unknown', code);
+      assert.equal(finding?.reason, reasonCode, code);
+      assert.equal(finding?.unknown?.detail, detail, code);
+    }
+    assert.equal(ran.find('detector:X64'), undefined);
+    assert.equal(run(files).packet.summary.claims, ran.packet.summary.claims);
+  });
+}
+
+test('an oversized registry is unread with the bound as the reason', () => {
+  const ran = run(
+    { ...files, [REGISTRY]: `${files[REGISTRY] ?? ''}// ${'x'.repeat(400)}\n` },
+    { limits: { maxSourceBytes: 300 } },
+  );
+  assert.equal(ran.find('detector:X2')?.reason, 'limit-exceeded');
+  assert.match(ran.find('detector:X2')?.unknown?.detail ?? '', /over the bound of 300/);
+});
+
+test('only a missing typescript package is "not installed"; another load error is named', () => {
+  const notFound = Object.assign(
+    new Error(
+      "Cannot find package 'typescript' imported from /srv/app/node_modules/@seamline/align/dist/ts.js",
+    ),
+    { code: 'ERR_MODULE_NOT_FOUND' },
+  );
+  assert.equal(parserLoadFailure(notFound).unavailable, TYPESCRIPT_MISSING);
+  const inner = Object.assign(
+    new Error(
+      "Cannot find module '/srv/app/node_modules/typescript/lib/typescript.js' imported from /srv/app/x.js",
+    ),
+    { code: 'ERR_MODULE_NOT_FOUND' },
+  );
+  assert.equal(
+    parserLoadFailure(inner).unavailable,
+    "the installed typescript failed to load: Cannot find module '<path>' imported from <path>",
+  );
+  assert.equal(
+    parserLoadFailure(new SyntaxError('Unexpected token')).unavailable,
+    'the installed typescript failed to load: Unexpected token',
+  );
+  assert.equal(parserLoadFailure(new SyntaxError('Unexpected token')).ts, null);
 });

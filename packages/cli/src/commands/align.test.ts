@@ -553,6 +553,11 @@ for (const [name, parser, reason] of [
     TYPESCRIPT_7,
     'the installed typescript 7.0.2 is outside the supported range ^6.0.3',
   ],
+  [
+    'with an in-range typescript that lacks the compiler API',
+    { version: '6.0.3' },
+    'the installed typescript 6.0.3 lacks the parser API the probes need (createSourceFile); the supported range is ^6.0.3',
+  ],
 ] as const) {
   test(`align ${name} exits 0 and says why the report is thin, in the summary, --json and the packet`, async () => {
     const dir = await repo();
