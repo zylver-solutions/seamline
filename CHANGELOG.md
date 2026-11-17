@@ -4,6 +4,12 @@ All notable changes to this project are recorded in this file. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- `pnpm gate:leaks` runs the internal leak scan in its default mode, and `pnpm verify` now includes it.
+- The license gate (`pnpm gate:license`) fails when `THIRD-PARTY-NOTICES.txt` does not list exactly the installed packages with their versions and licenses, and prints the command that regenerates the file. Two kinds of package are not compared: one the lockfile restricts by `os`, `cpu` or `libc`, and one it marks optional that is not installed on the machine running the gate; an optional package that is installed is compared like any other. `--json` gains a `thirdPartyNotices` object, and `pass` is false when the file is stale.
+- The release workflow fails a tag whose commit is not contained in `main`, before anything is installed.
+
 ### Fixed
 
 - `seamline align` no longer stops with `Cannot read properties of undefined (reading 'Latest')` and exit code 3 when the `typescript` it loads is outside the supported peer range `^6.0.3` (TypeScript 7, for example). A `typescript` with an unsupported version is now treated as a missing parser: the probes that parse TypeScript answer Unknown (`probe-failed`) with a reason that names the version found and the supported range, and the command exits 0.
@@ -24,6 +30,10 @@ All notable changes to this project are recorded in this file. The format follow
 
 ### Changed
 
+- CI runs the pack gate, so `pnpm verify` and CI run the same gates. The release workflow's `verify` job now also runs lint, the ontology reference gate and the dogfood gate, which makes it every gate of `pnpm verify`. A test (`scripts/workflow-gates.test.mjs`) fails when a gate of `pnpm verify` is missing from either job.
+- The release workflow's manual run no longer shows a `dry_run` input. No step read it; a manual run never published and still does not. `docs/RELEASING.md` states what a manual run does on a branch and on a tag.
+- `THIRD-PARTY-NOTICES.txt` is written in code-unit order, the same on every platform and locale. The committed file is unchanged.
+- `docs/toolchain.md`: the new-package template no longer shows version `0.0.1`, which `pnpm gate:versions` rejects.
 - Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.
 - An option a command cannot act on is now a usage error (exit 2) instead of being accepted: `--json` on `seamline mcp` (it has no JSON mode, stdout carries MCP frames; its only effect was to print errors as JSON), `--out` on `seamline init`, and `--repo` and `--out` on `seamline conformance`. The global help names the commands that reject each option. A script that passed one of these must drop it.
 

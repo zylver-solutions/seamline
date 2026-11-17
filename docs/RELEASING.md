@@ -20,7 +20,7 @@ How a Seamline release is cut, what the release workflow does, and how anyone ca
 
 2. **Update `CHANGELOG.md`** by hand: move the `[Unreleased]` entries under the new version and date.
 
-3. **Run the local gates and the publication scan:**
+3. **Run the local gates and the publication scan.** `pnpm verify` runs the leak scan in its default mode, where an open release-readiness item is a warning; `--publish` is the mode the release workflow runs, where it fails:
 
    ```bash
    pnpm verify
@@ -37,9 +37,9 @@ How a Seamline release is cut, what the release workflow does, and how anyone ca
    git push origin vX.Y.Z
    ```
 
-   The workflow starts on any pushed tag that matches `v*`. It does not check that the tagged commit is on `main`; that check is the first command above.
+   The workflow starts on any pushed tag that matches `v*`. Its first step after the checkout runs the same check as the first command above and fails the run when the tagged commit is not contained in `origin/main`. A release from a maintenance branch that `main` does not contain is refused by the workflow by design.
 
-6. **The `verify` job runs again on the tagged commit:** install from the lockfile, build, test, the license, versions, pack, ontology and determinism gates, and the publication leak scan. It then generates a CycloneDX SBOM and fails unless the tag equals `v` plus the version in `packages/cli/package.json`. It does not repeat lint, the ontology reference gate or the dogfood gate, which CI runs on `main`.
+6. **The `verify` job runs again on the tagged commit:** the check that the commit is contained in `main`, install from the lockfile, build, lint, test, the license (with `THIRD-PARTY-NOTICES.txt`), versions, pack, ontology, ontology reference, determinism and dogfood gates, and the publication leak scan. It then generates a CycloneDX SBOM and fails unless the tag equals `v` plus the version in `packages/cli/package.json`. That is every gate of `pnpm verify`; none is left out.
 
 7. **Approve the `publish` job.** It runs in the `npm-publish` environment, which accepts only `v*` tags and waits for one required reviewer. The reviewer may approve a run they started, so with a single maintainer this is a deliberate pause and not an independent review ([THREATMODEL.md](../THREATMODEL.md), R13).
 
@@ -52,6 +52,15 @@ How a Seamline release is cut, what the release workflow does, and how anyone ca
    Authentication is an npm token stored as the environment secret `NPM_TOKEN`; for 0.1.0 it was a short-lived granular token. A move to npm trusted publishing (OIDC, no stored token) is planned and not done. The provenance attestation is produced from the job's `id-token: write` permission.
 
 9. **Verify from outside CI**, as described under [Verifying a release](#verifying-a-release). The job's own last step does the same check from inside the run.
+
+## Manual runs
+
+The workflow can also be started by hand (`workflow_dispatch`) on a branch or a tag. It takes no input, and a manual run never publishes: the Publish step and the provenance check run on a tag push only.
+
+- **On a branch,** the `verify` job runs on that branch, without the two checks that are about a tag (contained in `main`, tag equals version). The `publish` job is then refused by the `npm-publish` environment, which admits only `v*` tags, so no step of it runs, the publish token is not read, and the run ends as failed at that job. Use this to run the release gates and build the SBOM on a branch.
+- **On a `v*` tag,** the `verify` job runs the same way. After the reviewer approves it, the `publish` job installs, builds and runs `pnpm publish --recursive --access public --tag next --no-git-checks --dry-run`, which packs every package and uploads nothing.
+
+To see what would be packed without starting a workflow, run `pnpm gate:pack` locally.
 
 ## Dist-tags
 
