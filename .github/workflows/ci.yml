@@ -81,14 +81,23 @@ jobs:
         run: pnpm test
 
       # Gates. Each one fails the build; none of them may be made advisory.
+      # The steps from here to the leak scan are the gates of `pnpm verify`, one
+      # step each. A gate added to one list is added to the other.
 
       - name: 'Gate: license allow-list'
+        # Also fails when THIRD-PARTY-NOTICES.txt does not list the installed
+        # tree. --notices only adds the NOTICE obligations to the report.
         run: node scripts/license-gate.mjs --notices
 
       - name: 'Gate: published package versions are equal'
         # The twelve published packages release in lockstep, and the CLI's
         # compiled-in VERSION must equal packages/cli/package.json.
         run: pnpm gate:versions
+
+      - name: 'Gate: pack'
+        # Packs every publishable package offline (nothing is published) and
+        # checks each tarball. It reads dist/, so it needs the build step above.
+        run: pnpm gate:pack
 
       - name: 'Gate: ontology lint'
         run: pnpm gate:ontology
@@ -113,8 +122,9 @@ jobs:
       - name: 'Gate: internal leak scan'
         # Regression guard per PUBLIC-RELEASE-CHECKLIST.md item E7: a future
         # pull request cannot reintroduce internal material once this repo is
-        # public.
-        run: node scripts/internal-leak-scan.mjs
+        # public. Default mode: open release-readiness items are reported as
+        # warnings. The release workflow runs the --publish mode, where they fail.
+        run: pnpm gate:leaks
 
       - name: License report (artifact)
         if: always()

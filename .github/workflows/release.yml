@@ -19,12 +19,12 @@ on:
   push:
     tags:
       - 'v*'
+  # A manual run never publishes: the Publish step runs on a tag push only.
+  # It runs the verify job on the chosen ref. The publish job then runs
+  # `pnpm publish --dry-run`, but only when the chosen ref is a `v*` tag,
+  # because the npm-publish environment admits no other ref; on a branch the
+  # run ends at that job without starting it.
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Pack and verify without publishing'
-        type: boolean
-        default: true
 
 permissions: {}
 
@@ -38,7 +38,16 @@ env:
 
 jobs:
   # A tag never publishes on the strength of a green CI run against a different
-  # commit. Every gate runs again here, on the exact tagged tree.
+  # commit. This job runs on the exact tagged tree, in this order: the tag is
+  # contained in main, install from the lockfile, build, lint, test, then the
+  # license (with THIRD-PARTY-NOTICES.txt), versions, pack, ontology, ontology
+  # reference, determinism and dogfood gates, the publication leak scan, the
+  # SBOM, and the tag equals the package version.
+  #
+  # That is every gate of `pnpm verify`, with two differences: `pnpm build`
+  # stands in for `pnpm typecheck` (the same compiler over a fresh checkout),
+  # and the leak scan runs in --publish mode, which fails on everything the
+  # default mode fails on and on its warnings too. No gate is omitted.
   verify:
     name: Re-verify the tagged tree
     runs-on: ubuntu-24.04
@@ -49,7 +58,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Full history and every branch: the next step needs origin/main and
+          # the commits between it and the tag.
+          fetch-depth: 0
           persist-credentials: false
+
+      # A release is cut from main (docs/RELEASING.md). A tag on a commit that
+      # main does not contain was never merged through a pull request, so it
+      # never passed the required checks. Runs first: nothing is installed or
+      # executed from a tree that fails this.
+      - name: Tagged commit is contained in main
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          commit="$(git rev-parse --verify 'HEAD^{commit}')"
+          if ! git rev-parse --verify --quiet 'refs/remotes/origin/main^{commit}' > /dev/null; then
+            echo "::error::origin/main is not in this checkout, so ${GITHUB_REF_NAME} cannot be checked against main"
+            exit 1
+          fi
+          # Any failure counts as "not contained", a shallow history included.
+          if ! git merge-base --is-ancestor "$commit" refs/remotes/origin/main; then
+            echo "::error::${GITHUB_REF_NAME} points at ${commit}, which is not contained in origin/main. Releases are tagged on a commit of main."
+            exit 1
+          fi
+          echo "${GITHUB_REF_NAME} points at ${commit}, which is contained in origin/main"
 
       - name: Install pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -68,9 +100,13 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Lint
+        run: pnpm lint
+
       - name: Test
         run: pnpm test
 
+      # Also fails when THIRD-PARTY-NOTICES.txt does not list the installed tree.
       - name: 'Gate: license allow-list'
         run: node scripts/license-gate.mjs --notices
 
@@ -79,17 +115,25 @@ jobs:
 
       # Packs every publishable package and checks the tarball: LICENSE and
       # NOTICE present, top-level allow-list, no test or source files. It needs
-      # the Build step above. Neither this workflow nor ci.yml ran it before.
+      # the Build step above.
       - name: 'Gate: pack'
         run: pnpm gate:pack
 
       - name: 'Gate: ontology lint'
         run: pnpm gate:ontology
 
+      - name: 'Gate: ontology reference'
+        run: pnpm gate:ontology-ref
+
       - name: 'Gate: determinism'
         env:
           SEAMLINE_DETERMINISTIC: '1'
         run: node scripts/determinism-gate.mjs
+
+      # The tagged tree still reports what the reviewed baseline under
+      # docs/dogfood/baseline records.
+      - name: 'Gate: dogfood'
+        run: pnpm gate:dogfood
 
       # The PUBLICATION leak scan, and the only place --publish is used.
       #

@@ -27,10 +27,11 @@
     "gate:pack": "node scripts/pack-check.mjs",
     "gate:versions": "node scripts/version-check.mjs",
     "gate:dogfood": "node scripts/dogfood-gate.mjs",
+    "gate:leaks": "node scripts/internal-leak-scan.mjs",
     "gate:ontology": "node --experimental-strip-types ontology/lint.mjs",
     "gate:ontology-ref": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gen-ontology-ref.mjs --check",
     "gen:ontology-ref": "node --disable-warning=ExperimentalWarning --experimental-strip-types scripts/gen-ontology-ref.mjs",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm gate:license && pnpm gate:ontology && pnpm gate:ontology-ref && pnpm gate:determinism && pnpm gate:versions && pnpm gate:pack && pnpm gate:dogfood",
+    "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm gate:license && pnpm gate:ontology && pnpm gate:ontology-ref && pnpm gate:determinism && pnpm gate:versions && pnpm gate:pack && pnpm gate:dogfood && pnpm gate:leaks",
     "eval": "node --experimental-strip-types packages/eval/src/bin.ts",
     "test:coverage": "node --experimental-strip-types --test --experimental-test-coverage 'packages/*/src/**/*.test.ts'"
   },
