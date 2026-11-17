@@ -98,7 +98,17 @@ const ALIASES = new Map(
 );
 
 /** Directories that never contain an installed dependency. */
-const SKIP_DIRS = new Set(['.git', '.bin', '.vite', '.cache', '.store', 'dist', 'coverage', '.github', 'docs']);
+const SKIP_DIRS = new Set([
+  '.git',
+  '.bin',
+  '.vite',
+  '.cache',
+  '.store',
+  'dist',
+  'coverage',
+  '.github',
+  'docs',
+]);
 
 /** drvfs and other network-ish mounts make each syscall expensive; overlap them. */
 const CONCURRENCY = 48;
@@ -138,7 +148,11 @@ function evaluate(expr) {
   // and would tokenise into two atoms, so resolve the whole string first.
   const whole = ALIASES.get(expr.trim().toLowerCase());
   if (whole !== undefined) {
-    return { allowed: ALLOWED.has(whole), ids: [whole], reason: ALLOWED.has(whole) ? undefined : `"${whole}" is not on the allow-list` };
+    return {
+      allowed: ALLOWED.has(whole),
+      ids: [whole],
+      reason: ALLOWED.has(whole) ? undefined : `"${whole}" is not on the allow-list`,
+    };
   }
   const tokens = tokenize(expr);
   if (tokens.length === 0) return { allowed: false, ids: [], reason: 'empty expression' };
@@ -286,7 +300,13 @@ async function discoverPackageDirs() {
   const rootEntries = await safeReaddir(REPO_ROOT);
   const frontier = [join(REPO_ROOT, 'node_modules')];
   for (const e of rootEntries) {
-    if (!e.isDirectory() || e.name.startsWith('.') || SKIP_DIRS.has(e.name) || e.name === 'node_modules') continue;
+    if (
+      !e.isDirectory() ||
+      e.name.startsWith('.') ||
+      SKIP_DIRS.has(e.name) ||
+      e.name === 'node_modules'
+    )
+      continue;
     for (const sub of await safeReaddir(join(REPO_ROOT, e.name))) {
       if (sub.isDirectory()) frontier.push(join(REPO_ROOT, e.name, sub.name, 'node_modules'));
     }
@@ -370,7 +390,11 @@ const resolved = [];
 
 for (const p of manifests) {
   if (p.expression === null) {
-    violations.push({ ...p, license: null, reason: 'no license field (not permissive by default)' });
+    violations.push({
+      ...p,
+      license: null,
+      reason: 'no license field (not permissive by default)',
+    });
     continue;
   }
   const raw = p.expression;
@@ -391,11 +415,17 @@ for (const p of manifests) {
   }
   resolved.push({ name: p.name, version: p.version, license: key });
   const noticeId = verdict.ids.find((id) => NOTICE_REQUIRED.has(id));
-  if (noticeId) noticeCandidates.push({ name: p.name, version: p.version, license: noticeId, dir: p.dir });
+  if (noticeId)
+    noticeCandidates.push({ name: p.name, version: p.version, license: noticeId, dir: p.dir });
 }
 
 const noticeObligations = withNotices
-  ? (await mapPool(noticeCandidates, async (c) => ({ ...c, hasNoticeFile: await shipsNoticeFile(c.dir) }))).filter(Boolean)
+  ? (
+      await mapPool(noticeCandidates, async (c) => ({
+        ...c,
+        hasNoticeFile: await shipsNoticeFile(c.dir),
+      }))
+    ).filter(Boolean)
   : noticeCandidates;
 
 if (writeThirdPartyNotices) {
@@ -442,7 +472,12 @@ if (asJson) {
         allowList: [...ALLOWED].sort(),
         byLicense: Object.fromEntries([...byLicense].sort((a, b) => b[1] - a[1])),
         noticeObligations: noticeObligations.map(({ dir: _dir, ...rest }) => rest),
-        violations: violations.map((v) => ({ name: v.name, version: v.version, license: v.license, reason: v.reason })),
+        violations: violations.map((v) => ({
+          name: v.name,
+          version: v.version,
+          license: v.license,
+          reason: v.reason,
+        })),
         pass: violations.length === 0,
       },
       null,
@@ -453,7 +488,8 @@ if (asJson) {
   process.stdout.write(`license-gate: scanned ${manifests.length} installed packages\n\n`);
   const rows = [...byLicense].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const width = Math.max(...rows.map(([l]) => l.length), 8);
-  for (const [lic, n] of rows) process.stdout.write(`  ${lic.padEnd(width)}  ${String(n).padStart(4)}\n`);
+  for (const [lic, n] of rows)
+    process.stdout.write(`  ${lic.padEnd(width)}  ${String(n).padStart(4)}\n`);
 
   if (withNotices) {
     process.stdout.write(`\nNOTICE-propagation obligations (${noticeObligations.length}):\n`);
