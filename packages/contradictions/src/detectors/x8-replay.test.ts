@@ -48,6 +48,8 @@ test('evidence last observed by another run than its data source is withheld', (
   for (const name of ['001_ref', '002_create']) {
     withheld(replayFixtureNodes().map((node) => node.name === name ? { ...node, lastSeenRun: 'old-run' } : node));
   }
+  // No recorded run on any node is not agreement: an empty stamp never proves one write.
+  withheld(replayFixtureNodes().map((node) => ({ ...node, lastSeenRun: '' })));
   const g = graph({ nodes: replayFixtureNodes().map((node) => ({ ...node, lastSeenRun: 'later-run' })) });
   assert.equal(x8OrphanedMigration.detect(g).length, 1);
 });
