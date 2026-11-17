@@ -4,7 +4,7 @@
  * "cannot be parsed" when the parser reports a syntactic diagnostic for it.
  */
 
-import { memo, type ProbeEnv } from './env.ts';
+import { memo, parserReason, type ProbeEnv } from './env.ts';
 import { parseDiagnosticCount, type TS } from './ts.ts';
 import { readText } from './tree.ts';
 import { extname } from './util.ts';
@@ -23,7 +23,11 @@ export function parseSource(env: ProbeEnv, path: string): ParsedSource {
     }
     const ts = env.ts;
     if (ts === null)
-      return { status: 'unreadable', path, detail: 'the TypeScript parser is not available' };
+      return {
+        status: 'unreadable',
+        path,
+        detail: parserReason(env),
+      };
     const size = env.tree.size(path);
     if (size !== null && size > env.limits.maxSourceBytes) {
       return {

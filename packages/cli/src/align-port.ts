@@ -129,7 +129,8 @@ export async function factsFromStore(workspace: Workspace): Promise<AlignFacts> 
   };
 }
 
-export function alignPort(): AlignPort {
+/** `options.ts` is a test seam: a parser module in place of the installed `typescript`. */
+export function alignPort(options: { readonly ts?: unknown } = {}): AlignPort {
   return {
     async run(request: AlignPortRequest, sink): Promise<void> {
       const facts =
@@ -147,6 +148,7 @@ export function alignPort(): AlignPort {
           config: request.config,
           output: request.output,
           producer: { toolVersion: request.toolVersion, sifVersion: SIF_VERSION },
+          ...(options.ts === undefined ? {} : { ts: options.ts }),
         },
         sink,
       );

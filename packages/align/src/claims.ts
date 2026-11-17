@@ -38,6 +38,11 @@ export interface ClaimContext {
   readonly commit: string | null;
   /** Detector codes (`X1`) of the registry; a code outside it yields no claim (4.3). */
   readonly registryCodes: ReadonlySet<string>;
+  /**
+   * True when the detector registry of the tree could not be read. Every detector code a document
+   * names then yields a claim, because none can be shown to be outside the registry.
+   */
+  readonly registryUnread?: boolean;
   /** Does this repo-relative path name a tracked file or a directory holding one? (binding B1) */
   readonly pathExists: (path: string) => boolean;
   /** The npm name of the non-root package a document lives under, or `null` (4.1 subject). */
@@ -192,6 +197,11 @@ function headingText(path: readonly string[]): string {
 // Extraction
 // ---------------------------------------------------------------------------
 
+/** Whether a detector code a document names is read as a claim (4.3). */
+function inRegistry(ctx: ClaimContext, code: string): boolean {
+  return ctx.registryUnread === true || ctx.registryCodes.has(code);
+}
+
 function buildClaim(
   docPath: string,
   unit: { lineStart: number; lineEnd: number },
@@ -327,7 +337,7 @@ function extractFromUnit(
     }
     if (catalogRows.has(row)) {
       const code = replaceLinks(row.cells[0] ?? '').trim();
-      if (ctx.registryCodes.has(code)) {
+      if (inRegistry(ctx, code)) {
         out.push(
           buildClaim(docPath, unit, excerpt, ctx, {
             kind: 'DETECTOR_LIVENESS',
@@ -391,7 +401,7 @@ function extractFromUnit(
     const label = prepareLabel(unit.label);
     if (label !== null) {
       for (const code of dormancyMarkers(label)) {
-        if (ctx.registryCodes.has(code)) {
+        if (inRegistry(ctx, code)) {
           out.push(
             buildClaim(docPath, unit, excerpt, ctx, {
               kind: 'DETECTOR_LIVENESS',
@@ -419,7 +429,7 @@ function extractFromUnit(
       }
     }
     for (const code of dormancyMarkers(sentence)) {
-      if (ctx.registryCodes.has(code)) {
+      if (inRegistry(ctx, code)) {
         out.push(
           buildClaim(docPath, unit, excerpt, ctx, {
             kind: 'DETECTOR_LIVENESS',

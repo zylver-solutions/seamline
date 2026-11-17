@@ -4,6 +4,12 @@ All notable changes to this project are recorded in this file. The format follow
 
 ## [Unreleased]
 
+### Fixed
+
+- `seamline align` no longer stops with `Cannot read properties of undefined (reading 'Latest')` and exit code 3 when the `typescript` it loads is outside the supported peer range `^6.0.3` (TypeScript 7, for example). A `typescript` with an unsupported version, or without the compiler API the probes call, is now treated as a missing parser: the probes that parse TypeScript answer Unknown (`probe-failed`) with a reason that names the version found and the supported range, and the command exits 0.
+- `seamline align` now says why a report made without a usable `typescript` is thin. The human summary states once that the parser is missing or unsupported and names the probes that did not run (`detector-liveness`, `format-witness`); the `--json` summary gained a `parser` object (`available`, `reason`, `probesNotRun`); in the packet those probes have status `FAIL` and a `parser unavailable: <reason>` entry in `inputs.probes[].diagnostics`. The packet stays schema version 1: no field was added to it.
+- `seamline align` no longer drops detector claims when it cannot parse the detector registry for lack of a parser. Every detector code a document names is then reported as Unknown (`probe-failed`) and none is silently left out, so the claim count no longer depends on whether `typescript` is installed.
+
 ### Changed
 
 - Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.

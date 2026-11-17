@@ -20,12 +20,19 @@ import {
   type Standing,
 } from './classify.ts';
 import { extractClaims, type ClaimContext } from './claims.ts';
-import { DEFAULT_LIMITS, INSTRUMENT_PACKAGE, type Limits, type ProbeEnv } from './env.ts';
+import {
+  DEFAULT_LIMITS,
+  INSTRUMENT_PACKAGE,
+  PARSER_PROBES,
+  type Limits,
+  type ProbeEnv,
+} from './env.ts';
 import { buildScopeTable, runProvenance, type AlignFacts } from './facts.ts';
 import {
   ALIGN_VERSION,
   PACKET_SCHEMA,
   PACKET_SCHEMA_VERSION,
+  PARSER_UNAVAILABLE_PREFIX,
   UNTRUSTED_FIELDS,
   type PacketBody,
   type PacketDoc,
@@ -34,12 +41,16 @@ import {
   type PacketProbe,
   type PacketStatus,
 } from './packet.ts';
-import { loadDetectors, probeDetectorLiveness } from './probes/detector-liveness.ts';
+import {
+  loadDetectors,
+  probeDetectorLiveness,
+  registryUnread,
+} from './probes/detector-liveness.ts';
 import { formatScanSet, probeFormatWitness } from './probes/format-witness.ts';
 import { probeManifestField, type Runtime } from './probes/manifest-field.ts';
 import { probeModuleWiring } from './probes/module-wiring.ts';
 import { proposeFor } from './proposals.ts';
-import { loadTs, type TsModule } from './ts.ts';
+import { loadParser, resolveParser } from './ts.ts';
 import { readText, type Tree } from './tree.ts';
 import {
   CLAIM_PROBE,
@@ -83,8 +94,12 @@ export interface EvaluateInput {
   readonly baseline?: Baseline | null;
   readonly config?: { readonly docs?: readonly string[]; readonly exclude?: readonly string[] };
   readonly producer: { readonly toolVersion: string; readonly sifVersion: string };
-  /** The parser; defaults to the installed `typescript`, `null` when it is missing. */
-  readonly ts?: TsModule | null;
+  /**
+   * The parser module to use in place of the installed `typescript`. It is checked as the installed
+   * one is (`resolveParser`): `null` is a missing parser, and a module outside the supported range
+   * is refused with its reason.
+   */
+  readonly ts?: unknown;
   readonly limits?: Partial<Limits>;
 }
 
@@ -174,6 +189,7 @@ export function evaluate(input: EvaluateInput): PacketBody {
   const discovery = discoverPackages(tree);
   const scopes = buildScopeTable(facts.runs);
   const provenance = runProvenance(facts, input.commit, scopes);
+  const parser = input.ts === undefined ? loadParser() : resolveParser(input.ts);
   const env: ProbeEnv = {
     tree,
     commit: input.commit,
@@ -181,7 +197,8 @@ export function evaluate(input: EvaluateInput): PacketBody {
     facts,
     scopes,
     runMismatch: provenance.mismatch,
-    ts: input.ts === undefined ? loadTs() : input.ts,
+    ts: parser.ts,
+    parserUnavailable: parser.unavailable,
     limits,
     cache: new Map(),
   };
@@ -203,9 +220,11 @@ export function evaluate(input: EvaluateInput): PacketBody {
     return owner === null || owner.dir === '.' ? null : owner.name;
   };
   const registryCodes = new Set<string>(loadDetectors(env).keys());
+  const registryUnreadReason = registryUnread(env);
   const claimContext: ClaimContext = {
     commit: input.commit,
     registryCodes,
+    registryUnread: registryUnreadReason !== null,
     pathExists: (path) => trackedSet.has(path) || directories.has(path),
     packageNameOf,
     scan: { maxLineLength: limits.maxLineLength },
@@ -566,6 +585,11 @@ export function evaluate(input: EvaluateInput): PacketBody {
     if (log.length > 0 && log.every((f) => f.result === 'UNKNOWN')) status = 'UNAVAILABLE';
     if (log.some((f) => f.reason === 'probe-failed')) status = 'FAIL';
     const diagnostics: string[] = [];
+    // A probe that had no parser says so whether or not a claim reached it: an empty log is not a clean one.
+    if (parser.unavailable !== null && (PARSER_PROBES as readonly string[]).includes(probe)) {
+      status = 'FAIL';
+      diagnostics.push(`${PARSER_UNAVAILABLE_PREFIX}${parser.unavailable}`);
+    }
     if (probe === 'format-witness') {
       const scanSet = formatScanSet(env);
       if (scanSet !== null && probeLog.has('format-witness')) {
@@ -579,7 +603,9 @@ export function evaluate(input: EvaluateInput): PacketBody {
     }
     if (probe === 'detector-liveness' && probeLog.has(probe)) {
       diagnostics.push(
-        `registry: ${[...registryCodes].sort(compareCodeUnits).join(', ') || '(empty)'}; level: node kinds`,
+        registryUnreadReason === null
+          ? `registry: ${[...registryCodes].sort(compareCodeUnits).join(', ') || '(empty)'}; level: node kinds`
+          : 'registry: not read, so every detector code a document names is a claim; level: node kinds',
       );
     }
     if (probe === 'manifest-field' || probe === 'module-wiring') {

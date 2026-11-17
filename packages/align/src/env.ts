@@ -5,7 +5,7 @@
  */
 
 import type { AlignFacts, ScopeEntry } from './facts.ts';
-import type { TsModule } from './ts.ts';
+import { TYPESCRIPT_MISSING, type TsModule } from './ts.ts';
 import type { Tree } from './tree.ts';
 import { unknownFact, type ProbeFact } from './types.ts';
 import type { Discovery } from './workspace.ts';
@@ -43,6 +43,8 @@ export interface ProbeEnv {
   /** Non-null when a supplying run carries another commit (5.1). */
   readonly runMismatch: string | null;
   readonly ts: TsModule | null;
+  /** Why there is no parser; non-null exactly when `ts` is `null`. */
+  readonly parserUnavailable: string | null;
   readonly limits: Limits;
   readonly cache: Map<string, unknown>;
 }
@@ -52,6 +54,22 @@ export function memo<T>(env: ProbeEnv, key: string, compute: () => T): T {
   const value = compute();
   env.cache.set(key, value);
   return value;
+}
+
+/** The probes that parse TypeScript source. */
+export const PARSER_PROBES = ['detector-liveness', 'format-witness'] as const;
+
+/** The reason there is no parser, for an environment whose `ts` is `null`. */
+export function parserReason(env: ProbeEnv): string {
+  return env.parserUnavailable ?? TYPESCRIPT_MISSING;
+}
+
+/**
+ * The answer of a probe that needs the parser when there is none: `UNKNOWN(probe-failed)` whose
+ * detail is the reason, so no reader has to guess why the comparison was not made.
+ */
+export function noParserFact(env: ProbeEnv): ProbeFact {
+  return unknownFact('probe-failed', parserReason(env));
 }
 
 /**

@@ -10,9 +10,9 @@
  * the run did not produce.
  */
 
-import { memo, type ProbeEnv } from '../env.ts';
+import { memo, noParserFact, parserReason, type ProbeEnv } from '../env.ts';
 import { lineOf, literalText, parseSource } from '../source.ts';
-import { TYPESCRIPT_MISSING, type TS } from '../ts.ts';
+import type { TS } from '../ts.ts';
 import { absent, holds, unknownFact, type FactSource, type ProbeFact } from '../types.ts';
 import { compareCodeUnits, dirname, joinPosix } from '../util.ts';
 import { entryPoints, otherLanguageReason, sourceFilesOf, type Pkg } from '../workspace.ts';
@@ -214,6 +214,16 @@ export function analyseDetector(
   };
 }
 
+/**
+ * Why the registry of this tree cannot be read, or `null` when it was read or the tree has none.
+ * A tracked registry that no parser read is not an empty registry: which codes it holds is
+ * unknown, so a document's detector code can be neither confirmed nor dropped.
+ */
+export function registryUnread(env: ProbeEnv): string | null {
+  if (env.ts !== null || !env.tree.tracked.includes(DETECTOR_REGISTRY_PATH)) return null;
+  return parserReason(env);
+}
+
 /** Load the registry (`ALL_DETECTORS`) and each detector's analysis (4.3 step 1). */
 export function loadDetectors(env: ProbeEnv): Map<string, DetectorInfo> {
   return memo(env, 'detectors', () => {
@@ -353,7 +363,7 @@ function buildExtractorScan(
 
 export function probeDetectorLiveness(env: ProbeEnv, code: string): ProbeFact {
   const ts = env.ts;
-  if (ts === null) return unknownFact('probe-failed', TYPESCRIPT_MISSING);
+  if (ts === null) return noParserFact(env);
   const detector = loadDetectors(env).get(code);
   if (detector === undefined) {
     return unknownFact(
