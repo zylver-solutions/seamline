@@ -16,6 +16,9 @@
  *    `.d.ts`, and the only top-level entries are `dist/`, `package.json`,
  *    `README.md`, `LICENSE` and `NOTICE`, plus a data directory of `.json` files
  *    for the one package that is named in DATA_DIRECTORIES (the injection corpus).
+ *  - Every `sourceMappingURL` comment in shipped code names a file in the same
+ *    tarball (a `data:` URL carries its own map). Source maps are not shipped, so
+ *    the build must not emit the comment.
  *  - `main`, `types`, every `bin` target and every `exports` target exists in
  *    the tarball, and a `bin` target starts with a shebang.
  *  - `exports` lists exactly the reviewed entry points in PUBLIC_ENTRY_POINTS
@@ -164,6 +167,14 @@ const RELATIVE_SPECIFIER =
 const ANY_SPECIFIER =
   /^\s*(?:import|export)\s[^;'"`]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|^\s*import\s+['"]([^'"]+)['"]/gm;
 
+/**
+ * A `sourceMappingURL` comment as compilers write it: alone on its line, in the
+ * `//#` form, the older `//@` form, or the block form. A mention inside a string
+ * or in the middle of a line is not a reference and is not matched.
+ */
+const SOURCE_MAP_REFERENCE =
+  /^[ \t]*(?:\/\/[#@][ \t]*sourceMappingURL=(\S+)|\/\*[#@][ \t]*sourceMappingURL=(\S+?)[ \t]*\*\/)[ \t\r]*$/gm;
+
 const BUILTINS = new Set(builtinModules);
 
 /** tsc keeps comments, and a doc comment may quote an import as an example. */
@@ -304,6 +315,21 @@ const firstLine = (text) => {
 };
 
 const normalize = (target) => target.replace(/^\.\//, '');
+
+/**
+ * The tarball path a `sourceMappingURL` in `fromPath` points at, or `null` when
+ * the URL cannot name a file in the tarball (another scheme, or an absolute path).
+ */
+function sourceMapTarget(fromPath, url) {
+  if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(url) || url.startsWith('/')) return null;
+  let relativePath = url.replace(/[?#].*$/, '');
+  try {
+    relativePath = decodeURIComponent(relativePath);
+  } catch {
+    return null;
+  }
+  return posix.normalize(posix.join(posix.dirname(fromPath), relativePath));
+}
 
 /** Every string leaf of an `exports` value, with its dotted path. `null` targets are legal blockers. */
 function exportLeaves(value, path, out, problems) {
@@ -490,6 +516,23 @@ export function checkPackage({
       const candidates = [target, target.replace(/\.(js|ts)$/, '.d.ts')];
       if (!candidates.some((c) => files.has(c))) {
         add('DANGLING_IMPORT', `${path} imports "${spec}", which is not in the tarball`);
+      }
+    }
+  }
+
+  // A source map reference must resolve inside the tarball. A consumer's debugger
+  // or bundler follows the comment and warns or fails on a file that is not there.
+  for (const [path, entry] of files) {
+    if (!/\.js$/.test(path) && !/\.d\.ts$/.test(path)) continue;
+    for (const m of entry.content.toString('utf8').matchAll(SOURCE_MAP_REFERENCE)) {
+      const url = m[1] ?? m[2];
+      if (url.startsWith('data:')) continue;
+      const target = sourceMapTarget(path, url);
+      if (target === null || !files.has(target)) {
+        add(
+          'DANGLING_SOURCE_MAP',
+          `${path} has a sourceMappingURL comment for "${url}", which is not in the tarball; build without sourceMap and declarationMap`,
+        );
       }
     }
   }

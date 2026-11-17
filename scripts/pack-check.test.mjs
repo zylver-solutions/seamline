@@ -20,11 +20,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -258,6 +260,57 @@ test('a shipped module that imports a file the tarball leaves out is reported', 
       ),
     ),
     [],
+  );
+});
+
+test('a sourceMappingURL comment must name a file in the same tarball', () => {
+  const withTail = (path, tail) => (_m, files) =>
+    files.set(path, file(`${files.get(path).content.toString()}${tail}\n`));
+  assert.deepEqual(codesAfter(withTail('dist/index.js', '//# sourceMappingURL=index.js.map')), [
+    'DANGLING_SOURCE_MAP',
+  ]);
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.d.ts', '//# sourceMappingURL=index.d.ts.map')),
+    ['DANGLING_SOURCE_MAP'],
+    'declarations are read too',
+  );
+  for (const tail of [
+    '//@ sourceMappingURL=index.js.map',
+    '/*# sourceMappingURL=index.js.map */',
+    '//# sourceMappingURL=index.js.map\r',
+    '//# sourceMappingURL=../maps/index.js.map',
+    '//# sourceMappingURL=https://example.test/index.js.map',
+    '//# sourceMappingURL=/index.js.map',
+  ]) {
+    assert.deepEqual(codesAfter(withTail('dist/index.js', tail)), ['DANGLING_SOURCE_MAP'], tail);
+  }
+
+  // The reference resolves: the map is then reported as a forbidden file, not as dangling.
+  assert.deepEqual(
+    codesAfter((m, files) => {
+      withTail('dist/index.js', '//# sourceMappingURL=index.js.map')(m, files);
+      files.set('dist/index.js.map', file('{}'));
+    }),
+    ['FORBIDDEN_FILE'],
+  );
+  // A map beside another file does not satisfy the reference.
+  assert.deepEqual(
+    codesAfter((m, files) => {
+      withTail('dist/index.js', '//# sourceMappingURL=index.js.map')(m, files);
+      files.set('dist/contract.js.map', file('{}'));
+    }),
+    ['DANGLING_SOURCE_MAP', 'FORBIDDEN_FILE'],
+  );
+
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.js', '//# sourceMappingURL=data:application/json;base64,e30=')),
+    [],
+    'an inline map needs no file',
+  );
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.js', "export const hint = '//# sourceMappingURL=x.js.map';")),
+    [],
+    'a string that mentions the comment is not a reference',
   );
 });
 
@@ -648,9 +701,7 @@ test('a shipped module nothing reaches is reported, unless it compiles to nothin
     'a helper whose name does not say "test"',
   );
   assert.deepEqual(
-    codesAfter((_m, files) =>
-      files.set('dist/types.js', file('export {};\n//# sourceMappingURL=types.js.map')),
-    ),
+    codesAfter((_m, files) => files.set('dist/types.js', file('export {};\n'))),
     [],
     'a type-only module that compiles to an empty module',
   );
@@ -827,8 +878,9 @@ test('end to end: a fake exports target fails the gate with exit 1 naming the ta
 });
 
 test('end to end: dropping the files negations ships tests and maps, and the gate says so', () => {
-  const root = makeWorkspace((manifest) => {
+  const root = makeWorkspace((manifest, { pkg }) => {
     manifest.files = ['dist', 'README.md', 'NOTICE'];
+    writeFileSync(join(pkg, 'dist/index.js.map'), '{}\n');
   });
   try {
     const found = checkWorkspace(root).violations;
@@ -845,6 +897,46 @@ test('end to end: dropping the files negations ships tests and maps, and the gat
     assert.equal(runCli(root).status, 1);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('end to end: a build that emits source map comments while "files" leaves the maps out fails the gate', () => {
+  const root = makeWorkspace((_manifest, { pkg }) => {
+    for (const name of ['index.js', 'index.d.ts']) {
+      appendFileSync(join(pkg, 'dist', name), `//# sourceMappingURL=${name}.map\n`);
+      writeFileSync(join(pkg, 'dist', `${name}.map`), '{}\n');
+    }
+  });
+  try {
+    assert.deepEqual(
+      checkWorkspace(root).violations.map((v) => v.code),
+      ['DANGLING_SOURCE_MAP', 'DANGLING_SOURCE_MAP'],
+    );
+    const run = runCli(root);
+    assert.equal(run.status, 1, run.stdout + run.stderr);
+    assert.match(
+      run.stdout,
+      /DANGLING_SOURCE_MAP: dist\/index\.d\.ts has a sourceMappingURL comment for "index\.d\.ts\.map", which is not in the tarball/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the built output of every publishable package carries no sourceMappingURL comment', () => {
+  for (const dir of workspaceDirs(REPO_ROOT)) {
+    const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    if (manifest.private === true) continue;
+    const dist = join(dir, 'dist');
+    const emitted = readdirSync(dist, { recursive: true }).filter((f) => /\.(js|d\.ts)$/.test(f));
+    assert.ok(emitted.length > 0, `${manifest.name}: run \`pnpm build\` before this test`);
+    for (const f of emitted) {
+      assert.doesNotMatch(
+        readFileSync(join(dist, f), 'utf8'),
+        /^\/\/# sourceMappingURL=/m,
+        `${manifest.name}: dist/${f}`,
+      );
+    }
   }
 });
 

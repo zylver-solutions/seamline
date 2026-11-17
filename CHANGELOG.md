@@ -8,6 +8,10 @@ All notable changes to this project are recorded in this file. The format follow
 
 - Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.
 
+### Fixed
+
+- The compiled output no longer ends with a `//# sourceMappingURL=` comment. Every `.js` and `.d.ts` file in the 0.1.0 tarballs carried one, while the `.map` files it names were excluded from the tarballs, so debuggers, bundlers and source map loaders warned or failed on the missing files. The build now leaves `sourceMap` and `declarationMap` off (the maps point at `src/*.ts`, which is not published), and `pnpm gate:pack` reports a `sourceMappingURL` comment whose target is not in the same tarball as `DANGLING_SOURCE_MAP`.
+
 ## [0.1.0] - 2026-11-10
 
 This is the first release. All twelve published packages move from the internal `0.0.1` to `0.1.0` together and are released in lockstep. They were published to npm on 2026-11-10 from the tag `v0.1.0`, each with a provenance attestation that names this repository, `.github/workflows/release.yml` and that tag (`npm audit signatures` verifies it; see `docs/RELEASING.md`). The release workflow published under the dist-tag `next`; the registry also sets `latest` on a first publish, so both tags point at 0.1.0 and `npm install @seamline/cli` installs it. `seamline --version` and the MCP server version report `0.1.0`.
