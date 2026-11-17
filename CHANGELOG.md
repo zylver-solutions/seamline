@@ -7,14 +7,14 @@ All notable changes to this project are recorded in this file. The format follow
 ### Changed
 
 - Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.
-- An option a command cannot act on is now a usage error (exit 2) instead of being accepted and ignored: `--json` on `seamline mcp` (it has no JSON mode, stdout carries MCP frames), `--out` on `seamline init`, and `--repo` and `--out` on `seamline conformance`. The global help names the commands that reject each option. A script that passed one of these must drop it.
+- An option a command cannot act on is now a usage error (exit 2) instead of being accepted: `--json` on `seamline mcp` (it has no JSON mode, stdout carries MCP frames; its only effect was to print errors as JSON), `--out` on `seamline init`, and `--repo` and `--out` on `seamline conformance`. The global help names the commands that reject each option. A script that passed one of these must drop it.
 
 ### Fixed
 
 - `seamline conformance --help` lists all eight properties (`manifest` and `exercised` were missing) and all four verdicts (`NOT_APPLICABLE` was missing). The list is rendered from the suite's own property and verdict lists, so the help cannot fall behind them.
 - The global help no longer says every command except `init` takes `--store`: `conformance` has no store and rejects it, as it always did. The help's list of commands that take `--store` and `--out` is rendered from one list, and a test runs every command against it.
 - `seamline extract` no longer prints `no diagnostic reported` for an extractor that is UNAVAILABLE or FAIL without a diagnostic; the line reads `the extractor reported no reason`. `extract-contracts` in a repository with no contract source is the known case, and it still gives no reason of its own.
-- `seamline --version` and `seamline --help` (global and per command) no longer print Node's `ExperimentalWarning: SQLite is an experimental feature` line: they load no store. Commands that run still print it.
+- The `seamline` binary no longer prints Node's `ExperimentalWarning: SQLite is an experimental feature` line for `--version` and `--help` (global and per command): it answers them before it loads the store. Commands that run still print it, and so does `node dist/index.js --version`, the library entry run as a script.
 - The ontology version `seamline extract` records on a run is one named constant, and a test fails when it differs from the `version` of `ontology/seamline.yaml`.
 
 ## [0.1.0] - 2026-11-10

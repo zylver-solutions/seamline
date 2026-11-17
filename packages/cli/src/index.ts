@@ -181,8 +181,11 @@ export type { SandboxHost, SandboxHostOptions, SandboxProgram, SpawnFn } from '.
 
 /**
  * Fires only when this file *is* the process entry point (`node
- * dist/index.js ...`), never on import. Mirrors `bin.ts`'s wiring exactly, so
- * the two entry points cannot disagree about what `seamline` does.
+ * dist/index.js ...`), never on import. It runs the same `runCli` as `bin.ts`,
+ * so both entry points give the same output and exit code. One difference:
+ * this module imports the store statically, so `--version` and `--help` here
+ * load `node:sqlite` and print Node's experimental warning; `bin.ts` answers
+ * those two before it loads anything.
  */
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const deps = buildCliDeps(processIo());

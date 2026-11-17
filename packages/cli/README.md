@@ -134,7 +134,7 @@ seamline export  --store ci/graph --profile team --out slice.json
 | --------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------- |
 | `extract`                                     | the directory written                          | the same thing, another spelling                          |
 | `why`, `check`, `diff`, `blast-radius`, `mcp` | the directory read                             | the same thing, another spelling                          |
-| `align`                                       | the directory read when `--facts` is not given | not documented in its help; use `--store`                 |
+| `align`                                       | the directory read when `--facts` is not given | the same thing, another spelling                          |
 | `export`                                      | the directory read                             | the destination **file** only; it never selects the store |
 | `init`, `conformance`                         | not accepted (exit 2)                          | not accepted (exit 2)                                     |
 
