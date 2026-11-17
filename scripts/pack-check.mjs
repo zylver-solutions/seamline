@@ -25,11 +25,13 @@
  *    (no wildcards, no unreviewed subpath), and `types` comes first in every
  *    conditional block so TypeScript resolves it.
  *  - `engines.node` is present and equals the root manifest's.
- *  - `license` is Apache-2.0 and the tarball carries `LICENSE` and `README.md`.
- *  - The tarball carries `NOTICE`, byte-equal to the repository root's
- *    (Apache-2.0 section 4(d)). `pnpm pack` copies the root `LICENSE` into each
- *    tarball by itself but not `NOTICE`, so each package keeps a committed copy,
- *    listed in its `files`, and this check fails if a copy is missing or drifts.
+ *  - `license` is Apache-2.0 and the tarball carries `README.md`.
+ *  - The tarball carries `LICENSE` and `NOTICE`, each byte-equal to the
+ *    repository root's (Apache-2.0 section 4(a) and 4(d)). Each package keeps a
+ *    committed copy of both, listed in its `files`, and this check fails if a
+ *    copy is missing or drifts. `pnpm pack` adds the root `LICENSE` to a package
+ *    that has none, and `npm pack` does not, so the `LICENSE` copy is also
+ *    looked for in the package directory, not only in the tarball.
  *  - No `workspace:` specifier survives into the packed manifest, and no
  *    published package depends on a private workspace package.
  *  - Internal packages (INTERNAL_PACKAGES) stay `"private": true`, and every
@@ -362,6 +364,8 @@ function exportLeaves(value, path, out, problems) {
  * @param {Map<string, {content: Buffer, underPackageDir?: boolean, type?: string}>} input.files
  * @param {string} input.expectedNode  the root manifest's engines.node
  * @param {Buffer} input.rootNotice    the repository root's NOTICE file
+ * @param {Buffer} input.rootLicense   the repository root's LICENSE file
+ * @param {Buffer | undefined} input.packageLicense the LICENSE file in the package directory, if any
  * @param {string} input.rootRepositoryUrl the root manifest's repository.url
  * @param {string} input.relDir        this package's directory relative to the root, with "/"
  * @param {ReadonlySet<string>} input.privateNames names of private workspace packages
@@ -372,6 +376,8 @@ export function checkPackage({
   files,
   expectedNode,
   rootNotice,
+  rootLicense,
+  packageLicense,
   rootRepositoryUrl,
   relDir,
   privateNames,
@@ -449,7 +455,22 @@ export function checkPackage({
   }
 
   // Files that must be present.
-  if (!files.has('LICENSE')) add('LICENSE_MISSING', 'LICENSE is not in the tarball');
+  const license = files.get('LICENSE');
+  if (license === undefined) {
+    add('LICENSE_MISSING', 'LICENSE is not in the tarball');
+  } else if (!license.content.equals(rootLicense)) {
+    add(
+      'LICENSE_DRIFT',
+      'LICENSE differs from the repository root LICENSE; copy the root file over it',
+    );
+  }
+  // `pnpm pack` puts the root LICENSE into a package that has none; `npm pack` does not.
+  if (packageLicense === undefined) {
+    add(
+      'LICENSE_COPY_MISSING',
+      'the package directory has no LICENSE, so only `pnpm pack` would ship one; copy the root LICENSE into the package',
+    );
+  }
   if (!files.has('README.md')) add('README_MISSING', 'README.md is not in the tarball');
   const notice = files.get('NOTICE');
   if (notice === undefined) {
@@ -689,8 +710,9 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
   const rootManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const expectedNode = rootManifest.engines?.node;
   const rootRepositoryUrl = rootManifest.repository?.url;
-  const noticePath = join(root, 'NOTICE');
-  const rootNotice = existsSync(noticePath) ? readFileSync(noticePath) : undefined;
+  const readIfPresent = (path) => (existsSync(path) ? readFileSync(path) : undefined);
+  const rootNotice = readIfPresent(join(root, 'NOTICE'));
+  const rootLicense = readIfPresent(join(root, 'LICENSE'));
   const manifests = workspaceDirs(root).map((dir) => ({
     dir,
     manifest: JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')),
@@ -704,6 +726,12 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
     workspaceLevel.push({
       code: 'ROOT_NOTICE_MISSING',
       message: 'the repository root has no NOTICE file to compare the packages against',
+    });
+  }
+  if (rootLicense === undefined) {
+    workspaceLevel.push({
+      code: 'ROOT_LICENSE_MISSING',
+      message: 'the repository root has no LICENSE file to compare the packages against',
     });
   }
   if (typeof rootRepositoryUrl !== 'string' || rootRepositoryUrl === '') {
@@ -756,6 +784,8 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
               files,
               expectedNode,
               rootNotice: rootNotice ?? Buffer.alloc(0),
+              rootLicense: rootLicense ?? Buffer.alloc(0),
+              packageLicense: readIfPresent(join(dir, 'LICENSE')),
               rootRepositoryUrl,
               relDir: relative(root, dir).split(sep).join('/'),
               privateNames,

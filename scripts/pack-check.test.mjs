@@ -50,6 +50,7 @@ import {
 const SCRIPT = resolve(dirname(fileURLToPath(import.meta.url)), 'pack-check.mjs');
 const NODE_RANGE = '>=22.13.0';
 const ROOT_NOTICE = Buffer.from('Seamline\nCopyright\n');
+const ROOT_LICENSE = Buffer.from('Apache License\nVersion 2.0\n');
 const ROOT_REPO_URL = 'git+https://example.test/seamline.git';
 const REL_DIR = 'packages/ontology';
 
@@ -82,7 +83,7 @@ function cleanFiles() {
   return new Map([
     ['package.json', file('{}')],
     ['README.md', file('# readme')],
-    ['LICENSE', file('license')],
+    ['LICENSE', file(ROOT_LICENSE)],
     ['NOTICE', file(ROOT_NOTICE)],
     ['dist/index.js', file("export * from './contract.js';\n")],
     ['dist/index.d.ts', file("export * from './contract.ts';\n")],
@@ -92,7 +93,7 @@ function cleanFiles() {
 }
 
 /** Runs the checker on a clean package after `mutate(manifest, files)` and returns the codes. */
-function codesAfter(mutate = () => {}, { privateNames = new Set() } = {}) {
+function codesAfter(mutate = () => {}, { privateNames = new Set(), hasLicenseCopy = true } = {}) {
   const manifest = cleanManifest();
   const files = cleanFiles();
   mutate(manifest, files);
@@ -102,6 +103,8 @@ function codesAfter(mutate = () => {}, { privateNames = new Set() } = {}) {
     files,
     expectedNode: NODE_RANGE,
     rootNotice: ROOT_NOTICE,
+    rootLicense: ROOT_LICENSE,
+    packageLicense: hasLicenseCopy ? ROOT_LICENSE : undefined,
     rootRepositoryUrl: ROOT_REPO_URL,
     relDir: REL_DIR,
     privateNames,
@@ -180,6 +183,8 @@ test('test files, fixtures, source maps, TypeScript source and src/ are each for
       files,
       expectedNode: NODE_RANGE,
       rootNotice: ROOT_NOTICE,
+      rootLicense: ROOT_LICENSE,
+      packageLicense: ROOT_LICENSE,
       rootRepositoryUrl: ROOT_REPO_URL,
       relDir: REL_DIR,
       privateNames: new Set(),
@@ -346,6 +351,28 @@ test('license must be Apache-2.0, and LICENSE and README.md must be in the tarba
   );
 });
 
+test('LICENSE must be byte-equal to the root LICENSE, and the package must hold its own copy', () => {
+  assert.deepEqual(
+    codesAfter((_m, files) => files.set('LICENSE', file('Apache License\nVersion 2.1\n'))),
+    ['LICENSE_DRIFT'],
+    'an edited copy',
+  );
+  assert.deepEqual(
+    codesAfter((_m, files) => files.set('LICENSE', file(`${ROOT_LICENSE.toString()}\n`))),
+    ['LICENSE_DRIFT'],
+    'one trailing byte is drift',
+  );
+  assert.deepEqual(
+    codesAfter(() => {}, { hasLicenseCopy: false }),
+    ['LICENSE_COPY_MISSING'],
+    'the tarball has a LICENSE that the package directory does not: the packer supplied it',
+  );
+  assert.deepEqual(
+    codesAfter((_m, files) => files.delete('LICENSE'), { hasLicenseCopy: false }),
+    ['LICENSE_COPY_MISSING', 'LICENSE_MISSING'],
+  );
+});
+
 test('NOTICE must be in the tarball and byte-equal to the root NOTICE', () => {
   assert.deepEqual(
     codesAfter((_m, files) => files.delete('NOTICE')),
@@ -425,6 +452,8 @@ test('workspace: specifiers and private dependencies must not reach the registry
     files: cleanFiles(),
     expectedNode: NODE_RANGE,
     rootNotice: ROOT_NOTICE,
+    rootLicense: ROOT_LICENSE,
+    packageLicense: ROOT_LICENSE,
     rootRepositoryUrl: ROOT_REPO_URL,
     relDir: REL_DIR,
     privateNames: new Set(['@seamline/integration']),
@@ -491,6 +520,8 @@ test('a data directory is allowed only for the package named in DATA_DIRECTORIES
       files,
       expectedNode: NODE_RANGE,
       rootNotice: ROOT_NOTICE,
+      rootLicense: ROOT_LICENSE,
+      packageLicense: ROOT_LICENSE,
       rootRepositoryUrl: ROOT_REPO_URL,
       relDir: 'packages/security',
       privateNames: new Set(),
@@ -823,6 +854,7 @@ function makeWorkspace(mutate = () => {}) {
   );
   writeFileSync(join(root, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n");
   cpSync(join(REPO_ROOT, 'NOTICE'), join(root, 'NOTICE'));
+  cpSync(join(REPO_ROOT, 'LICENSE'), join(root, 'LICENSE'));
   const pkg = join(root, 'packages/ontology');
   mkdirSync(pkg, { recursive: true });
   for (const entry of ['package.json', 'README.md', 'dist']) {
@@ -940,7 +972,7 @@ test('the built output of every publishable package carries no sourceMappingURL 
   }
 });
 
-test('end to end: a package with no LICENSE or README, and no engines, fails three ways', () => {
+test('end to end: a package with no LICENSE copy or README, and no engines, fails three ways', () => {
   const root = makeWorkspace((manifest, { pkg }) => {
     rmSync(join(pkg, 'LICENSE'));
     rmSync(join(pkg, 'README.md'));
@@ -951,7 +983,8 @@ test('end to end: a package with no LICENSE or README, and no engines, fails thr
       checkWorkspace(root)
         .violations.map((v) => v.code)
         .sort(),
-      ['ENGINES_MISSING', 'LICENSE_MISSING', 'README_MISSING'],
+      ['ENGINES_MISSING', 'LICENSE_COPY_MISSING', 'README_MISSING'],
+      'pnpm pack put the root LICENSE in the tarball; the missing copy is still reported',
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -993,6 +1026,49 @@ test('end to end: a package that ships no NOTICE, or an edited one, fails the ga
   }
 });
 
+test('end to end: a package whose LICENSE copy is absent or edited fails the gate', () => {
+  const missing = makeWorkspace((_manifest, { pkg }) => {
+    rmSync(join(pkg, 'LICENSE'));
+  });
+  const drifted = makeWorkspace((_manifest, { pkg }) => {
+    appendFileSync(join(pkg, 'LICENSE'), '\nAdditional terms.\n');
+  });
+  const nowhere = makeWorkspace((_manifest, { pkg }) => {
+    rmSync(join(pkg, 'LICENSE'));
+  });
+  rmSync(join(nowhere, 'LICENSE'));
+  try {
+    assert.deepEqual(
+      checkWorkspace(missing).violations.map((v) => v.code),
+      ['LICENSE_COPY_MISSING'],
+      'the root file reaches the tarball through pnpm only',
+    );
+    assert.deepEqual(
+      checkWorkspace(drifted).violations.map((v) => v.code),
+      ['LICENSE_DRIFT'],
+      'the copy no longer equals the root file',
+    );
+    assert.deepEqual(
+      checkWorkspace(nowhere)
+        .violations.map((v) => v.code)
+        .sort(),
+      ['LICENSE_COPY_MISSING', 'LICENSE_MISSING', 'ROOT_LICENSE_MISSING'],
+      'no root file for pnpm to add, and none to compare with',
+    );
+    const run = runCli(missing);
+    assert.equal(run.status, 1, run.stdout + run.stderr);
+    assert.match(run.stdout, /LICENSE_COPY_MISSING: the package directory has no LICENSE/);
+    const driftRun = runCli(drifted);
+    assert.equal(driftRun.status, 1, driftRun.stdout + driftRun.stderr);
+    assert.match(
+      driftRun.stdout,
+      /LICENSE_DRIFT: LICENSE differs from the repository root LICENSE/,
+    );
+  } finally {
+    for (const root of [missing, drifted, nowhere]) rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('end to end: a repository with no root NOTICE cannot pass', () => {
   const root = makeWorkspace();
   try {
@@ -1011,6 +1087,17 @@ test('the committed per-package NOTICE copies equal the root NOTICE', () => {
     if (manifest.private === true) continue;
     assert.ok(manifest.files.includes('NOTICE'), `${manifest.name}: "files" must list NOTICE`);
     assert.ok(readFileSync(join(dir, 'NOTICE')).equals(root), `${manifest.name}: NOTICE drifted`);
+  }
+});
+
+test('the committed per-package LICENSE copies equal the root LICENSE', () => {
+  const root = readFileSync(join(REPO_ROOT, 'LICENSE'));
+  for (const dir of workspaceDirs(REPO_ROOT)) {
+    const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    if (manifest.private === true) continue;
+    assert.ok(manifest.files.includes('LICENSE'), `${manifest.name}: "files" must list LICENSE`);
+    assert.ok(existsSync(join(dir, 'LICENSE')), `${manifest.name}: no LICENSE copy`);
+    assert.ok(readFileSync(join(dir, 'LICENSE')).equals(root), `${manifest.name}: LICENSE drifted`);
   }
 });
 

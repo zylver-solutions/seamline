@@ -11,6 +11,7 @@ All notable changes to this project are recorded in this file. The format follow
 ### Fixed
 
 - The compiled output no longer ends with a `//# sourceMappingURL=` comment. Every `.js` and `.d.ts` file in the 0.1.0 tarballs carried one, while the `.map` files it names were excluded from the tarballs, so debuggers, bundlers and source map loaders warned or failed on the missing files. The build now leaves `sourceMap` and `declarationMap` off (the maps point at `src/*.ts`, which is not published), and `pnpm gate:pack` reports a `sourceMappingURL` comment whose target is not in the same tarball as `DANGLING_SOURCE_MAP`.
+- Each published package directory now holds its own `LICENSE`, byte-equal to the root file and listed in `files`. The 0.1.0 tarballs carry `LICENSE` only because `pnpm publish` copies the workspace root file into a package that has none; `npm pack` or `npm publish` run in a package directory would have shipped without it. `pnpm gate:pack` reports a package directory without the copy as `LICENSE_COPY_MISSING`, a copy that differs from the root file as `LICENSE_DRIFT`, and a repository without a root `LICENSE` as `ROOT_LICENSE_MISSING`.
 
 ## [0.1.0] - 2026-11-10
 

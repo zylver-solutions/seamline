@@ -41,6 +41,7 @@
     "!dist/**/__fixtures__/**",
     "!dist/**/*.map",
     "README.md",
+    "LICENSE",
     "NOTICE"
   ],
   "publishConfig": {

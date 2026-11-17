@@ -41,6 +41,7 @@
     "!dist/**/*.map",
     "!dist/testing.*",
     "README.md",
+    "LICENSE",
     "NOTICE"
   ],
   "publishConfig": {
