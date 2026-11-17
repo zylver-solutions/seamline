@@ -43,6 +43,8 @@ export interface NodeSpec {
   readonly confidence?: number;
   readonly untrusted?: boolean;
   readonly deletedAt?: string | null;
+  /** The run that last observed the node, defaulting to the fixture's single run. */
+  readonly lastSeenRun?: string;
   readonly props?: Readonly<Record<string, PropValue>>;
 }
 
@@ -93,7 +95,7 @@ export class MemoryGraph implements GraphView {
         ...(n.untrusted === undefined ? {} : { untrusted: n.untrusted }),
         props: n.props ?? {},
         firstSeenRun: RUN,
-        lastSeenRun: RUN,
+        lastSeenRun: n.lastSeenRun ?? RUN,
         deletedAt: n.deletedAt ?? null,
       };
       this.#index.addNode(node);

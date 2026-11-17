@@ -4,6 +4,10 @@ All notable changes to this project are recorded in this file. The format follow
 
 ## [Unreleased]
 
+### Fixed
+
+- `seamline diff` of two plain runs over an unchanged tree no longer lists the `DataSource` and `Migration` nodes as changed. Those nodes carried the run id in a `replayEpoch` property, so their bodies differed on every run made without `SEAMLINE_DETERMINISTIC=1`. The property is gone, and the X8 detector reads the run that wrote each replay certificate from the node's `lastSeenRun`, which it already compared. X8 reports the same findings. A snapshot written by 0.1.0 still evaluates, because the extra property is ignored; 0.1.0 reading a newer snapshot reports X8 as UNKNOWN.
+
 ### Changed
 
 - Documentation only, no code change: the root README, this file, the twelve package READMEs and `eval/README.md` were corrected against the published 0.1.0. The quick start now works on any repository and marks the steps that use `examples/harbor-books`, its transcripts are the current output, the README lists all ten commands and the twelve packages, and it states what an inferred join can do to a finding. Each package README gained an install line, the Node floor, a usage example and absolute links.
