@@ -461,12 +461,13 @@ test('a reading command still takes the store from --out when --store is absent'
 // UNAVAILABLE is never PASS: no store means an error, never an empty result
 // ---------------------------------------------------------------------------
 
+/** With `--json` wherever the command has a JSON mode; `mcp` has none and refuses the flag. */
 const READING_COMMANDS: ReadonlyArray<readonly string[]> = [
-  ['export', '--profile', 'slice'],
-  ['why', columnId(ALPHA)],
-  ['check'],
-  ['blast-radius', '--ids', columnId(ALPHA)],
-  ['diff', 'run-alpha', 'run-alpha'],
+  ['export', '--profile', 'slice', '--json'],
+  ['why', columnId(ALPHA), '--json'],
+  ['check', '--json'],
+  ['blast-radius', '--ids', columnId(ALPHA), '--json'],
+  ['diff', 'run-alpha', 'run-alpha', '--json'],
   ['mcp', '--profile', 'team'],
 ];
 
@@ -474,7 +475,7 @@ test('a --store that does not exist is an error for every reading command, and i
   const repo = await twoStores();
 
   for (const argv of READING_COMMANDS) {
-    const full = [...argv, '--store', 'no-such-store', '--json'];
+    const full = [...argv, '--store', 'no-such-store'];
     const r = await cli(repo, full, { frames: EXPLAIN(columnId(ALPHA)) });
     assert.equal(r.code, EXIT_USAGE, full.join(' '));
     assert.equal(r.stdout, '', `an empty result must not be printed for: ${full.join(' ')}`);
@@ -488,7 +489,7 @@ test('an existing directory with no store in it is an error, not an empty graph'
   await mkdir(path.join(repo, 'hollow'));
 
   for (const argv of READING_COMMANDS) {
-    const full = [...argv, '--store', 'hollow', '--json'];
+    const full = [...argv, '--store', 'hollow'];
     const r = await cli(repo, full, { frames: EXPLAIN(columnId(ALPHA)) });
     assert.equal(r.code, EXIT_USAGE, full.join(' '));
     assert.equal(r.stdout, '', `an empty result must not be printed for: ${full.join(' ')}`);
@@ -531,11 +532,19 @@ test('init does not take --store, so it cannot be silently ignored there', async
 // The flag is the same everywhere it is meant to be
 // ---------------------------------------------------------------------------
 
-test('every command that touches a store accepts --store and documents it in its help; init and conformance do neither', async () => {
+/** The commands the global help says have no `--store`, read from its STORE OPTION heading. */
+function storelessPerHelp(): ReadonlySet<string> {
+  const heading = /^STORE OPTION \(every command except (.+)\)$/m.exec(HELP_TEXT);
+  assert.ok(heading?.[1] !== undefined, 'the global help has a STORE OPTION heading naming the exceptions');
+  return new Set(heading[1].split(/,\s*|\s+and\s+/));
+}
+
+test('each command the help says takes --store accepts it, and each it says does not rejects it', async () => {
   const repo = await twoStores();
-  // `conformance` reads no store: it runs an extractor over fixtures it generates itself.
-  const storeless: ReadonlySet<Command> = new Set<Command>(['init', 'conformance']);
-  const usable: Record<Exclude<Command, 'init' | 'conformance'>, readonly string[]> = {
+  const storeless = storelessPerHelp();
+  // An invocation that succeeds when `--store` is honoured, per command.
+  const withStore: Record<Command, readonly string[]> = {
+    init: ['init', '--store', 'storeA'],
     extract: ['extract', '--store', 'fresh'],
     why: ['why', columnId(ALPHA), '--store', 'storeA'],
     check: ['check', '--store', 'storeA'],
@@ -544,17 +553,21 @@ test('every command that touches a store accepts --store and documents it in its
     'blast-radius': ['blast-radius', '--ids', columnId(ALPHA), '--store', 'storeA'],
     mcp: ['mcp', '--profile', 'team', '--store', 'storeA'],
     align: ['align', '--store', 'storeA'],
+    conformance: ['conformance', 'extractor.mjs', '--store', 'storeA'],
   };
 
+  for (const name of storeless) assert.ok((COMMANDS as readonly string[]).includes(name), `${name} is a command`);
   for (const command of COMMANDS) {
-    assert.equal(
-      /--store <dir>/.test(COMMAND_HELP[command]),
-      !storeless.has(command),
-      `--help of ${command}`,
-    );
-    if (command === 'init' || command === 'conformance') continue;
-    const r = await cli(repo, usable[command]);
-    assert.equal(r.code, EXIT_OK, `${command}: ${r.stderr}`);
+    const documented = !storeless.has(command);
+    assert.equal(/--store <dir>/.test(COMMAND_HELP[command]), documented, `--help of ${command}`);
+    const r = await cli(repo, withStore[command]);
+    if (documented) {
+      assert.equal(r.code, EXIT_OK, `${command}: ${r.stderr}`);
+    } else {
+      assert.equal(r.code, EXIT_USAGE, `${command} must reject --store`);
+      assert.match(r.stderr, /Unknown option '--store'/, command);
+      assert.equal(r.stdout, '', `${command} did nothing`);
+    }
   }
   assert.match(HELP_TEXT, /--store <dir>/);
 });

@@ -13,7 +13,7 @@ seamline --version
 
 Requires Node.js 22.13 or later. The installed shell command is `seamline`. The package depends on the other eleven `@seamline/*` packages, so this one install brings the extractors, the detectors and the MCP server with it. Without a global install, run `npm install @seamline/cli` in a project and use `npx seamline`, or run it once with `npx --package @seamline/cli seamline --version`. There is no unscoped `seamline` package on npm, so a bare `npx seamline` works only where this package is already installed.
 
-Every command prints an `ExperimentalWarning: SQLite is an experimental feature` line on stderr, because the graph store uses Node's built-in `node:sqlite`. It does not mean anything failed.
+Every command prints an `ExperimentalWarning: SQLite is an experimental feature` line on stderr, because the graph store uses Node's built-in `node:sqlite`. It does not mean anything failed. `--version` and `--help` open no store and do not print it.
 
 ## Usage
 
@@ -42,7 +42,9 @@ The [repository README](https://github.com/zylver-solutions/seamline#the-ten-min
 | `align`                | Compares what the tracked Markdown claims with the code and manifests. Never fails a build.                    | `--at <rev>`, `--worktree`, `--facts <file>`, `--baseline <file>`, `--profile <p>`, `--packet <file>` |
 | `conformance <module>` | Runs the extractor conformance suite on an extractor module you wrote.                                         | `--seed <dir>`, `--options <file>`, `--stress-mb <n>`                                                 |
 
-Global options: `--json` (machine-readable output on stdout, on every command except `mcp`, which speaks the MCP protocol there), `--no-color`, `--repo <path>` (default: the current directory), `--store <dir>` (see [Selecting the store](#selecting-the-store)), `-h`/`--help`, `-v`/`--version`. `seamline <command> --help` prints the full text for one command.
+Global options: `--json` (machine-readable output on stdout, on every command except `mcp`, which speaks the MCP protocol there), `--no-color`, `--repo <path>` (default: the current directory; not `conformance`, which reads no repository), `--store <dir>` (see [Selecting the store](#selecting-the-store)), `-h`/`--help`, `-v`/`--version`. `seamline <command> --help` prints the full text for one command.
+
+An option a command cannot act on is a usage error (exit 2), never ignored: `--json` on `mcp`, `--repo` on `conformance`, and `--out` or `--store` on `init` and `conformance`.
 
 | Exit code | Meaning                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------- |
@@ -57,7 +59,7 @@ Notes on four of the commands:
 
 - `seamline mcp --profile <name>` is the ready-made MCP server: it serves the store `seamline extract` wrote, with every tool evaluated inside the named export profile. It prints nothing on start, waits for MCP messages on stdin and exits when stdin closes. If you are embedding the server in your own program instead, see [`@seamline/mcp`](https://github.com/zylver-solutions/seamline/blob/main/packages/mcp/README.md).
 - `seamline align` is the alignment report (ADR-0014): it classifies each comparison that finds something as Observed drift, Unexplained gap, Planned gap, Unknown or Resolved, and counts the aligned subjects. It needs a git repository. Drift never gates, and `check` is unchanged. Without `--profile` it prints a summary; the finding packet leaves only through an export profile that names `"packets": ["alignment"]`, and no shipped or scaffolded profile does, so you declare one (the [repository README](https://github.com/zylver-solutions/seamline#documents-against-code-seamline-align) shows it). Three of its four probes need the optional `typescript` package (`typescript@^6.0.3`; TypeScript 7 makes `align` fail in 0.1.0), which this package does not install.
-- `seamline conformance <path-to-extractor-module>` is for people who write extractors: it runs the module in the sandbox against generated fixtures and prints a PASS, FAIL or UNAVAILABLE line per property ([`docs/conformance.md`](https://github.com/zylver-solutions/seamline/blob/main/docs/conformance.md)). The package also exports `conformanceOfModule`, `runConformance`, `loadExtractorProgram` and the report types for the same suite from code.
+- `seamline conformance <path-to-extractor-module>` is for people who write extractors: it runs the module in the sandbox against generated fixtures and prints a PASS, FAIL, UNAVAILABLE or NOT_APPLICABLE line for each of its eight properties, which `seamline conformance --help` lists ([`docs/conformance.md`](https://github.com/zylver-solutions/seamline/blob/main/docs/conformance.md)). The package also exports `conformanceOfModule`, `runConformance`, `loadExtractorProgram` and the report types for the same suite from code.
 - `seamline diff` of two plain runs over an unchanged tree lists the `DataSource` and `Migration` nodes as changed in 0.1.0, because a `replayEpoch` property holds the run id. Runs made with `SEAMLINE_DETERMINISTIC=1` over the same tree are byte-identical.
 
 When a sandbox child exceeds its wall-clock budget, host stderr includes a bounded `sandbox-timeout-observation` line: the last reported child phase, whether stdin finished, response byte count, and Linux process state, CPU ticks and resident bytes when available. Phase markers travel over a separate advisory pipe and a custom extractor can spoof them. Unavailable observations read `unknown` or `unobserved`. The line contains no raw child stderr and does not enter the graph, canonical run snapshot or extractor result. The timeout still fails closed under the existing budget.
@@ -134,7 +136,7 @@ seamline export  --store ci/graph --profile team --out slice.json
 | `why`, `check`, `diff`, `blast-radius`, `mcp` | the directory read                             | the same thing, another spelling                          |
 | `align`                                       | the directory read when `--facts` is not given | not documented in its help; use `--store`                 |
 | `export`                                      | the directory read                             | the destination **file** only; it never selects the store |
-| `init`, `conformance`                         | not accepted                                   | not used                                                  |
+| `init`, `conformance`                         | not accepted (exit 2)                          | not accepted (exit 2)                                     |
 
 - With no `--store` (and no `--out` where it names the store) a command uses the config's `outDir`, exactly as before. Nothing about `--out` changed.
 - A relative `--store` resolves against the repository root (`--repo`, default the current directory), the same base `--out` and `outDir` use, so `extract --out storeA` and `export --store storeA` name one directory.

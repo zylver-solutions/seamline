@@ -159,6 +159,7 @@ export {
   PROPERTY_IDS,
   PROPERTY_TITLES,
   SUITE_VERSION,
+  VERDICTS,
   conformanceOfModule,
   loadExtractorProgram,
   runConformance,
