@@ -49,7 +49,7 @@
     },
     {
       "code": "X5_UNWRITTEN_COLUMN",
-      "reason": "untracedWriteCalls is 21: write call(s) could not be attributed to a table; runtimeDdl is 822: embedded SQL may change schema defaults or triggers outside the data replay",
+      "reason": "untracedWriteCalls is 22: write call(s) could not be attributed to a table; runtimeDdl is 947: embedded SQL may change schema defaults or triggers outside the data replay",
       "scopeStatus": {},
       "scopes": [],
       "severity": "medium"
