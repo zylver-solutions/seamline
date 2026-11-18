@@ -5,7 +5,7 @@ generated, with its version and SPDX licence identifier. Regenerate with:
 
     node scripts/license-gate.mjs --write-third-party-notices
 
-105 packages.
+106 packages.
 
 --------------------------------------------------------------------------------
 
@@ -22,6 +22,10 @@ generated, with its version and SPDX licence identifier. Regenerate with:
   https://spdx.org/licenses/MIT.html
 
 @eslint-community/regexpp@4.12.2
+  License: MIT
+  https://spdx.org/licenses/MIT.html
+
+@eslint-community/regexpp@4.12.3
   License: MIT
   https://spdx.org/licenses/MIT.html
 
@@ -93,43 +97,43 @@ generated, with its version and SPDX licence identifier. Regenerate with:
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/eslint-plugin@8.72.1
+@typescript-eslint/eslint-plugin@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/parser@8.72.1
+@typescript-eslint/parser@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/project-service@8.72.1
+@typescript-eslint/project-service@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/scope-manager@8.72.1
+@typescript-eslint/scope-manager@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/tsconfig-utils@8.72.1
+@typescript-eslint/tsconfig-utils@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/type-utils@8.72.1
+@typescript-eslint/type-utils@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/types@8.72.1
+@typescript-eslint/types@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/typescript-estree@8.72.1
+@typescript-eslint/typescript-estree@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/utils@8.72.1
+@typescript-eslint/utils@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-@typescript-eslint/visitor-keys@8.72.1
+@typescript-eslint/visitor-keys@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
@@ -353,7 +357,7 @@ prelude-ls@1.2.1
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-prettier@3.9.10
+prettier@3.10.1
   License: MIT
   https://spdx.org/licenses/MIT.html
 
@@ -369,7 +373,7 @@ qified@0.10.1
   License: MIT
   https://spdx.org/licenses/MIT.html
 
-semver@7.8.5
+semver@7.8.6
   License: ISC
   https://spdx.org/licenses/ISC.html
 
@@ -401,7 +405,7 @@ typescript@6.0.3
   License: Apache-2.0
   https://spdx.org/licenses/Apache-2.0.html
 
-typescript-eslint@8.72.1
+typescript-eslint@8.72.2
   License: MIT
   https://spdx.org/licenses/MIT.html
 
