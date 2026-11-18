@@ -11,12 +11,22 @@
  * fake extractors are exactly what `testing.ts` and the command tests use).
  */
 
+import { preflight } from './args.ts';
 import { processIo } from './io.ts';
-import { runCli } from './run.ts';
-import { buildCliDeps } from './wiring.ts';
 
 const io = processIo();
-const deps = buildCliDeps(io);
+const argv = process.argv.slice(2);
 
-const code = await runCli(deps, process.argv.slice(2));
-process.exitCode = code;
+// `--version` and `--help` open no store, so they are answered before the
+// modules that load `node:sqlite` are imported. Every other invocation loads
+// them here, and `runCli` repeats the same preflight to pick the command.
+const checked = preflight(io, argv);
+if (checked.answered) {
+  process.exitCode = checked.code;
+} else {
+  const [{ runCli }, { buildCliDeps }] = await Promise.all([
+    import('./run.ts'),
+    import('./wiring.ts'),
+  ]);
+  process.exitCode = await runCli(buildCliDeps(io), argv);
+}

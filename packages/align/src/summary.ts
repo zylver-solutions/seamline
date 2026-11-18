@@ -3,11 +3,15 @@
  * a second path to the data. Without an export profile `seamline align` prints
  * a human summary and, with `--json`, a summary object: class counts, and per
  * finding only `id`, `class`, `claimKind`, `member` and `reason`. It carries no
- * excerpt, no observed value and no source path.
+ * excerpt, no observed value and no source path. Both forms say when the probes
+ * that parse TypeScript had no usable parser, and why: a report made without
+ * them is thin, not clean.
  */
 
 import { printable } from '@seamline/core';
+import { PARSER_UNAVAILABLE_PREFIX } from './packet.ts';
 import type { RedactedPacket } from './redact.ts';
+import { SUPPORTED_TYPESCRIPT_RANGE } from './ts.ts';
 import { CLASSES } from './types.ts';
 import { prettyCanonicalJson } from './util.ts';
 
@@ -21,6 +25,11 @@ export interface SummaryObject {
   aligned: number;
   /** Documents whose claims may be incomplete: unread, over a bound, or read only in part. */
   documentsNotReadInFull: { count: number; reasons: Record<string, number> };
+  /**
+   * The TypeScript parser. When `available` is false, `reason` says why and `probesNotRun` names
+   * the probes that could not run: every claim they check is Unknown(probe-failed).
+   */
+  parser: { available: boolean; reason: string | null; probesNotRun: string[] };
   findings: {
     id: string;
     class: string;
@@ -53,6 +62,23 @@ function notReadInFull(redacted: RedactedPacket): {
   };
 }
 
+/**
+ * The probes whose packet entry says they had no usable parser, and the reason they give. Read
+ * from `inputs.probes[].diagnostics`, so the summaries and the packet cannot disagree.
+ */
+function parserState(redacted: RedactedPacket): SummaryObject['parser'] {
+  let reason: string | null = null;
+  const probesNotRun: string[] = [];
+  for (const p of redacted.packet.inputs.probes) {
+    const entry = p.diagnostics.find((d) => d.startsWith(PARSER_UNAVAILABLE_PREFIX));
+    if (entry === undefined) continue;
+    probesNotRun.push(p.probe);
+    reason ??= entry.slice(PARSER_UNAVAILABLE_PREFIX.length);
+  }
+  probesNotRun.sort();
+  return { available: probesNotRun.length === 0, reason, probesNotRun };
+}
+
 export function summaryObject(redacted: RedactedPacket): SummaryObject {
   const { packet } = redacted;
   return {
@@ -62,6 +88,7 @@ export function summaryObject(redacted: RedactedPacket): SummaryObject {
     claims: packet.summary.claims,
     aligned: packet.summary.aligned,
     documentsNotReadInFull: notReadInFull(redacted),
+    parser: parserState(redacted),
     findings: packet.findings.map((f) => ({
       id: f.id,
       class: f.class,
@@ -100,12 +127,25 @@ export function summaryText(redacted: RedactedPacket, packetEmitted = false): st
       `Unknown: ${unread.count} document(s) not read in full (${why}); their claims may be missing from the counts below.`,
     );
   }
+  const parser = parserState(redacted);
+  if (!parser.available) {
+    lines.push(
+      `Unknown: ${printable(parser.reason ?? '')}, so ${parser.probesNotRun.length} probe(s) that parse TypeScript did not run (${parser.probesNotRun.join(', ')}). Every claim they check is Unknown (probe-failed), not clean. Install typescript@${SUPPORTED_TYPESCRIPT_RANGE} next to the CLI for a full report.`,
+    );
+  }
   lines.push('');
   for (const cls of CLASSES) {
     const count = packet.summary.classes[cls];
     lines.push(`${cls.padEnd(16)} ${String(count).padStart(4)}`);
     for (const f of packet.findings.filter((x) => x.class === cls)) {
-      lines.push(`    ${printable(f.id)}  (${f.reason})`);
+      const noParser =
+        f.reason === 'probe-failed' &&
+        f.fact !== null &&
+        parser.probesNotRun.includes(f.fact.probe) &&
+        f.unknown?.detail === parser.reason;
+      lines.push(
+        `    ${printable(f.id)}  (${f.reason}${noParser ? ': no usable typescript parser' : ''})`,
+      );
     }
   }
   lines.push(`${'Aligned'.padEnd(16)} ${String(packet.summary.aligned).padStart(4)}`);

@@ -11,9 +11,15 @@
  * not evidence of support.
  */
 
-import { INSTRUMENT_PACKAGE, codeScopeGate, memo, type ProbeEnv } from '../env.ts';
+import {
+  INSTRUMENT_PACKAGE,
+  codeScopeGate,
+  memo,
+  noParserFact,
+  type ProbeEnv,
+} from '../env.ts';
 import { lineOf, moduleSpecifiers, parseSource } from '../source.ts';
-import { TYPESCRIPT_MISSING, type TS } from '../ts.ts';
+import type { TS } from '../ts.ts';
 import { absent, holds, unknownFact, type FactSource, type ProbeFact } from '../types.ts';
 import { compareCodeUnits, dirname, joinPosix } from '../util.ts';
 import {
@@ -251,8 +257,8 @@ function buildScan(
 export function probeFormatWitness(env: ProbeEnv, format: string): ProbeFact {
   const gate = codeScopeGate(env);
   if (gate !== null) return gate;
-  if (env.ts === null) return unknownFact('probe-failed', TYPESCRIPT_MISSING);
   const ts = env.ts;
+  if (ts === null) return noParserFact(env);
 
   const roots = env.discovery.packages.filter((p) => hasBin(p) && p.name !== INSTRUMENT_PACKAGE);
   const stray = memo(env, 'stray-manifests', () => strayManifests(env.tree, env.discovery));

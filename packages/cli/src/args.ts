@@ -7,8 +7,23 @@
  */
 
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { FORMAT_DOC_URL } from '@seamline/core';
-import { usageError } from './io.ts';
+import { printable } from '@seamline/security';
+import { PROPERTY_IDS, PROPERTY_TITLES, VERDICTS } from './conformance/types.ts';
+import { EXIT_OK, EXIT_USAGE, usageError } from './io.ts';
+import type { Io } from './ports.ts';
+import { VERSION } from './version.ts';
+
+/*
+ * This module, and everything it imports, loads no store and no extractor:
+ * `--help` and `--version` are answered from it alone (`preflight`, below), and
+ * `@seamline/core` loads `node:sqlite` on import. That is why the profile
+ * format URL is repeated here instead of imported; `args.test.ts` fails when
+ * the two differ.
+ */
+
+/** Where the export profile format is published. Equal to `FORMAT_DOC_URL` of `@seamline/core`. */
+export const PROFILE_FORMAT_DOC_URL =
+  'https://github.com/zylver-solutions/seamline/blob/main/docs/design/export-profile.md';
 
 export const COMMANDS = ['init', 'extract', 'why', 'check', 'export', 'diff', 'blast-radius', 'mcp', 'align', 'conformance'] as const;
 export type Command = (typeof COMMANDS)[number];
@@ -47,15 +62,78 @@ export const GLOBAL_OPTION_SPEC: OptionConfig = {
 /**
  * `--store <dir>`: the store directory a command reads (`extract`: writes).
  *
- * Deliberately not part of {@link GLOBAL_OPTION_SPEC}. `--out` is global and
- * `init` quietly ignores it; a second option that `init` also quietly ignored
- * would be a flag that appears to do something and does not. Each command that
- * touches a store merges this in, and `init` rejects it as unknown. How it
- * combines with `--out` is decided in one place, `resolveStoreDir`.
+ * Deliberately not part of {@link GLOBAL_OPTION_SPEC}: a command with no store
+ * (`init`, `conformance`) would accept it and do nothing with it. Each command
+ * that touches a store merges this in, and the others reject it as unknown.
+ * How it combines with `--out` is decided in one place, `resolveStoreDir`.
  */
 export const STORE_OPTION_SPEC: OptionConfig = {
   store: { type: 'string' },
 };
+
+/**
+ * The commands that merge {@link STORE_OPTION_SPEC}. The help is rendered from
+ * this list, and `store-selection.test.ts` runs every command to hold the list,
+ * the help and the behaviour together.
+ */
+export const STORE_COMMANDS: ReadonlyArray<Command> = [
+  'extract',
+  'why',
+  'check',
+  'export',
+  'diff',
+  'blast-radius',
+  'mcp',
+  'align',
+];
+
+/** A global option that some command has no use for. */
+export type RestrictedGlobal = 'json' | 'repo' | 'out';
+
+/**
+ * Global options a command cannot act on, with the reason.
+ *
+ * Passing one is a usage error (exit 2): an option that is accepted and then
+ * ignored reads as if it had taken effect. `--no-color` is not listed for any
+ * command, because every command's error output honours it.
+ */
+export const INAPPLICABLE_GLOBALS: Readonly<
+  Record<Command, Readonly<Partial<Record<RestrictedGlobal, string>>>>
+> = {
+  init: {
+    out: 'it writes seamline.config.json and .gitignore in the repository root and opens no store',
+  },
+  extract: {},
+  why: {},
+  check: {},
+  export: {},
+  diff: {},
+  'blast-radius': {},
+  mcp: {
+    json: 'it has no JSON mode, because stdout carries MCP protocol frames and nothing else',
+  },
+  align: {},
+  conformance: {
+    repo: 'the suite generates its own fixtures, and the module, --seed and --options resolve against the current directory',
+    out: 'it opens no store and writes no file, and the report goes to stdout',
+  },
+};
+
+/** The commands that reject `option`, in `COMMANDS` order. */
+function commandsRejecting(option: RestrictedGlobal): Command[] {
+  return COMMANDS.filter((command) => INAPPLICABLE_GLOBALS[command][option] !== undefined);
+}
+
+function assertGlobalsApply(command: Command, values: Readonly<Record<string, unknown>>): void {
+  for (const [option, reason] of Object.entries(INAPPLICABLE_GLOBALS[command])) {
+    const value = values[option];
+    if (value === undefined || value === false) continue;
+    throw usageError(
+      `\`seamline ${command}\` does not take --${option}: ${reason}.`,
+      `Remove --${option}. Run \`seamline ${command} --help\` for the options it takes.`,
+    );
+  }
+}
 
 /**
  * Every option that takes a value, across every command.
@@ -148,6 +226,7 @@ export function parseCommandArgs<V extends Record<string, unknown>>(
   const positionals = parsed.positionals;
   const first = positionals[0];
   const command = first !== undefined && isCommand(first) ? first : undefined;
+  if (command !== undefined) assertGlobalsApply(command, values);
 
   return {
     command,
@@ -190,16 +269,19 @@ COMMANDS
 
 GLOBAL OPTIONS
   --json                Machine-readable output on stdout. Never coloured.
+                        Not accepted by: ${commandsRejecting('json').join(', ')}.
   --no-color            Disable colour. Colour is also off when stdout is not a
                         TTY, or when NO_COLOR is set to a non-empty value.
   --repo <path>         Repository root. Default: the current directory.
-  --out <path>          extract, why, check, diff, blast-radius, mcp: the store
-                        directory, same as --store. export: the destination
-                        file instead (it never selects the store).
+                        Not accepted by: ${commandsRejecting('repo').join(', ')}.
+  --out <path>          The store directory, same as --store, on:
+                        ${STORE_COMMANDS.filter((c) => c !== 'export').join(', ')}.
+                        export: the destination file instead (it never selects
+                        the store). Not accepted by: ${commandsRejecting('out').join(', ')}.
   -h, --help            Show this help.
   -v, --version         Show the version.
 
-STORE OPTION (every command except init)
+STORE OPTION (every command except ${COMMANDS.filter((c) => !STORE_COMMANDS.includes(c)).join(' and ')})
   --store <dir>         The store directory: where extract writes and every
                         other command reads. Default: the config's outDir.
                         Relative paths resolve against --repo, like --out.
@@ -217,6 +299,24 @@ EXIT CODES
 UNKNOWN is never reported as clean and never fails a build on its own.
 `;
 
+const HELP_WIDTH = 79;
+const TERM_WIDTH = 22;
+
+/** One `  term  description` help entry, the description wrapped at {@link HELP_WIDTH} columns. */
+function definition(term: string, description: string): string {
+  const lines: string[] = [];
+  let line = `  ${term.padEnd(TERM_WIDTH)}`;
+  for (const word of description.split(' ')) {
+    if (line.length + word.length > HELP_WIDTH && line.trim().length > 0) {
+      lines.push(line.trimEnd());
+      line = ' '.repeat(TERM_WIDTH + 2);
+    }
+    line += `${word} `;
+  }
+  lines.push(line.trimEnd());
+  return lines.join('\n');
+}
+
 export const COMMAND_HELP: Readonly<Record<Command, string>> = {
   init: `seamline init — scaffold configuration in a repository.
 
@@ -225,7 +325,8 @@ USAGE
 
 Writes ${'`seamline.config.json`'} and adds \`seamline-out/\` to \`.gitignore\`.
 The graph is a concentrated map of your attack surface: it is never committed
-by default. Running init twice is a no-op.
+by default. Running init twice is a no-op. init opens no store, so --store and
+--out are usage errors.
 
 OPTIONS
   --force   Overwrite an existing seamline.config.json.
@@ -280,7 +381,7 @@ Export is default-deny (v3 §2.5). Without --profile this command refuses.
 A profile is an allow-list: the (node kind, sensitivity) pairs, edge kinds,
 props, location fields and provenance levels that may leave the store, and
 whether untrusted text may. Anything unnamed is dropped. There is one profile
-format, the same for \`seamline mcp\` (${FORMAT_DOC_URL}).
+format, the same for \`seamline mcp\` (${PROFILE_FORMAT_DOC_URL}).
 
 OPTIONS
   --profile <name>  Required. A shipped profile (public, team, audit) or one
@@ -369,7 +470,8 @@ Speaks the Model Context Protocol on stdin/stdout, over the store
 \`seamline extract\` wrote. Every tool is evaluated inside the named export
 profile: a node the profile withholds is never returned, never counted, and
 never used as a hop. Without --profile this command refuses; there is no
-mode that serves the whole store.
+mode that serves the whole store. There is no JSON mode either: stdout carries
+protocol frames, so --json is a usage error.
 
 OPTIONS
   --profile <name>  Required. A shipped profile (public, team, audit) or one
@@ -386,21 +488,23 @@ USAGE
                        [--options <file.json>] [--stress-mb <n>] [--json]
 
 Loads an extractor module (it exports run() and MANIFEST), runs it in the
-sandbox against generated fixture repositories, and prints one PASS, FAIL or
-UNAVAILABLE line per property with the evidence for it:
+sandbox against generated fixture repositories, and prints one line per
+property with the evidence for it. The verdict on a line is one of:
 
-  reads-confined        reads only what its declared globs admit
-  no-network            no network, DNS, fetch or child-process attempt
-  provenance-ceiling    emits nothing above its declared ceiling
-  memory-ceiling        stays under its declared memory ceiling
-  time-budget           terminates within its declared budget
-  unavailable-not-pass  UNAVAILABLE or FAIL, never PASS, on unreadable input
+  ${VERDICTS.join(', ')}
+
+The ${PROPERTY_IDS.length} properties, in the order they are printed:
+
+${PROPERTY_IDS.map((id) => definition(id, PROPERTY_TITLES[id])).join('\n')}
 
 A property the fixtures could not exercise is UNAVAILABLE, never PASS. The
 suite is offline and runs no extractor outside the sandbox, but it does run the
 module you name, and that sandbox is not a boundary against a hostile
 extractor: run it only on code you would run. It does not sign, vouch for, or
 enable an extractor; docs/conformance.md says what a PASS does not promise.
+
+The suite generates its own fixtures and reads no repository and no store, so
+--repo and --out are usage errors and there is no store option.
 
 OPTIONS
   --seed <dir>       Representative input for the extractor, copied into every
@@ -415,3 +519,79 @@ EXIT CODES
   3  no FAIL, but at least one property UNAVAILABLE
 `,
 };
+
+// ---------------------------------------------------------------------------
+// Invocations answered from the argument list alone
+// ---------------------------------------------------------------------------
+
+/** Either the exit code of an invocation that is already answered, or the command to run. */
+export type Preflight =
+  | { readonly answered: true; readonly code: number }
+  | { readonly answered: false; readonly command: Command };
+
+/**
+ * Answers `--version`, `--help`, no command and an unknown command, or names
+ * the command to run.
+ *
+ * It needs only `io`, so the binary calls it before it loads the store and the
+ * extractors (`bin.ts`): these invocations load no `node:sqlite` and print
+ * nothing on stderr that they did not ask for. `bin.test.ts` holds that
+ * against the built binary.
+ */
+export function preflight(io: Pick<Io, 'out' | 'err'>, argv: readonly string[]): Preflight {
+  if (argv.includes('--version') || argv.includes('-v')) {
+    io.out(`${VERSION}\n`);
+    return { answered: true, code: EXIT_OK };
+  }
+
+  // `findCommand` skips option values, so `seamline --repo /srv/app init`
+  // finds `init` rather than treating the path as the command.
+  const command = findCommand(argv);
+  const wantsHelp = argv.includes('--help') || argv.includes('-h');
+
+  if (command === undefined) {
+    const bare = firstBarePositional(argv);
+    if (bare !== undefined) {
+      io.err(`unknown command \`${printable(bare)}\`.\n\n${HELP_TEXT}`);
+      return { answered: true, code: EXIT_USAGE };
+    }
+    // No command. Help on stdout for `--help`, on stderr otherwise, because a
+    // bare `seamline` is a usage error and its output should not be piped into
+    // something expecting data.
+    if (wantsHelp) {
+      io.out(HELP_TEXT);
+      return { answered: true, code: EXIT_OK };
+    }
+    io.err(HELP_TEXT);
+    return { answered: true, code: EXIT_USAGE };
+  }
+
+  if (wantsHelp) {
+    io.out(COMMAND_HELP[command]);
+    return { answered: true, code: EXIT_OK };
+  }
+
+  return { answered: false, command };
+}
+
+/**
+ * The first token that is neither an option nor an option's value. Used only
+ * to name the offending token in the "unknown command" message.
+ */
+function firstBarePositional(argv: readonly string[]): string | undefined {
+  let optionsEnded = false;
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === undefined) continue;
+    if (!optionsEnded && token === '--') {
+      optionsEnded = true;
+      continue;
+    }
+    if (!optionsEnded && token.startsWith('-')) {
+      if (!token.includes('=') && VALUE_OPTIONS.has(token)) i += 1;
+      continue;
+    }
+    return token;
+  }
+  return undefined;
+}

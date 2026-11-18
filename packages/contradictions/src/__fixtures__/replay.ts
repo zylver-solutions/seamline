@@ -5,7 +5,7 @@ const CONFIG = 'a'.repeat(64);
 const INPUT = 'b'.repeat(64);
 const SNAPSHOT = 'c'.repeat(64);
 const common = {
-  dataSource: 'default', replayVersion: 1, replayEpoch: 'run-fixture', replayGroup: GROUP,
+  dataSource: 'default', replayVersion: 1, replayGroup: GROUP,
   replayInputHash: INPUT, replaySnapshotHash: SNAPSHOT,
   replayInventoryComplete: true, replayOrderPolicy: 'supabase-filename-v1', replayConfigHash: CONFIG,
   replayStepCount: 1, replayUnknownStepCount: 0, replayUnknownSteps: '[]',
@@ -23,7 +23,7 @@ export function replayFixtureNodes(guarded = false): NodeSpec[] {
     {
       kind: 'DataSource', name: 'default',
       props: {
-        dataSource: 'default', replayVersion: 1, replayEpoch: 'run-fixture', replaySnapshotHash: SNAPSHOT,
+        dataSource: 'default', replayVersion: 1, replaySnapshotHash: SNAPSHOT,
         replayInventoryComplete: true, replayMembershipComplete: true, replayGroupCount: 1,
         replayGroups: JSON.stringify([[GROUP, 'supabase-filename-v1', CONFIG, true, ['001_ref', '002_create'], '', INPUT]]),
       },
@@ -56,7 +56,7 @@ export function emptyReplayFixtureNodes(name = 'default'): NodeSpec[] {
   return [{
     kind: 'DataSource', name,
     props: {
-      dataSource: name, dynamicDdl: 0, replayVersion: 1, replayEpoch: 'run-fixture', replaySnapshotHash: SNAPSHOT,
+      dataSource: name, dynamicDdl: 0, replayVersion: 1, replaySnapshotHash: SNAPSHOT,
       replayInventoryComplete: true, replayMembershipComplete: true, replayGroupCount: 0, replayGroups: '[]',
     },
   }];

@@ -83,7 +83,7 @@ function groups(source: SeamlineNode, budget: Budget): readonly Group[] {
 function migration(node: SeamlineNode, source: SeamlineNode, group: Group, repo: string, budget: Budget): MigrationProof {
   const parsed = identity(node, 'Migration');
   const p = node.props;
-  if (parsed.repo !== repo || p['dataSource'] !== source.props['dataSource'] || node.lastSeenRun !== source.lastSeenRun || p['replayEpoch'] !== source.lastSeenRun || p['replayVersion'] !== 1 || p['replaySnapshotHash'] !== source.props['replaySnapshotHash'] || p['replayInputHash'] !== group.input || p['replayGroup'] !== group.path || p['replayOrderPolicy'] !== group.policy || p['replayConfigHash'] !== group.config || p['replayInventoryComplete'] !== true) return fail();
+  if (parsed.repo !== repo || p['dataSource'] !== source.props['dataSource'] || node.lastSeenRun !== source.lastSeenRun || p['replayVersion'] !== 1 || p['replaySnapshotHash'] !== source.props['replaySnapshotHash'] || p['replayInputHash'] !== group.input || p['replayGroup'] !== group.path || p['replayOrderPolicy'] !== group.policy || p['replayConfigHash'] !== group.config || p['replayInventoryComplete'] !== true) return fail();
   const steps = p['replayStepCount'];
   const ordinal = p['replayOrdinal'];
   if (!count(ordinal) || !count(steps) || p['replayUnknownStepCount'] !== 0 || p['replayUnknownSteps'] !== '[]') return fail();
@@ -136,7 +136,7 @@ export function readReplayEvidence(graph: GraphView): ReplayAnswer {
     try {
       const parsed = identity(source, 'DataSource');
       const p = source.props;
-      if (p['dataSource'] !== source.name || p['replayVersion'] !== 1 || !text(source.lastSeenRun) || p['replayEpoch'] !== source.lastSeenRun || typeof p['replaySnapshotHash'] !== 'string' || !HASH.test(p['replaySnapshotHash']) || p['replayInventoryComplete'] !== true || p['replayMembershipComplete'] !== true) return fail();
+      if (p['dataSource'] !== source.name || p['replayVersion'] !== 1 || !text(source.lastSeenRun) || typeof p['replaySnapshotHash'] !== 'string' || !HASH.test(p['replaySnapshotHash']) || p['replayInventoryComplete'] !== true || p['replayMembershipComplete'] !== true) return fail();
       const realm = JSON.stringify([parsed.repo, source.name]);
       if (duplicateRealms.has(realm)) return fail();
       const inventory = groups(source, budget);

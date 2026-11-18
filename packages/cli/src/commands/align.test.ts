@@ -542,3 +542,70 @@ test('only the align command and its adapter import @seamline/align: no pipeline
     .sort();
   assert.deepEqual(importers, ['align-port.ts', path.join('commands', 'align.ts')]);
 });
+
+/** What `import('typescript')` gives with TypeScript 7 installed: a version and no compiler API. */
+const TYPESCRIPT_7 = { version: '7.0.2', versionMajorMinor: '7.0' };
+
+for (const [name, parser, reason] of [
+  ['without the optional typescript peer', null, 'the optional typescript peer dependency is not installed'],
+  [
+    'with an out-of-range TypeScript 7',
+    TYPESCRIPT_7,
+    'the installed typescript 7.0.2 is outside the supported range ^6.0.3',
+  ],
+  [
+    'with an in-range typescript that lacks the compiler API',
+    { version: '6.0.3' },
+    'the installed typescript 6.0.3 lacks the parser API the probes need (createSourceFile); the supported range is ^6.0.3',
+  ],
+] as const) {
+  test(`align ${name} exits 0 and says why the report is thin, in the summary, --json and the packet`, async () => {
+    const dir = await repo();
+    const over = { align: alignPort({ ts: parser }) };
+
+    const text = await align(dir, [], over);
+    assert.equal(text.code, EXIT_OK, text.err);
+    assert.equal(text.err, '');
+    assert.ok(
+      text.out.includes(
+        `Unknown: ${reason}, so 2 probe(s) that parse TypeScript did not run (detector-liveness, format-witness).`,
+      ),
+      text.out,
+    );
+    assert.match(text.out, /Install typescript@\^6\.0\.3 next to the CLI/);
+    assert.match(text.out, /output-format:csv {2}\(probe-failed: no usable typescript parser\)/);
+    assert.match(text.out, /Unexplained gap\s+0/, 'an unread source is not a gap');
+    assert.match(text.out, /Observed drift\s+1/, 'the manifest probe needs no parser');
+
+    const json = await align(dir, ['--json'], over);
+    assert.equal(json.code, EXIT_OK, json.err);
+    const summary = JSON.parse(json.out) as {
+      parser: { available: boolean; reason: string; probesNotRun: string[] };
+      findings: { id: string; reason: string }[];
+    };
+    assert.deepEqual(summary.parser, {
+      available: false,
+      probesNotRun: ['detector-liveness', 'format-witness'],
+      reason,
+    });
+    assert.equal(
+      summary.findings.find((f) => f.id.endsWith('output-format:mermaid'))?.reason,
+      'probe-failed',
+    );
+
+    const emitted = await align(dir, ['--profile', 'align-ok'], over);
+    assert.equal(emitted.code, EXIT_OK, emitted.err);
+    const packet = JSON.parse(emitted.out) as {
+      schemaVersion: number;
+      inputs: { probes: { probe: string; status: string; diagnostics: string[] }[] };
+      findings: { id: string; class: string; unknown: { reason: string; detail: string } | null }[];
+    };
+    assert.equal(packet.schemaVersion, 1);
+    const witness = packet.inputs.probes.find((p) => p.probe === 'format-witness');
+    assert.equal(witness?.status, 'FAIL');
+    assert.deepEqual(witness?.diagnostics, [`parser unavailable: ${reason}`]);
+    const csv = packet.findings.find((f) => f.id.endsWith('output-format:csv'));
+    assert.equal(csv?.class, 'Unknown');
+    assert.deepEqual(csv?.unknown, { reason: 'probe-failed', scopes: [], detail: reason });
+  });
+}

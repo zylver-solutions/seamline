@@ -35,6 +35,8 @@ export interface AlignRequest {
   readonly config: { readonly docs?: readonly string[]; readonly exclude?: readonly string[] };
   readonly output: AlignOutput;
   readonly producer: { readonly toolVersion: string; readonly sifVersion: string };
+  /** Test seam: a parser module in place of the installed `typescript` (`EvaluateInput.ts`). */
+  readonly ts?: unknown;
   /** Test seam: a prepared tree and commit instead of reading git. */
   readonly tree?: { readonly tree: Tree; readonly commit: string | null };
 }
@@ -61,6 +63,7 @@ export async function runAlign(request: AlignRequest, sink: AlignSink): Promise<
     baseline,
     config: request.config,
     producer: request.producer,
+    ...(request.ts === undefined ? {} : { ts: request.ts }),
   });
   const redacted = redactPacket(body);
   const summary = request.output.json

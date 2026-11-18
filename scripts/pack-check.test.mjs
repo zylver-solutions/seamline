@@ -20,11 +20,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -42,12 +44,14 @@ import {
   checkPrivatePackage,
   checkWorkspace,
   readTarball,
+  sourceMapReferences,
   workspaceDirs,
 } from './pack-check.mjs';
 
 const SCRIPT = resolve(dirname(fileURLToPath(import.meta.url)), 'pack-check.mjs');
 const NODE_RANGE = '>=22.13.0';
 const ROOT_NOTICE = Buffer.from('Seamline\nCopyright\n');
+const ROOT_LICENSE = Buffer.from('Apache License\nVersion 2.0\n');
 const ROOT_REPO_URL = 'git+https://example.test/seamline.git';
 const REL_DIR = 'packages/ontology';
 
@@ -80,7 +84,7 @@ function cleanFiles() {
   return new Map([
     ['package.json', file('{}')],
     ['README.md', file('# readme')],
-    ['LICENSE', file('license')],
+    ['LICENSE', file(ROOT_LICENSE)],
     ['NOTICE', file(ROOT_NOTICE)],
     ['dist/index.js', file("export * from './contract.js';\n")],
     ['dist/index.d.ts', file("export * from './contract.ts';\n")],
@@ -90,7 +94,7 @@ function cleanFiles() {
 }
 
 /** Runs the checker on a clean package after `mutate(manifest, files)` and returns the codes. */
-function codesAfter(mutate = () => {}, { privateNames = new Set() } = {}) {
+function codesAfter(mutate = () => {}, { privateNames = new Set(), hasLicenseCopy = true } = {}) {
   const manifest = cleanManifest();
   const files = cleanFiles();
   mutate(manifest, files);
@@ -100,6 +104,8 @@ function codesAfter(mutate = () => {}, { privateNames = new Set() } = {}) {
     files,
     expectedNode: NODE_RANGE,
     rootNotice: ROOT_NOTICE,
+    rootLicense: ROOT_LICENSE,
+    packageLicense: hasLicenseCopy ? ROOT_LICENSE : undefined,
     rootRepositoryUrl: ROOT_REPO_URL,
     relDir: REL_DIR,
     privateNames,
@@ -178,6 +184,8 @@ test('test files, fixtures, source maps, TypeScript source and src/ are each for
       files,
       expectedNode: NODE_RANGE,
       rootNotice: ROOT_NOTICE,
+      rootLicense: ROOT_LICENSE,
+      packageLicense: ROOT_LICENSE,
       rootRepositoryUrl: ROOT_REPO_URL,
       relDir: REL_DIR,
       privateNames: new Set(),
@@ -261,6 +269,139 @@ test('a shipped module that imports a file the tarball leaves out is reported', 
   );
 });
 
+test('a sourceMappingURL comment must name a file in the same tarball', () => {
+  const withTail = (path, tail) => (_m, files) =>
+    files.set(path, file(`${files.get(path).content.toString()}${tail}\n`));
+  assert.deepEqual(codesAfter(withTail('dist/index.js', '//# sourceMappingURL=index.js.map')), [
+    'DANGLING_SOURCE_MAP',
+  ]);
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.d.ts', '//# sourceMappingURL=index.d.ts.map')),
+    ['DANGLING_SOURCE_MAP'],
+    'declarations are read too',
+  );
+  for (const tail of [
+    '//@ sourceMappingURL=index.js.map',
+    '/*# sourceMappingURL=index.js.map */',
+    '//# sourceMappingURL=index.js.map\r',
+    '//# sourceMappingURL=../maps/index.js.map',
+    '//# sourceMappingURL=https://example.test/index.js.map',
+    '//# sourceMappingURL=/index.js.map',
+  ]) {
+    assert.deepEqual(codesAfter(withTail('dist/index.js', tail)), ['DANGLING_SOURCE_MAP'], tail);
+  }
+
+  // The reference resolves: the map is then reported as a forbidden file, not as dangling.
+  assert.deepEqual(
+    codesAfter((m, files) => {
+      withTail('dist/index.js', '//# sourceMappingURL=index.js.map')(m, files);
+      files.set('dist/index.js.map', file('{}'));
+    }),
+    ['FORBIDDEN_FILE'],
+  );
+  // A map beside another file does not satisfy the reference.
+  assert.deepEqual(
+    codesAfter((m, files) => {
+      withTail('dist/index.js', '//# sourceMappingURL=index.js.map')(m, files);
+      files.set('dist/contract.js.map', file('{}'));
+    }),
+    ['DANGLING_SOURCE_MAP', 'FORBIDDEN_FILE'],
+  );
+
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.js', '//# sourceMappingURL=data:application/json;base64,e30=')),
+    [],
+    'an inline map needs no file',
+  );
+  assert.deepEqual(
+    codesAfter(withTail('dist/index.js', "export const hint = '//# sourceMappingURL=x.js.map';")),
+    [],
+    'a string that mentions the comment is not a reference',
+  );
+});
+
+test('source-map references follow actual parser comment boundaries', async (t) => {
+  const pragma = '//# sourceMappingURL=missing.map';
+  const prefix = "export * from './contract.js';\n";
+  const slash = String.fromCharCode(92);
+  const template = 'export const text = `raw\n' + pragma + '\n`;\n';
+  const cases = [
+    ['baseline', prefix, []],
+    ['real', prefix + pragma, ['DANGLING_SOURCE_MAP']],
+    ['template', prefix + template, []],
+    ['template-then-real', prefix + template + pragma, ['DANGLING_SOURCE_MAP']],
+    [
+      'nested-template',
+      prefix + 'export const text=`${`raw\n' + pragma + '\n`} tail`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'interpolation',
+      prefix + 'export const text=`raw\n' + pragma + '\n${(()=>{\n' + pragma + '\nreturn 1;})()}`;',
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'escaped-backtick',
+      prefix + 'export const text=`escaped ' + slash + '`\n' + pragma + '\n`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'escaped-interpolation',
+      prefix + 'export const text=`escaped ' + slash + '${ raw\n' + pragma + '\n`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'string-continuation',
+      prefix + "export const text='continued" + slash + '\n' + pragma + slash + "\n';\n" + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['outer-doc-comment', prefix + '/** outer\n' + pragma + '\n */', []],
+    [
+      'outer-doc-then-real',
+      prefix + '/** outer\n' + pragma + '\n */\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['empty-block', prefix + 'function f(){\n' + pragma + '\n}', ['DANGLING_SOURCE_MAP']],
+    ['empty-arguments', prefix + 'Math.max(\n' + pragma + '\n);', ['DANGLING_SOURCE_MAP']],
+    [
+      'before-closing-punctuation',
+      prefix + 'export const x={a:1\n' + pragma + '\n};',
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['eof', prefix + pragma, ['DANGLING_SOURCE_MAP']],
+    ['regexp', prefix + 'export const r=/[\'"`]/;\n' + pragma, ['DANGLING_SOURCE_MAP']],
+    ['control-regexp', prefix + "if(true) /['\"`]/.test('x');\n" + pragma, ['DANGLING_SOURCE_MAP']],
+    ['division', prefix + 'export const x=4/2;\n' + pragma, ['DANGLING_SOURCE_MAP']],
+    [
+      'declaration-template',
+      "export * from './contract.ts';\nexport declare const text:`raw\n" +
+        pragma +
+        '\n`;\n' +
+        pragma,
+      ['DANGLING_SOURCE_MAP'],
+      'dist/index.d.ts',
+    ],
+    [
+      'unreadable',
+      prefix + 'export const text=`unterminated\n' + pragma,
+      ['SOURCE_MAP_UNREADABLE'],
+    ],
+    [
+      'jsx-raw',
+      prefix + 'export const x=<p>\n' + pragma + '\n</p>;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+  ];
+  for (const [id, body, expected, path = 'dist/index.js'] of cases) {
+    await t.test(id, () => {
+      assert.deepEqual(
+        codesAfter((_m, files) => files.set(path, file(body))),
+        expected,
+      );
+    });
+  }
+});
+
 test('engines.node must be present and equal to the root range', () => {
   assert.deepEqual(
     codesAfter((m) => {
@@ -290,6 +431,28 @@ test('license must be Apache-2.0, and LICENSE and README.md must be in the tarba
   assert.deepEqual(
     codesAfter((_m, files) => files.delete('README.md')),
     ['README_MISSING'],
+  );
+});
+
+test('LICENSE must be byte-equal to the root LICENSE, and the package must hold its own copy', () => {
+  assert.deepEqual(
+    codesAfter((_m, files) => files.set('LICENSE', file('Apache License\nVersion 2.1\n'))),
+    ['LICENSE_DRIFT'],
+    'an edited copy',
+  );
+  assert.deepEqual(
+    codesAfter((_m, files) => files.set('LICENSE', file(`${ROOT_LICENSE.toString()}\n`))),
+    ['LICENSE_DRIFT'],
+    'one trailing byte is drift',
+  );
+  assert.deepEqual(
+    codesAfter(() => {}, { hasLicenseCopy: false }),
+    ['LICENSE_COPY_MISSING'],
+    'the tarball has a LICENSE that the package directory does not: the packer supplied it',
+  );
+  assert.deepEqual(
+    codesAfter((_m, files) => files.delete('LICENSE'), { hasLicenseCopy: false }),
+    ['LICENSE_COPY_MISSING', 'LICENSE_MISSING'],
   );
 });
 
@@ -372,6 +535,8 @@ test('workspace: specifiers and private dependencies must not reach the registry
     files: cleanFiles(),
     expectedNode: NODE_RANGE,
     rootNotice: ROOT_NOTICE,
+    rootLicense: ROOT_LICENSE,
+    packageLicense: ROOT_LICENSE,
     rootRepositoryUrl: ROOT_REPO_URL,
     relDir: REL_DIR,
     privateNames: new Set(['@seamline/integration']),
@@ -438,6 +603,8 @@ test('a data directory is allowed only for the package named in DATA_DIRECTORIES
       files,
       expectedNode: NODE_RANGE,
       rootNotice: ROOT_NOTICE,
+      rootLicense: ROOT_LICENSE,
+      packageLicense: ROOT_LICENSE,
       rootRepositoryUrl: ROOT_REPO_URL,
       relDir: 'packages/security',
       privateNames: new Set(),
@@ -648,9 +815,7 @@ test('a shipped module nothing reaches is reported, unless it compiles to nothin
     'a helper whose name does not say "test"',
   );
   assert.deepEqual(
-    codesAfter((_m, files) =>
-      files.set('dist/types.js', file('export {};\n//# sourceMappingURL=types.js.map')),
-    ),
+    codesAfter((_m, files) => files.set('dist/types.js', file('export {};\n'))),
     [],
     'a type-only module that compiles to an empty module',
   );
@@ -772,6 +937,7 @@ function makeWorkspace(mutate = () => {}) {
   );
   writeFileSync(join(root, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n");
   cpSync(join(REPO_ROOT, 'NOTICE'), join(root, 'NOTICE'));
+  cpSync(join(REPO_ROOT, 'LICENSE'), join(root, 'LICENSE'));
   const pkg = join(root, 'packages/ontology');
   mkdirSync(pkg, { recursive: true });
   for (const entry of ['package.json', 'README.md', 'dist']) {
@@ -827,8 +993,9 @@ test('end to end: a fake exports target fails the gate with exit 1 naming the ta
 });
 
 test('end to end: dropping the files negations ships tests and maps, and the gate says so', () => {
-  const root = makeWorkspace((manifest) => {
+  const root = makeWorkspace((manifest, { pkg }) => {
     manifest.files = ['dist', 'README.md', 'NOTICE'];
+    writeFileSync(join(pkg, 'dist/index.js.map'), '{}\n');
   });
   try {
     const found = checkWorkspace(root).violations;
@@ -848,7 +1015,47 @@ test('end to end: dropping the files negations ships tests and maps, and the gat
   }
 });
 
-test('end to end: a package with no LICENSE or README, and no engines, fails three ways', () => {
+test('end to end: a build that emits source map comments while "files" leaves the maps out fails the gate', () => {
+  const root = makeWorkspace((_manifest, { pkg }) => {
+    for (const name of ['index.js', 'index.d.ts']) {
+      appendFileSync(join(pkg, 'dist', name), `//# sourceMappingURL=${name}.map\n`);
+      writeFileSync(join(pkg, 'dist', `${name}.map`), '{}\n');
+    }
+  });
+  try {
+    assert.deepEqual(
+      checkWorkspace(root).violations.map((v) => v.code),
+      ['DANGLING_SOURCE_MAP', 'DANGLING_SOURCE_MAP'],
+    );
+    const run = runCli(root);
+    assert.equal(run.status, 1, run.stdout + run.stderr);
+    assert.match(
+      run.stdout,
+      /DANGLING_SOURCE_MAP: dist\/index\.d\.ts has a sourceMappingURL comment for "index\.d\.ts\.map", which is not in the tarball/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('the built output of every publishable package carries no sourceMappingURL comment', () => {
+  for (const dir of workspaceDirs(REPO_ROOT)) {
+    const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    if (manifest.private === true) continue;
+    const dist = join(dir, 'dist');
+    const emitted = readdirSync(dist, { recursive: true }).filter((f) => /\.(js|d\.ts)$/.test(f));
+    assert.ok(emitted.length > 0, `${manifest.name}: run \`pnpm build\` before this test`);
+    for (const f of emitted) {
+      assert.deepEqual(
+        sourceMapReferences(readFileSync(join(dist, f), 'utf8'), f),
+        [],
+        `${manifest.name}: dist/${f}`,
+      );
+    }
+  }
+});
+
+test('end to end: a package with no LICENSE copy or README, and no engines, fails three ways', () => {
   const root = makeWorkspace((manifest, { pkg }) => {
     rmSync(join(pkg, 'LICENSE'));
     rmSync(join(pkg, 'README.md'));
@@ -859,7 +1066,8 @@ test('end to end: a package with no LICENSE or README, and no engines, fails thr
       checkWorkspace(root)
         .violations.map((v) => v.code)
         .sort(),
-      ['ENGINES_MISSING', 'LICENSE_MISSING', 'README_MISSING'],
+      ['ENGINES_MISSING', 'LICENSE_COPY_MISSING', 'README_MISSING'],
+      'pnpm pack put the root LICENSE in the tarball; the missing copy is still reported',
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -901,6 +1109,49 @@ test('end to end: a package that ships no NOTICE, or an edited one, fails the ga
   }
 });
 
+test('end to end: a package whose LICENSE copy is absent or edited fails the gate', () => {
+  const missing = makeWorkspace((_manifest, { pkg }) => {
+    rmSync(join(pkg, 'LICENSE'));
+  });
+  const drifted = makeWorkspace((_manifest, { pkg }) => {
+    appendFileSync(join(pkg, 'LICENSE'), '\nAdditional terms.\n');
+  });
+  const nowhere = makeWorkspace((_manifest, { pkg }) => {
+    rmSync(join(pkg, 'LICENSE'));
+  });
+  rmSync(join(nowhere, 'LICENSE'));
+  try {
+    assert.deepEqual(
+      checkWorkspace(missing).violations.map((v) => v.code),
+      ['LICENSE_COPY_MISSING'],
+      'the root file reaches the tarball through pnpm only',
+    );
+    assert.deepEqual(
+      checkWorkspace(drifted).violations.map((v) => v.code),
+      ['LICENSE_DRIFT'],
+      'the copy no longer equals the root file',
+    );
+    assert.deepEqual(
+      checkWorkspace(nowhere)
+        .violations.map((v) => v.code)
+        .sort(),
+      ['LICENSE_COPY_MISSING', 'LICENSE_MISSING', 'ROOT_LICENSE_MISSING'],
+      'no root file for pnpm to add, and none to compare with',
+    );
+    const run = runCli(missing);
+    assert.equal(run.status, 1, run.stdout + run.stderr);
+    assert.match(run.stdout, /LICENSE_COPY_MISSING: the package directory has no LICENSE/);
+    const driftRun = runCli(drifted);
+    assert.equal(driftRun.status, 1, driftRun.stdout + driftRun.stderr);
+    assert.match(
+      driftRun.stdout,
+      /LICENSE_DRIFT: LICENSE differs from the repository root LICENSE/,
+    );
+  } finally {
+    for (const root of [missing, drifted, nowhere]) rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('end to end: a repository with no root NOTICE cannot pass', () => {
   const root = makeWorkspace();
   try {
@@ -919,6 +1170,17 @@ test('the committed per-package NOTICE copies equal the root NOTICE', () => {
     if (manifest.private === true) continue;
     assert.ok(manifest.files.includes('NOTICE'), `${manifest.name}: "files" must list NOTICE`);
     assert.ok(readFileSync(join(dir, 'NOTICE')).equals(root), `${manifest.name}: NOTICE drifted`);
+  }
+});
+
+test('the committed per-package LICENSE copies equal the root LICENSE', () => {
+  const root = readFileSync(join(REPO_ROOT, 'LICENSE'));
+  for (const dir of workspaceDirs(REPO_ROOT)) {
+    const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+    if (manifest.private === true) continue;
+    assert.ok(manifest.files.includes('LICENSE'), `${manifest.name}: "files" must list LICENSE`);
+    assert.ok(existsSync(join(dir, 'LICENSE')), `${manifest.name}: no LICENSE copy`);
+    assert.ok(readFileSync(join(dir, 'LICENSE')).equals(root), `${manifest.name}: LICENSE drifted`);
   }
 });
 
