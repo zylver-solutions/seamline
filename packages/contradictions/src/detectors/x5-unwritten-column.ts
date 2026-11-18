@@ -1,5 +1,5 @@
 /**
- * X5 - unexposed required column.
+ * X5 - unwritten required column (`X5_UNWRITTEN_COLUMN`).
  *
  * A column that is `NOT NULL`, has no default the writers supply, and that no
  * traced insert names. The schema says a value is mandatory on every insert; the
