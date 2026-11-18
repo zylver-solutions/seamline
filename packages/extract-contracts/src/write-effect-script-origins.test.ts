@@ -57,6 +57,19 @@ for(const [name,scripts]of[
 test('a nested package can also declare an unproved source writer',()=>{
   unknown({'tools/package.json':'{"name":"sample-tools","scripts":{"build":"custom-emitter"}}'});
 });
+test('script refusal names the observed manifest and missing proof without echoing command text',()=>{
+  const output=run({'tools/package.json':JSON.stringify({scripts:{build:'private-command-text'}})});
+  assert.deepEqual(output.nodes.filter(n=>n.kind==='Contract'||n.kind==='SchemaProperty'),[]);
+  assert.equal(output.result.authoritative.some(c=>isCanonicalSelectorText(c.selector??'')),false);
+  const diagnostic=output.result.diagnostics.find(d=>d.includes('tools/package.json'));
+  assert.equal(diagnostic,'WRITE_EXECUTION_ORIGIN_UNKNOWN: tools/package.json: nonempty scripts have no invocation/emitter proof');
+  assert.doesNotMatch(output.result.diagnostics.join('\n'),/private-command-text/);
+});
+test('malformed script metadata is distinguished from an unproved command',()=>{
+  const output=run({'tools/package.json':'{"scripts":[]}'});
+  assert.ok(output.result.diagnostics.includes('WRITE_EXECUTION_ORIGIN_UNKNOWN: tools/package.json: scripts is not an object'));
+  assert.deepEqual(output.nodes.filter(n=>n.kind==='Contract'||n.kind==='SchemaProperty'),[]);
+});
 test('IDE descriptor plus pinned providers still does not prove an executing compiler',()=>{
   unknown({'tsconfig.json':'{"compilerOptions":{"plugins":[{"name":"next"}]}}'});
 });
