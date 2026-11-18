@@ -6,7 +6,7 @@ All notable changes to this project are recorded in this file. The format follow
 
 ### Fixed
 
-- `seamline diff` of two plain runs over an unchanged tree no longer lists the `DataSource` and `Migration` nodes as changed. Those nodes carried the run id in a `replayEpoch` property, so their bodies differed on every run made without `SEAMLINE_DETERMINISTIC=1`. The property is gone, and the X8 detector reads the run that wrote each replay certificate from the node's `lastSeenRun`, which it already compared. X8 reports the same findings. A store written by 0.1.0 still evaluates, because the extra property is ignored. A 0.1.0 `seamline check` over a store written by a newer version reports X8 as UNKNOWN and exits 0, so it does not report X8 findings there. A `seamline diff` between a 0.1.0 run and a newer run lists the replay nodes as changed once, for the removed property.
+- `seamline diff` of two plain runs over an unchanged tree no longer lists the `DataSource` and `Migration` nodes as changed. Those nodes carried the run id in a `replayEpoch` property, so their bodies differed on every run made without `SEAMLINE_DETERMINISTIC=1`. The property is gone, and the X8 detector reads the run that last observed each replay node from its `lastSeenRun`, which it already compared. X8 reports the same findings. A store written by 0.1.0 still evaluates, because the extra property is ignored. A 0.1.0 `seamline check` over a store written by a newer version reports X8 as UNKNOWN and exits 0, so it does not report X8 findings there. A `seamline diff` between a 0.1.0 run and a newer run lists the replay nodes as changed once, for the removed property.
 
 ### Changed
 
