@@ -552,7 +552,7 @@ export async function extractData(opts: ExtractDataOptions): Promise<ExtractData
   resolveDrizzleRefs(model, reg);
 
   model.migrationReplay = replayMigrations(files, migrationOrders, migrationNames.names, {
-    epoch: opts.runId, schema: model.defaultSchema, dialect,
+    schema: model.defaultSchema, dialect,
     unread: [...unread, ...failedFiles, ...(discovered ? [] : ['.'])],
   });
 

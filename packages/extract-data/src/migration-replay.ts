@@ -379,7 +379,7 @@ export function replayMigrations(
   files: readonly DiscoveredFile[],
   orders: readonly MigrationOrder[],
   names: ReadonlyMap<string, string>,
-  options: { readonly epoch: string; readonly schema: string; readonly dialect: string; readonly unread: readonly string[] },
+  options: { readonly schema: string; readonly dialect: string; readonly unread: readonly string[] },
 ): ReplayFacts {
   const output = new Map<string, Readonly<Record<string, Scalar>>>();
   const groups = new Map<string, DiscoveredFile[]>();
@@ -497,7 +497,6 @@ export function replayMigrations(
       const unresolvedRows = sortRows(unresolved), externalRows = sortRows(external), unknownRows = sortRows(unknown), validRows = sortRows(valid), skippedRows = sortRows(skipped);
       output.set(name, {
         replayVersion: 1,
-        replayEpoch: options.epoch,
         replayInputHash: inputHash,
         replayGroup: group,
         replayOrdinal: ordinal.get(name) ?? -1,
@@ -524,16 +523,18 @@ export function replayMigrations(
   // Inputs alone do not bind a corrected analysis under a reused run id.
   // Stamp the complete certificate bodies too, so an interrupted write cannot
   // mix a current root with an older interpretation of those same inputs.
+  // A certificate body holds nothing that varies per run: the run that wrote
+  // it is each node's lastSeenRun, which the detector compares instead.
   // Stream records rather than constructing another whole-graph JSON value.
   for (const [name, body] of [...output].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
-    const fields = Object.keys(body).filter((field) => field !== 'replayEpoch' && field !== 'replaySnapshotHash').sort();
+    const fields = Object.keys(body).filter((field) => field !== 'replaySnapshotHash').sort();
     snapshot.update(JSON.stringify([name, fields.map((field) => [field, body[field]])])).update('\n');
   }
   const snapshotHash = snapshot.digest('hex');
   for (const [name, props] of output) output.set(name, { ...props, replaySnapshotHash: snapshotHash });
   return {
     unavailable,
-    dataSource: { replayVersion: 1, replayEpoch: options.epoch, replaySnapshotHash: snapshotHash, replayMembershipComplete: !unavailable, replayInventoryComplete: inventoryRead, replayGroups: JSON.stringify(groupRows), replayGroupCount: groupRows.length },
+    dataSource: { replayVersion: 1, replaySnapshotHash: snapshotHash, replayMembershipComplete: !unavailable, replayInventoryComplete: inventoryRead, replayGroups: JSON.stringify(groupRows), replayGroupCount: groupRows.length },
     migrations: output,
   };
 }

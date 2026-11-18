@@ -9,13 +9,13 @@ import { extractData } from './extractor.ts';
 const CONFIG = 'project_id = "fixture"\n[db.migrations]\nenabled = true\nschema_paths = []\n';
 // A valid table keeps metadata refusal tests sensitive to grammar failures.
 const KEPT_SQL = 'CREATE TABLE public.kept (id integer);';
-async function run(t: TestContext, sql: Readonly<Record<string, string | Uint8Array>>, dialect = 'postgres', epoch = 'epoch') {
+async function run(t: TestContext, sql: Readonly<Record<string, string | Uint8Array>>, dialect = 'postgres', runId = 'run') {
   const root = await mkdtemp(path.join(tmpdir(), 'seamline-replay-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(path.join(root, 'supabase/migrations'), { recursive: true });
   await writeFile(path.join(root, 'supabase/config.toml'), CONFIG);
   for (const [name, text] of Object.entries(sql)) await writeFile(path.join(root, 'supabase/migrations', name), text);
-  return extractData({ root, repo: 'replay', runId: epoch, dialect, deterministic: true });
+  return extractData({ root, repo: 'replay', runId, dialect, deterministic: true });
 }
 function migration(nodes: readonly SeamlineNode[], name: string): SeamlineNode {
   const found = nodes.find((node) => node.kind === 'Migration' && node.name === name);
@@ -35,7 +35,6 @@ test('a reference before local creation carries its point-state and creation wit
   assert.equal(out.result.status, 'PASS');
   const ref = migration(out.nodes, '001_ref');
   assert.equal(ref.props['replayVersion'], 1);
-  assert.equal(ref.props['replayEpoch'], 'epoch');
   assert.equal(ref.props['replayInventoryComplete'], true);
   assert.deepEqual(rows(ref, 'unresolvedRefs'), [['public', 'accounts', null, 0, 1, '002_create', 0, 1]]);
   const creation = migration(out.nodes, '002_create');
@@ -1424,18 +1423,26 @@ test('valid 63-byte multibyte identifiers retain exact reference evidence', asyn
   assert.deepEqual(rows(migration(out.nodes, '002_ref'), 'validRefs'), [['public', name, null, 0, 1]]);
 });
 
-test('certificate content stamps are independent of the run epoch', async (t) => {
+test('two extractions under different run ids emit identical node and edge bodies', async (t) => {
   const sql = {
     '001_create.sql': 'CREATE TABLE public.accounts (id integer);',
     '002_ref.sql': 'ALTER TABLE public.accounts ADD COLUMN tag integer;',
   };
-  const a = await run(t, sql, 'postgres', 'before');
-  const b = await run(t, sql, 'postgres', 'after');
+  const a = await run(t, sql, 'postgres', 'run-id-alpha');
+  const b = await run(t, sql, 'postgres', 'run-id-beta');
   assert.equal(a.result.status, 'PASS');
   assert.equal(b.result.status, 'PASS');
-  const left = migration(a.nodes, '002_ref'), right = migration(b.nodes, '002_ref');
-  assert.notEqual(left.props['replayEpoch'], right.props['replayEpoch']);
-  assert.equal(left.props['replaySnapshotHash'], right.props['replaySnapshotHash']);
+  // The run id belongs to firstSeenRun and lastSeenRun only; everything else is the body.
+  const bodies = (rows: ReadonlyArray<{ readonly firstSeenRun: string; readonly lastSeenRun: string }>, runId: string) => rows.map((row) => {
+    assert.equal(row.firstSeenRun, runId);
+    assert.equal(row.lastSeenRun, runId);
+    return JSON.stringify({ ...row, firstSeenRun: '', lastSeenRun: '' });
+  });
+  assert.ok(a.nodes.some((node) => node.kind === 'DataSource') && a.nodes.some((node) => node.kind === 'Migration'));
+  assert.deepEqual(bodies(a.nodes, 'run-id-alpha'), bodies(b.nodes, 'run-id-beta'));
+  assert.deepEqual(bodies(a.edges, 'run-id-alpha'), bodies(b.edges, 'run-id-beta'));
+  for (const body of [...bodies(a.nodes, 'run-id-alpha'), ...bodies(a.edges, 'run-id-alpha')]) assert.ok(!body.includes('run-id-alpha'), body);
+  assert.match(String(migration(a.nodes, '002_ref').props['replaySnapshotHash']), /^[0-9a-f]{64}$/);
 });
 
 test('uncertain ALTER actions retain distinct bounded logical positions', async (t) => {
