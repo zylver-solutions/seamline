@@ -13,7 +13,7 @@ import { compileCanonicalSelector, currentObservationOf, encodeCanonicalSelector
 import { nodeId } from '@seamline/ontology';
 import { makeEdge, makeNode, makeResult, memoryGraph, memoryStorePort, type MemoryGraph } from '../testing.ts';
 import { inferJoinExtractorPort, sqliteStorePort } from '../wiring.ts';
-import type { ExtractReport } from './extract.ts';
+import { ONTOLOGY_VERSION, type ExtractReport } from './extract.ts';
 import { REQUIRED_SCOPES } from '@seamline/infer-join';
 import { secretCanary } from '@seamline/security/corpus';
 
@@ -77,6 +77,33 @@ test('extract prints one status line per extractor, including UNAVAILABLE', asyn
   assert.match(out, /PASS\s+extract-code-ts/);
   assert.match(out, /UNAVAILABLE\s+extract-data/);
   assert.match(out, /extract-data could not run/, 'the diagnostic is shown, not swallowed');
+});
+
+test('a status line with no diagnostic says the extractor gave no reason', async () => {
+  const dir = await repoWith(twoExtractorConfig);
+  const silent = (status: ExtractorStatus): ExtractorPort => ({
+    ...fakeExtractor(status === 'FAIL' ? 'extract-code-ts' : 'extract-data', status, ['data']),
+    extract: () =>
+      Promise.resolve({
+        result: makeResult(status === 'FAIL' ? 'extract-code-ts' : 'extract-data', status, ['data'], []),
+        nodes: [],
+        edges: [],
+      }),
+  });
+  const d = deps(dir, [silent('FAIL'), silent('UNAVAILABLE')]);
+
+  await runCli(d, ['extract']);
+  const out = d.io.stdout();
+  assert.match(out, /^FAIL\s+extract-code-ts\s+the extractor reported no reason$/m);
+  assert.match(out, /^UNAVAILABLE\s+extract-data\s+the extractor reported no reason$/m);
+  assert.doesNotMatch(out, /no diagnostic reported/);
+});
+
+test('extract records the ontology version of this build on the run', async () => {
+  const dir = await repoWith(twoExtractorConfig);
+  const d = deps(dir, [fakeExtractor('extract-code-ts', 'PASS', ['code'])]);
+  await runCli(d, ['extract']);
+  assert.equal((await d.graph.runs.latest())?.ontologyVersion, ONTOLOGY_VERSION);
 });
 
 test('a UNAVAILABLE extractor makes its scope visibly degraded', async () => {

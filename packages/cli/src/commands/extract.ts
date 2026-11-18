@@ -160,6 +160,22 @@ export interface ExtractRedactions {
   readonly findings: ReadonlyArray<RedactionFinding>;
 }
 
+/**
+ * The version of the ontology (`ontology/seamline.yaml`, its `version` key)
+ * recorded on every run this command writes.
+ *
+ * `@seamline/ontology` exports no version constant, so the value is stated
+ * here; `extract.ontology-version.test.ts` fails when it differs from the YAML.
+ */
+export const ONTOLOGY_VERSION = '1.0.0';
+
+/**
+ * Shown on the status line of a result that is not PASS and carries no
+ * diagnostic. The reason is the extractor's to give; when it gives none the
+ * line says so instead of supplying one.
+ */
+export const NO_REASON_REPORTED = 'the extractor reported no reason';
+
 export async function extractCommand(deps: CliDeps, argv: readonly string[]): Promise<number> {
   const parsed = parseCommandArgs(argv, {
     ...STORE_OPTION_SPEC,
@@ -236,7 +252,7 @@ export async function extractCommand(deps: CliDeps, argv: readonly string[]): Pr
   const redactor = createRedactor();
 
   try {
-    const run = { runId, repo: config.repo, commit: null, startedAt, ontologyVersion: '1.0.0' };
+    const run = { runId, repo: config.repo, commit: null, startedAt, ontologyVersion: ONTOLOGY_VERSION };
     // A fresh run id is new to the store. A deterministic one is derived from the
     // run's inputs, so one the store already holds is the same run again: running
     // the same tree twice, retrying a run that was cut short, or coming back to an
@@ -411,7 +427,7 @@ export async function extractCommand(deps: CliDeps, argv: readonly string[]): Pr
     const counts =
       r.status === 'PASS'
         ? `${String(r.nodeCount).padStart(6)} nodes ${String(r.edgeCount).padStart(6)} edges ${String(r.durationMs).padStart(6)}ms`
-        : style.dim(printable(r.diagnostics[0] ?? 'no diagnostic reported'));
+        : style.dim(printable(r.diagnostics[0] ?? NO_REASON_REPORTED));
     lines.push(`${head}  ${counts}`);
     if (r.status === 'PASS' && r.diagnostics.length > 0) {
       for (const d of r.diagnostics) lines.push(`${' '.repeat(12 + width)}  ${style.dim(printable(d))}`);
