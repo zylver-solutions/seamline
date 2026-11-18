@@ -87,19 +87,22 @@ export type Parser =
   | { readonly ts: TsModule; readonly unavailable: null }
   | { readonly ts: null; readonly unavailable: string };
 
-/** A version an installed module reports about itself, kept only when it is a plain semver string. */
-const VERSION = /^(\d{1,6})\.(\d{1,6})\.(\d{1,6})(-[0-9A-Za-z.-]{1,40})?$/;
+/** Canonical SemVer, including build metadata (which does not change range membership). */
+const VERSION =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 /** A caret range with a major of at least 1: `^M.m.p` admits `M.x.y` at or above `M.m.p`. */
-const CARET_RANGE = /^\^([1-9]\d{0,5})\.(\d{1,6})\.(\d{1,6})$/;
+const CARET_RANGE = /^\^([1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 /**
  * Whether a release version satisfies a caret range. The bounds are read from the range string, so
  * the range has one definition. A range of any other form admits nothing.
  */
 function satisfiesCaret(range: string, major: number, minor: number, patch: number): boolean {
+  if (range.length > 256) return false;
   const floor = CARET_RANGE.exec(range);
-  if (floor === null) return false;
+  if (floor === null || !floor.slice(1, 4).every((n) => Number.isSafeInteger(Number(n))))
+    return false;
   if (major !== Number(floor[1])) return false;
   const floorMinor = Number(floor[2]);
   return minor > floorMinor || (minor === floorMinor && patch >= Number(floor[3]));
@@ -110,11 +113,18 @@ function satisfiesCaret(range: string, major: number, minor: number, patch: numb
  * no absolute path and no machine name) and a bounded length.
  */
 export function faultText(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error);
-  const line = (raw.split('\n')[0] ?? '')
-    .replace(/(?:file:\/\/)?(?:[A-Za-z]:)?[\\/][^\s'"`()]*/g, '<path>')
-    .trim();
-  return line.length > 200 ? `${line.slice(0, 200)}...` : line || 'no message';
+  try {
+    const raw = error instanceof Error ? error.message : String(error);
+    if (typeof raw !== 'string') return 'unprintable error';
+    const line = (raw.split('\n')[0] ?? '')
+      .replace(/(?:file:\/\/)?(?:[A-Za-z]:)?[\\/][^\s'"`()]*/g, '<path>')
+      .trim();
+    return line.length > 200 ? `${line.slice(0, 200)}...` : line || 'no message';
+  } catch {
+    // A thrown value need not be an Error or support primitive conversion. Reporting the original
+    // fault must not turn a failed probe into a failed command.
+    return 'unprintable error';
+  }
 }
 
 /** The first member of the lists above that `mod` does not have, or `null`. */
@@ -124,9 +134,11 @@ function missingMember(mod: Record<string, unknown>): string | null {
     const value = mod[name];
     return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
   };
-  if (typeof table('ScriptTarget')['Latest'] !== 'number') return 'ScriptTarget.Latest';
+  const enumValue = (value: unknown): boolean =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 0;
+  if (!enumValue(table('ScriptTarget')['Latest'])) return 'ScriptTarget.Latest';
   for (const kind of PARSER_SYNTAX_KINDS)
-    if (typeof table('SyntaxKind')[kind] !== 'number') return `SyntaxKind.${kind}`;
+    if (!enumValue(table('SyntaxKind')[kind])) return `SyntaxKind.${kind}`;
   return null;
 }
 
@@ -146,8 +158,9 @@ export function resolveParser(
   try {
     const mod = (typeof candidate === 'object' ? candidate : {}) as Record<string, unknown>;
     const reported = mod['version'];
-    const version = typeof reported === 'string' ? VERSION.exec(reported) : null;
-    if (version === null) {
+    const version =
+      typeof reported === 'string' && reported.length <= 256 ? VERSION.exec(reported) : null;
+    if (version === null || !version.slice(1, 4).every((n) => Number.isSafeInteger(Number(n)))) {
       return {
         ts: null,
         unavailable: `the installed typescript reports no recognisable version; the supported range is ${range}`,
@@ -182,9 +195,16 @@ export function resolveParser(
  * load, and the reason says so.
  */
 export function parserLoadFailure(error: unknown): Parser {
-  const notFound =
-    (error as { code?: unknown } | null)?.code === 'ERR_MODULE_NOT_FOUND' &&
-    /Cannot find (?:package|module) 'typescript'/.test(error instanceof Error ? error.message : '');
+  let notFound = false;
+  try {
+    notFound =
+      (error as { code?: unknown } | null)?.code === 'ERR_MODULE_NOT_FOUND' &&
+      /Cannot find (?:package|module) 'typescript'/.test(
+        error instanceof Error ? error.message : '',
+      );
+  } catch {
+    // An unreadable error property cannot establish that the optional package is absent.
+  }
   return {
     ts: null,
     unavailable: notFound

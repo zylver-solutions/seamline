@@ -16,6 +16,7 @@ import {
   PARSER_SYNTAX_KINDS,
   SUPPORTED_TYPESCRIPT_RANGE,
   TYPESCRIPT_MISSING,
+  faultText,
   parserLoadFailure,
   resolveParser,
 } from './ts.ts';
@@ -417,4 +418,88 @@ test('only a missing typescript package is "not installed"; another load error i
     'the installed typescript failed to load: Unexpected token',
   );
   assert.equal(parserLoadFailure(new SyntaxError('Unexpected token')).ts, null);
+});
+
+test('fault diagnostics stay total when a thrown value cannot be converted to text', () => {
+  const noPrimitive = Object.create(null) as object;
+  const badMessage = Object.defineProperty(new Error('unreadable'), 'message', {
+    get() {
+      throw undefined;
+    },
+  });
+  for (const error of [noPrimitive, badMessage]) {
+    assert.equal(faultText(error), 'unprintable error');
+    assert.deepEqual(parserLoadFailure(error), {
+      ts: null,
+      unavailable: 'the installed typescript failed to load: unprintable error',
+    });
+    const parser = new Proxy(
+      {},
+      {
+        get: () => {
+          throw error;
+        },
+      },
+    );
+    assert.deepEqual(resolveParser(parser), {
+      ts: null,
+      unavailable: 'the installed typescript could not be inspected: unprintable error',
+    });
+  }
+});
+
+test('load failure classification does not let an unreadable error code escape', () => {
+  const error = Object.defineProperty(new Error('load stopped'), 'code', {
+    get() {
+      throw new Error('unreadable code');
+    },
+  });
+  assert.deepEqual(parserLoadFailure(error), {
+    ts: null,
+    unavailable: 'the installed typescript failed to load: load stopped',
+  });
+});
+
+test('a non-stringable parser fault remains Unknown through the actual evaluation', () => {
+  const faulty = {
+    ...ts,
+    version: '6.0.3',
+    createSourceFile: () => {
+      throw Object.create(null);
+    },
+  };
+  const ran = run(files, { ts: faulty });
+  for (const suffix of PARSER_FINDINGS) {
+    const finding = ran.find(suffix);
+    assert.equal(finding?.class, 'Unknown', suffix);
+    assert.equal(finding?.reason, 'probe-failed', suffix);
+    assert.match(finding?.unknown?.detail ?? '', /unprintable error$/);
+  }
+  assert.equal(ran.find('RUNTIME_FLOOR:runtime:node')?.class, 'Observed drift');
+});
+
+test('the version gate admits release build metadata and rejects leading-zero core numbers', () => {
+  for (const version of ['6.0.3+build.1', '6.1.0+00.local', '6.1000000.0']) {
+    const candidate = { ...ts, version };
+    assert.equal(resolveParser(candidate).ts === candidate, true, version);
+  }
+  for (const version of ['06.0.3', '6.00.3', '6.0.03', '6.0.3+', '6.0.3+build..1']) {
+    assert.equal(resolveParser({ ...ts, version }).ts, null, version);
+  }
+  for (const version of ['6.0.3-rc+build.1', '6.1.0-beta+00']) {
+    assert.equal(resolveParser({ ...ts, version }).ts, null, version);
+  }
+});
+
+test('non-finite, fractional and negative compiler enum members are refused before a probe runs', () => {
+  for (const value of [NaN, Infinity, -1, 1.5]) {
+    const target = resolveParser({ ...ts, ScriptTarget: { ...ts.ScriptTarget, Latest: value } });
+    assert.equal(target.ts === null, true, `ScriptTarget.Latest=${String(value)}`);
+    assert.match(target.unavailable ?? '', /\(ScriptTarget\.Latest\)/);
+    for (const kind of PARSER_SYNTAX_KINDS) {
+      const parser = resolveParser({ ...ts, SyntaxKind: { ...ts.SyntaxKind, [kind]: value } });
+      assert.equal(parser.ts === null, true, `SyntaxKind.${kind}=${String(value)}`);
+      assert.ok(parser.unavailable?.includes(`(SyntaxKind.${kind})`));
+    }
+  }
 });
