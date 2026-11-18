@@ -3,11 +3,12 @@ import type { GraphView, NodeKind } from '@seamline/ontology';
 import { readReplayEvidence } from './x8-replay-proof.ts';
 import test from 'node:test';
 import { graph, type NodeSpec } from '../graph-memory.ts';
-import { replayFixtureNodes } from '../__fixtures__/replay.ts';
+import { replayFixtureNodes, stampReplayFixtureNodes } from '../__fixtures__/replay.ts';
 import { x8OrphanedMigration } from './x8-orphaned-migration.ts';
 
 function withProps(name: string, patch: Readonly<Record<string, string | number | boolean | null>>): NodeSpec[] {
-  return replayFixtureNodes().map((node) => node.name === name ? { ...node, props: { ...node.props, ...patch } } : node);
+  const nodes = replayFixtureNodes().map((node) => node.name === name ? { ...node, props: { ...node.props, ...patch } } : node);
+  return 'replaySnapshotHash' in patch ? nodes : stampReplayFixtureNodes(nodes);
 }
 function withheld(nodes: readonly NodeSpec[]): void {
   const g = graph({ nodes });
@@ -29,7 +30,7 @@ test('only current replay evidence produces the historical finding', () => {
 
 test('missing versions, counts, snapshots and unknown inventory fail closed', () => {
   for (const patch of [
-    { replayVersion: 2 },
+    { replayVersion: 1 },
     { replayReferenceCount: 0 },
     { unresolvedRefCount: 0 },
     { replayInputHash: 'd'.repeat(64) },
@@ -108,12 +109,12 @@ test('a forged code-symbol canonical name cannot become a Migration fact witness
       ...node,
       props: {
         ...node.props,
-        replayGroups: JSON.stringify([['supabase/migrations', 'supabase-filename-v1', 'a'.repeat(64), true, ['001_ref#symbol', '002_create'], '', 'b'.repeat(64)]]),
+        replayGroups: JSON.stringify([['supabase/migrations', 'supabase-filename-v1', 'a'.repeat(64), true, ['001_ref#symbol', '002_create'], '', 'b'.repeat(64), 'declared-ddl-core-v2', '5748cb97c26ed635672e73c87773d3b0cb6194d5086c9292936abb25dc0db49f', null]]),
       },
     };
     return node;
   });
-  withheld(nodes);
+  withheld(stampReplayFixtureNodes(nodes));
 });
 
 test('independent data-source inventories do not multiply migration identity work', () => {

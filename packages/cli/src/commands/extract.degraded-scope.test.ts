@@ -20,7 +20,7 @@ import { test } from 'node:test';
 import type { AuthoritativeScope, ExtractorStatus } from '@seamline/ontology';
 import { runDetectors } from '@seamline/contradictions';
 import { SqliteStore } from '@seamline/core';
-import { MANIFEST as DATA_MANIFEST } from '@seamline/extract-data';
+import { extractData, MANIFEST as DATA_MANIFEST } from '@seamline/extract-data';
 import { CONFIG_FILENAME, defaultConfig, serializeConfig } from '../config.ts';
 import { bufferIo } from '../io.ts';
 import type { CliDeps, ExtractorPort } from '../ports.ts';
@@ -42,10 +42,21 @@ function extractor(
     version: '0.0.1',
     provenanceCeiling: 'EXTRACTED',
     produces: [scope],
-    extract: (ctx) => {
+    extract: async (ctx) => {
       if (behaviour === 'throw') return Promise.reject(new Error('the extractor fell over'));
       const rejected = behaviour === 'pass-with-node-the-store-rejects';
       const status: ExtractorStatus = behaviour === 'pass' || rejected ? 'PASS' : behaviour;
+      // The first run needs current, positively examined replay evidence. Use the
+      // public producer over the fixture instead of fabricating an old proof version.
+      const replaySources = [];
+      if (scope.scope === 'data' && status === 'PASS') {
+        const actual = await extractData({
+          root: ctx.repoRoot, repo: ctx.repo, runId: ctx.runId, deterministic: true,
+        });
+        assert.equal(actual.result.status, 'PASS');
+        replaySources.push(...actual.nodes.filter((value) => value.kind === 'DataSource'));
+        assert.equal(replaySources.length, 1);
+      }
       const node = makeNode({
         // A kind outside the ontology: the store refuses to persist it, after the extractor reported PASS.
         kind: rejected ? ('Bogus' as never) : (scope.kinds[0] ?? 'File'),
@@ -59,17 +70,7 @@ function extractor(
           status === 'PASS'
             ? { ...makeResult(name, status, [scope.scope]), authoritative: [scope] }
             : makeResult(name, status, [], ['it could not do its job']),
-        nodes: status === 'PASS' ? [node, ...(scope.scope === 'data' ? [{
-          ...makeNode({
-            kind: 'DataSource', canonicalName: 'default',
-            props: {
-              dataSource: 'default', replayVersion: 1,
-              replaySnapshotHash: 'a'.repeat(64), replayMembershipComplete: true,
-              replayInventoryComplete: true, replayGroups: '[]', replayGroupCount: 0,
-            },
-          }),
-          firstSeenRun: ctx.runId, lastSeenRun: ctx.runId,
-        }] : [])] : [],
+        nodes: status === 'PASS' ? [node, ...replaySources] : [],
         edges: [],
       });
     },
@@ -86,6 +87,7 @@ async function repo(): Promise<{ dir: string; out: string }> {
     ],
   };
   await writeFile(path.join(dir, CONFIG_FILENAME), serializeConfig(config), 'utf8');
+  await writeFile(path.join(dir, 'schema.sql'), 'CREATE TABLE public.healthy (id integer);\n');
   return { dir, out: path.join(dir, 'out') };
 }
 
