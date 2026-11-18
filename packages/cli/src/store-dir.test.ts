@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { test } from 'node:test';
-import { COMMANDS, parseCommandArgs, STORE_OPTION_SPEC, type Command } from './args.ts';
+import { parseCommandArgs, STORE_COMMANDS, STORE_OPTION_SPEC, type Command } from './args.ts';
 import { CliError, EXIT_USAGE } from './io.ts';
 import { resolveStoreDir } from './store-dir.ts';
 
@@ -18,7 +18,7 @@ function resolve(command: Command, ...flags: string[]): string {
 }
 
 const DEFAULT = path.join(SRV_REPO, 'seamline-out');
-const READERS = COMMANDS.filter((c) => c !== 'init');
+const READERS = STORE_COMMANDS;
 
 test('with no flag the store is the config outDir, resolved against the repository root', () => {
   for (const command of READERS) assert.equal(resolve(command), DEFAULT, command);

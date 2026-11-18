@@ -10,7 +10,7 @@ export { conformanceOfModule, loadFailureReport, runConformance } from './suite.
 export type { ConformanceRunOptions } from './suite.ts';
 export { loadExtractorProgram, manifestShapeProblem } from './load.ts';
 export type { Loaded } from './load.ts';
-export { PROPERTY_IDS, PROPERTY_TITLES, SUITE_VERSION } from './types.ts';
+export { PROPERTY_IDS, PROPERTY_TITLES, SUITE_VERSION, VERDICTS } from './types.ts';
 export type {
   ConformanceOptions,
   ConformanceReport,

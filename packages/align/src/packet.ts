@@ -13,6 +13,12 @@ export const PACKET_SCHEMA = 'seamline.alignment-packet';
 export const PACKET_SCHEMA_VERSION = 1;
 export const ALIGN_VERSION = 1;
 
+/**
+ * The start of the `inputs.probes[].diagnostics` entry of a probe that had no usable parser. The
+ * rest of the entry is the reason. The summaries read it back, so it is part of schema version 1.
+ */
+export const PARSER_UNAVAILABLE_PREFIX = 'parser unavailable: ';
+
 /** Fields whose text comes from the repository and is not to be trusted by a consumer (8.1). */
 export const UNTRUSTED_FIELDS: readonly string[] = [
   'findings[].claims[].excerpt',

@@ -17,7 +17,8 @@
 import type { GraphView } from '@seamline/ontology';
 import type { SandboxHost } from '../sandbox/host.ts';
 
-export type Verdict = 'PASS' | 'FAIL' | 'UNAVAILABLE' | 'NOT_APPLICABLE';
+export const VERDICTS = ['PASS', 'FAIL', 'UNAVAILABLE', 'NOT_APPLICABLE'] as const;
+export type Verdict = (typeof VERDICTS)[number];
 
 export const PROPERTY_IDS = [
   'manifest',

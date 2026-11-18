@@ -19,13 +19,20 @@ import {
   resolvesDrift,
   type Standing,
 } from './classify.ts';
-import { extractClaims, type ClaimContext } from './claims.ts';
-import { DEFAULT_LIMITS, INSTRUMENT_PACKAGE, type Limits, type ProbeEnv } from './env.ts';
+import { catalogCodes, extractClaims, type ClaimContext } from './claims.ts';
+import {
+  DEFAULT_LIMITS,
+  INSTRUMENT_PACKAGE,
+  PARSER_PROBES,
+  type Limits,
+  type ProbeEnv,
+} from './env.ts';
 import { buildScopeTable, runProvenance, type AlignFacts } from './facts.ts';
 import {
   ALIGN_VERSION,
   PACKET_SCHEMA,
   PACKET_SCHEMA_VERSION,
+  PARSER_UNAVAILABLE_PREFIX,
   UNTRUSTED_FIELDS,
   type PacketBody,
   type PacketDoc,
@@ -34,12 +41,13 @@ import {
   type PacketProbe,
   type PacketStatus,
 } from './packet.ts';
-import { loadDetectors, probeDetectorLiveness } from './probes/detector-liveness.ts';
+import { probeDetectorLiveness, readRegistry } from './probes/detector-liveness.ts';
 import { formatScanSet, probeFormatWitness } from './probes/format-witness.ts';
 import { probeManifestField, type Runtime } from './probes/manifest-field.ts';
 import { probeModuleWiring } from './probes/module-wiring.ts';
 import { proposeFor } from './proposals.ts';
-import { loadTs, type TsModule } from './ts.ts';
+import { AlignError } from './errors.ts';
+import { faultText, loadParser, resolveParser } from './ts.ts';
 import { readText, type Tree } from './tree.ts';
 import {
   CLAIM_PROBE,
@@ -83,8 +91,12 @@ export interface EvaluateInput {
   readonly baseline?: Baseline | null;
   readonly config?: { readonly docs?: readonly string[]; readonly exclude?: readonly string[] };
   readonly producer: { readonly toolVersion: string; readonly sifVersion: string };
-  /** The parser; defaults to the installed `typescript`, `null` when it is missing. */
-  readonly ts?: TsModule | null;
+  /**
+   * The parser module to use in place of the installed `typescript`. It is checked as the installed
+   * one is (`resolveParser`): `null` is a missing parser, and a module outside the supported range
+   * is refused with its reason.
+   */
+  readonly ts?: unknown;
   readonly limits?: Partial<Limits>;
 }
 
@@ -174,6 +186,7 @@ export function evaluate(input: EvaluateInput): PacketBody {
   const discovery = discoverPackages(tree);
   const scopes = buildScopeTable(facts.runs);
   const provenance = runProvenance(facts, input.commit, scopes);
+  const parser = input.ts === undefined ? loadParser() : resolveParser(input.ts);
   const env: ProbeEnv = {
     tree,
     commit: input.commit,
@@ -181,7 +194,8 @@ export function evaluate(input: EvaluateInput): PacketBody {
     facts,
     scopes,
     runMismatch: provenance.mismatch,
-    ts: input.ts === undefined ? loadTs() : input.ts,
+    ts: parser.ts,
+    parserUnavailable: parser.unavailable,
     limits,
     cache: new Map(),
   };
@@ -202,13 +216,28 @@ export function evaluate(input: EvaluateInput): PacketBody {
     const owner = ownerOf(discovery, docPath);
     return owner === null || owner.dir === '.' ? null : owner.name;
   };
-  const registryCodes = new Set<string>(loadDetectors(env).keys());
+  const scan = { maxLineLength: limits.maxLineLength };
+  const registry = readRegistry(env);
+  const registryCodes = new Set<string>(registry.detectors.keys());
+  // A registry that was not read in full cannot say which codes are detectors. The catalog tables of
+  // the documents can: their codes are claims, answered Unknown by the probe. No other code is added.
+  const catalogOnly = new Set<string>();
+  if (registry.unread !== null) {
+    docPaths.slice(0, limits.maxDocuments).forEach((path) => {
+      const size = tree.size(path);
+      if (size !== null && size > limits.maxDocumentBytes) return;
+      const text = readText(tree, path);
+      if (text === null) return;
+      for (const code of catalogCodes(text, scan))
+        if (!registryCodes.has(code)) catalogOnly.add(code);
+    });
+  }
   const claimContext: ClaimContext = {
     commit: input.commit,
-    registryCodes,
+    registryCodes: new Set([...registryCodes, ...catalogOnly]),
     pathExists: (path) => trackedSet.has(path) || directories.has(path),
     packageNameOf,
-    scan: { maxLineLength: limits.maxLineLength },
+    scan,
   };
 
   const docs: DocResult[] = [];
@@ -315,6 +344,16 @@ export function evaluate(input: EvaluateInput): PacketBody {
     return fact;
   };
 
+  // A probe that stops on a fault did not read the implementation: Unknown, never a crash (5.2).
+  const guarded = (probe: ProbeName, read: () => ProbeFact): ProbeFact => {
+    try {
+      return read();
+    } catch (error) {
+      if (error instanceof AlignError) throw error;
+      return unknownFact('probe-failed', `the ${probe} probe stopped: ${faultText(error)}`);
+    }
+  };
+
   const floorFact = (claims: readonly ClaimRecord[]): ProbeFact | null => {
     const affirm = sortedClaims(claims.filter((c) => c.polarity === 'AFFIRM'));
     if (affirm.length === 0) return null;
@@ -324,7 +363,10 @@ export function evaluate(input: EvaluateInput): PacketBody {
       const key = `${dirname(claim.source.path)}\u0000${runtime}`;
       let fact = floorProbes.get(key);
       if (fact === undefined) {
-        fact = logged('manifest-field', probeManifestField(env, claim.source.path, runtime));
+        fact = logged(
+          'manifest-field',
+          guarded('manifest-field', () => probeManifestField(env, claim.source.path, runtime)),
+        );
         floorProbes.set(key, fact);
       }
       results.push({ claim, fact });
@@ -366,12 +408,17 @@ export function evaluate(input: EvaluateInput): PacketBody {
         return floorFact(claims);
       case 'OUTPUT_FORMAT_SET': {
         const member = subject.slice(subject.lastIndexOf(':') + 1);
-        return logged('format-witness', probeFormatWitness(env, member));
+        return logged(
+          'format-witness',
+          guarded('format-witness', () => probeFormatWitness(env, member)),
+        );
       }
       case 'DETECTOR_LIVENESS':
         return logged(
           'detector-liveness',
-          probeDetectorLiveness(env, subject.slice(subject.indexOf(':') + 1)),
+          guarded('detector-liveness', () =>
+            probeDetectorLiveness(env, subject.slice(subject.indexOf(':') + 1)),
+          ),
         );
       case 'CONTROL_ENFORCEMENT': {
         if (claims.length === 0) return null;
@@ -387,7 +434,10 @@ export function evaluate(input: EvaluateInput): PacketBody {
             ),
           );
         }
-        return logged('module-wiring', probeModuleWiring(env, paths));
+        return logged(
+          'module-wiring',
+          guarded('module-wiring', () => probeModuleWiring(env, paths)),
+        );
       }
     }
   };
@@ -566,6 +616,11 @@ export function evaluate(input: EvaluateInput): PacketBody {
     if (log.length > 0 && log.every((f) => f.result === 'UNKNOWN')) status = 'UNAVAILABLE';
     if (log.some((f) => f.reason === 'probe-failed')) status = 'FAIL';
     const diagnostics: string[] = [];
+    // A probe that had no parser says so whether or not a claim reached it: an empty log is not a clean one.
+    if (parser.unavailable !== null && (PARSER_PROBES as readonly string[]).includes(probe)) {
+      status = 'FAIL';
+      diagnostics.push(`${PARSER_UNAVAILABLE_PREFIX}${parser.unavailable}`);
+    }
     if (probe === 'format-witness') {
       const scanSet = formatScanSet(env);
       if (scanSet !== null && probeLog.has('format-witness')) {
@@ -579,7 +634,9 @@ export function evaluate(input: EvaluateInput): PacketBody {
     }
     if (probe === 'detector-liveness' && probeLog.has(probe)) {
       diagnostics.push(
-        `registry: ${[...registryCodes].sort(compareCodeUnits).join(', ') || '(empty)'}; level: node kinds`,
+        registry.unread === null
+          ? `registry: ${[...registryCodes].sort(compareCodeUnits).join(', ') || '(empty)'}; level: node kinds`
+          : `registry: not read in full (${registry.unread.reason}: ${registry.unread.detail}); read: ${[...registryCodes].sort(compareCodeUnits).join(', ') || '(none)'}; claims are also read for the codes a catalog table names: ${[...catalogOnly].sort(compareCodeUnits).join(', ') || '(none)'}; level: node kinds`,
       );
     }
     if (probe === 'manifest-field' || probe === 'module-wiring') {
