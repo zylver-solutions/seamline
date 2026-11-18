@@ -36,7 +36,11 @@ export const EXCERPT_LIMIT = 240;
 export interface ClaimContext {
   /** The evaluated commit, recorded on each claim; `null` with `--worktree`. */
   readonly commit: string | null;
-  /** Detector codes (`X1`) of the registry; a code outside it yields no claim (4.3). */
+  /**
+   * Detector codes (`X1`) of the registry; a code outside it yields no claim (4.3). When the
+   * registry could not be read in full, the codes a catalog table of the documents names are added
+   * (`catalogCodes`), and no others.
+   */
   readonly registryCodes: ReadonlySet<string>;
   /** Does this repo-relative path name a tracked file or a directory holding one? (binding B1) */
   readonly pathExists: (path: string) => boolean;
@@ -259,6 +263,27 @@ export interface DocumentClaims {
   readonly truncatedLines: readonly number[];
 }
 
+/** A catalog table (4.3): at least three rows, every first cell a detector code. */
+function isCatalog(table: {
+  readonly rows: readonly { readonly cells: readonly string[] }[];
+}): boolean {
+  return (
+    table.rows.length >= 3 &&
+    table.rows.every((row) => /^X\d+$/.test(replaceLinks(row.cells[0] ?? '').trim()))
+  );
+}
+
+/**
+ * The detector codes the catalog tables of one document name. A catalog is the document's own
+ * list of which codes are detectors, so it can stand in for a registry that was not read; a code
+ * in a sentence or a label cannot (`x64` is not a detector).
+ */
+export function catalogCodes(text: string, scan: ScanOptions): string[] {
+  return scanMarkdown(text, scan)
+    .tables.filter(isCatalog)
+    .flatMap((table) => table.rows.map((row) => replaceLinks(row.cells[0] ?? '').trim()));
+}
+
 export function extractClaims(docPath: string, text: string, ctx: ClaimContext): DocumentClaims {
   const scan = scanMarkdown(text, ctx.scan);
   const claims: ClaimRecord[] = [];
@@ -270,12 +295,7 @@ export function extractClaims(docPath: string, text: string, ctx: ClaimContext):
   const catalogRows = new Set<object>();
   const controlRows = new Set<object>();
   for (const table of scan.tables) {
-    if (
-      table.rows.length >= 3 &&
-      table.rows.every((row) => /^X\d+$/.test(replaceLinks(row.cells[0] ?? '').trim()))
-    ) {
-      for (const row of table.rows) catalogRows.add(row);
-    }
+    if (isCatalog(table)) for (const row of table.rows) catalogRows.add(row);
     if (
       table.rows.length > 0 &&
       headingText(table.headingPath).startsWith('Controls') &&

@@ -14,7 +14,7 @@ function environment(extra: Record<string, string>): ProbeEnv {
   const files = caseFiles({ files: extra });
   const tree = memTree(files);
   const facts = factsFor(files);
-  return { tree, facts, discovery: discoverPackages(tree), commit: 'c'.repeat(40), scopes: buildScopeTable(facts.runs), runMismatch: null, ts: loadTs(), limits: DEFAULT_LIMITS, cache: new Map() };
+  return { tree, facts, discovery: discoverPackages(tree), commit: 'c'.repeat(40), scopes: buildScopeTable(facts.runs), runMismatch: null, ts: loadTs(), parserUnavailable: null, limits: DEFAULT_LIMITS, cache: new Map() };
 }
 
 const manifest = (entries: Record<string, unknown>) => JSON.stringify({ name: '@fx/cli', bin: { fx: './dist/bin.js' }, ...entries });

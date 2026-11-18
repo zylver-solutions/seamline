@@ -134,9 +134,11 @@ export interface RunProvenance {
 /**
  * The commit rule (5.1). It applies to a store source only, and only to the runs
  * that supply an entry of the scope table. A `null` commit is not a mismatch:
- * it means the pairing is unknown, so the caller asserts it. A SIF carries no
- * commit, so the rule is not applied and the pairing is asserted. With
- * `--worktree` the evaluated commit is `null` and cannot be verified.
+ * it means the pairing is unknown, so the caller asserts it. For a SIF source
+ * the rule is not applied and the pairing is asserted, whatever `commit` its
+ * run record carries: the record has the field, and `seamline extract` writes
+ * `null` there. With `--worktree` the evaluated commit is `null` and cannot be
+ * verified.
  */
 export function runProvenance(
   facts: AlignFacts,
