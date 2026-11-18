@@ -69,6 +69,28 @@
     "why": "Drizzle tables, SQL migrations, a committed OpenAPI document generated from the API layer, and a Zod resume-data schema kept separate from the table. Permissively licensed, with a root tsconfig."
   },
   {
+    "name": "safesteps-x8-fix",
+    "url": "https://github.com/kmwstudy88-ship-it/SafeStepsApp",
+    "sha": "5f2e6aa9648f1d52ed9f38d253e61aeeb0128f4e",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "sql-migrations"
+    ],
+    "why": "Exact development fix from the accepted X8 migration replay design, upstream PR57. It removes the early foreign key and restores it behind catalog-existence guards. The complete parent/fix CLI comparison must examine that restored reference; metadata alone supplies no fixed-negative, label, sealed precision or independent-review credit. Both pins of this URL count as one upstream."
+  },
+  {
+    "name": "safesteps-x8-parent",
+    "url": "https://github.com/kmwstudy88-ship-it/SafeStepsApp",
+    "sha": "76506eaa966121ab74ac1faf964cf7df75bd07ee",
+    "license": "MIT",
+    "partition": "dev",
+    "stacks": [
+      "sql-migrations"
+    ],
+    "why": "Exact direct parent of the accepted SafeStepsApp PR57 fix in docs/design/x8-migration-replay.md. The early feedback-table foreign key names public.children before its later declared creation in the Supabase migration order. This source hypothesis needs the complete production CLI comparison; it is not a runtime-database observation or an evaluation label. Both pins of this URL count as one upstream."
+  },
+  {
     "name": "saintandstory-fix",
     "url": "https://github.com/whoisjimilitan/saintandstory",
     "sha": "f171a21e14fc24a5ecc52bf3e048803125f9f4d2",

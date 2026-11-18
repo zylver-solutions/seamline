@@ -7,12 +7,15 @@ import { parseReplayProcedure, type ReplayGuard } from './migration-replay-proce
 
 import { replayFunction, replayAlterFunction, replayPrivilege, replayDropRoutine, replayTrigger, replayPolicy } from './migration-replay-metadata.ts';
 import { replayDataStatement, replayQuery } from './migration-replay-query.ts';
+import { validationCheck, needsNativeValidation, type ValidationCheck } from './migration-replay-validation.ts';
+import type { ExtensionStep } from './migration-replay-native.ts';
+import type { ReplayTypeBinding } from './migration-replay-expression.ts';
 
 export type TableName = readonly [schema: string, table: string];
 export type Target = readonly [schema: string, table: string, column: string | null];
 export interface ForeignReference { readonly pos: number; readonly columns: readonly string[]; readonly table: TableName; readonly remote: readonly string[]; }
 export type ImplicitRelation = { readonly kind: 'named'; readonly name: string } | { readonly kind: 'generated'; readonly label: 'pkey' | 'key' | 'seq' };
-export interface ColumnDefinition { readonly name: string; readonly pos: number; readonly references: readonly ForeignReference[]; readonly local: readonly string[]; readonly implicit: readonly ImplicitRelation[]; }
+export interface ColumnDefinition { readonly name: string; readonly pos: number; readonly references: readonly ForeignReference[]; readonly local: readonly string[]; readonly implicit: readonly ImplicitRelation[]; readonly type?: ReplayTypeBinding; }
 export type AlterAction = (
   | { readonly kind: 'add'; readonly column: ColumnDefinition; readonly conditional: boolean }
   | { readonly kind: 'drop'; readonly column: string; readonly conditional: boolean }
@@ -21,8 +24,12 @@ export type AlterAction = (
   | { readonly kind: 'set-schema'; readonly to: string }
   | { readonly kind: 'reference'; readonly columns: readonly string[]; readonly implicit?: readonly ImplicitRelation[] }
   | { readonly kind: 'foreign'; readonly reference: ForeignReference }
-  | { readonly kind: 'none' }) & { readonly pos?: number; readonly unprovedCalls?: boolean };
+  | { readonly kind: 'alter-type'; readonly column: string; readonly type: ReplayTypeBinding }
+  | { readonly kind: 'none' }) & { readonly pos?: number; readonly unprovedCalls?: boolean; readonly validation?: ValidationCheck };
 export type DdlStep = (
+  | ExtensionStep
+  | { readonly kind: 'type'; readonly name: TableName }
+  | { readonly kind: 'halt' }
   | { readonly kind: 'create'; readonly table: TableName; readonly columns: readonly ColumnDefinition[]; readonly foreign: readonly ForeignReference[]; readonly local: readonly string[]; readonly conditional: boolean; readonly implicit: readonly ImplicitRelation[] }
   | { readonly kind: 'alter'; readonly table: TableName; readonly conditional: boolean; readonly actions: readonly AlterAction[] }
   | { readonly kind: 'drop'; readonly tables: readonly TableName[]; readonly conditional: boolean }
@@ -86,7 +93,7 @@ function column(tokens: readonly Tok[], schema: string): ColumnDefinition {
   const name = c.id();
   const implicit: ImplicitRelation[] = [];
   if (['SERIAL', 'SERIAL2', 'SERIAL4', 'SERIAL8', 'SMALLSERIAL', 'BIGSERIAL'].includes((ident(c.tokens, c.pos) ?? '').toUpperCase()) && c.tokens[c.pos + 1]?.v !== '.') implicit.push({ kind: 'generated', label: 'seq' });
-  replayType(c);
+  const type = replayType(c);
   const references: ForeignReference[] = [];
   let constraint: string | undefined;
   while (c.pos < tokens.length) {
@@ -116,7 +123,7 @@ function column(tokens: readonly Tok[], schema: string): ColumnDefinition {
     return reject();
   }
   if (constraint !== undefined) return reject();
-  return { name, pos: tokens[0]?.pos ?? 0, references, local: [...local].sort(), implicit };
+  return { name, pos: tokens[0]?.pos ?? 0, references, local: [...local].sort(), implicit, type };
 }
 
 function create(cursor: Cursor): DdlStep {
@@ -183,8 +190,10 @@ function alter(cursor: Cursor): DdlStep {
       } else if (c.word('CHECK')) {
         const columns = new Set<string>();
         const expression = new Cursor(c.tokens.slice(c.pos), c.schema, columns);
-        replayCheck(expression); expression.word('NOT', 'VALID'); expression.done();
-        actions.push({ kind: 'reference', columns: [...columns].sort(), unprovedCalls: unprovedCalls(c.tokens.slice(c.pos)) });
+        const body = expression.parens();
+        const validation = validationCheck(body, c.schema);
+        expression.pos = 0; replayCheck(expression); expression.word('NOT', 'VALID'); expression.done();
+        actions.push({ kind: 'reference', columns: [...columns].sort(), unprovedCalls: unprovedCalls(c.tokens.slice(c.pos)) || needsNativeValidation(body), ...(validation === undefined ? {} : { validation }) });
       } else {
         if (constraint !== undefined) return reject();
         c.word('COLUMN');
@@ -204,7 +213,8 @@ function alter(cursor: Cursor): DdlStep {
       c.word('COLUMN'); const name = c.id();
       let callEffects = false;
       if (c.word('TYPE')) {
-        replayType(c); callEffects = true;
+        const type = replayType(c); c.done(); actions.push({ kind: 'alter-type', column: name, type, unprovedCalls: true });
+        continue;
       } else if (c.word('SET', 'DEFAULT')) {
         const columns = new Set<string>();
         const expression = new Cursor(c.tokens.slice(c.pos), c.schema, columns);
@@ -258,6 +268,21 @@ function view(c: Cursor, replace: boolean): DdlStep {
   return { kind: 'view', table, columns: complete ? columns as string[] : null, replace };
 }
 
+function extension(c: Cursor): DdlStep {
+  const conditional = c.word('IF', 'NOT', 'EXISTS'); const name = c.id();
+  const withOptions = c.word('WITH'); const seen = new Set<string>();
+  let schema: string | null = null, version: string | null = null;
+  while (c.pos < c.tokens.length) {
+    if (c.word('SCHEMA')) { if (seen.has('schema')) return reject(); seen.add('schema'); schema = c.id(); }
+    else if (c.word('VERSION')) {
+      if (seen.has('version')) return reject(); seen.add('version');
+      const value = c.tokens[c.pos++]; if (value?.t !== 'str' || !value.v.length || value.v.length > 128) return reject(); version = value.v;
+    } else return reject();
+  }
+  if (withOptions && seen.size === 0) return reject();
+  c.done(); return { kind: 'extension', name, schema, version, conditional };
+}
+
 function parseDdl(tokens: readonly Tok[], schema: string): DdlStep {
   if (!complete(tokens)) return { kind: 'unknown', reason: 'incomplete SQL token or nesting limit' };
   try {
@@ -273,6 +298,7 @@ function parseDdl(tokens: readonly Tok[], schema: string): DdlStep {
       if (c.word('TRIGGER')) { replayTrigger(c); return { kind: 'none' }; }
       if (replace) return reject();
       if (c.word('POLICY')) { replayPolicy(c); return { kind: 'none' }; }
+      if (c.word('EXTENSION')) return extension(c);
       if (c.word('SEQUENCE')) {
         const conditional = c.word('IF', 'NOT', 'EXISTS'); const name = c.name();
         const seen = new Set<string>();
@@ -291,11 +317,11 @@ function parseDdl(tokens: readonly Tok[], schema: string): DdlStep {
       if (c.word('SCHEMA')) { c.word('IF', 'NOT', 'EXISTS'); c.id(); c.done(); return { kind: 'none' }; }
       if (c.word('TABLE')) return create(c);
       if (c.word('TYPE')) {
-        c.name(); c.require('AS', 'ENUM');
+        const name = c.name(); c.require('AS', 'ENUM');
         const parts = splitOn(c.parens(), ',');
         if (!parts.length || parts.some((part) => part.length !== 1 || part[0]?.t !== 'str')) return reject();
         if (new Set(parts.map((part) => part[0]?.v)).size !== parts.length) return reject();
-        c.done(); return { kind: 'none' };
+        c.done(); return { kind: 'type', name };
       }
       if (c.word('AGGREGATE')) {
         const name = c.name();
@@ -337,6 +363,9 @@ function parseDdl(tokens: readonly Tok[], schema: string): DdlStep {
         }
         c.done(); return { kind: 'index', table, columns: [...columns].sort(), name, conditional };
       }
+    } else if (c.word('ALTER', 'EXTENSION')) {
+      const name = c.id(); c.require('SET', 'SCHEMA'); const schema = c.id(); c.done();
+      return { kind: 'extension-move', name, schema };
     } else if (c.word('ALTER', 'TABLE')) return alter(c);
     else if (c.word('ALTER', 'FUNCTION')) {
       return { kind: 'none', routineChanges: [replayAlterFunction(c)] };

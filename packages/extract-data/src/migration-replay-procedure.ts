@@ -3,10 +3,13 @@ import { group, ident, kw, tokenizeSql, type Tok } from '@seamline/core/sql';
 import type { DdlStep, TableName } from './migration-replay-sql.ts';
 import { ReplayCursor, rejectReplay, replayExpression, replayIdentifier } from './migration-replay-expression.ts';
 import { completeReplaySource } from './migration-replay-source.ts';
+import { validationRead, type ValidationRead } from './migration-replay-validation.ts';
+import { UnsupportedReplay } from './migration-replay-expression.ts';
 
 export type ReplayGuard =
   | { readonly kind: 'table'; readonly table: TableName; readonly exists: boolean }
   | { readonly kind: 'and'; readonly terms: readonly ReplayGuard[] }
+  | { readonly kind: 'read'; readonly read: ValidationRead }
   | { readonly kind: 'unknown' };
 const CATALOGS = new Set(['pg_type', 'pg_constraint', 'pg_class', 'pg_namespace', 'pg_proc', 'pg_policies']);
 const CATALOG_CALLS = new Set(['pg_get_constraintdef', 'pg_get_function_identity_arguments']);
@@ -63,15 +66,18 @@ function guard(c: ReplayCursor, dependencies: Set<string>): ReplayGuard {
       c.word('NOT'); c.require('EXISTS'); const query = c.parens();
       // Project relation reads can invoke views, policies and stored functions.
       // A call-token scan cannot certify their effect footprint.
-      catalogQuery(query, c.schema, dependencies);
-      terms.push({ kind: 'unknown' });
+      try { catalogQuery(query, c.schema, dependencies); terms.push({ kind: 'unknown' }); }
+      catch (error) {
+        if (!(error instanceof UnsupportedReplay)) throw error;
+        terms.push({ kind: 'read', read: validationRead(query, c.schema) });
+      }
     }
   } while (c.word('AND'));
   c.done();
   return terms.length === 1 ? terms[0]! : { kind: 'and', terms };
 }
 function passive(step: DdlStep): boolean {
-  return step.kind === 'none' || (step.kind === 'alter' && step.actions.every((action) => !action.unprovedCalls && ['reference', 'foreign', 'none'].includes(action.kind))) || (step.kind === 'guard' && step.body.every(passive));
+  return step.kind === 'none' || step.kind === 'type' || step.kind === 'halt' || (step.kind === 'alter' && step.actions.every((action) => (!action.unprovedCalls || action.validation !== undefined) && ['reference', 'foreign', 'none'].includes(action.kind))) || (step.kind === 'guard' && step.body.every(passive));
 }
 function shifted(tokens: readonly Tok[], offset: number): Tok[] {
   return tokens.map((token) => ({ ...token, pos: token.pos + offset, items: shifted(token.items, offset) }));
@@ -277,13 +283,16 @@ export function parseReplayProcedure(c: ReplayCursor, parse: (tokens: readonly T
       else if (b.word('SELECT')) { out.push(constraintRemoval()); }
       else if (b.word('FOREACH')) { out.push(...loop()); }
       // An exception is control flow, not an effect-free declaration.
-      else if (b.word('RAISE')) return rejectReplay();
+      else if (b.word('RAISE')) {
+        b.require('EXCEPTION'); if (b.tokens[b.pos++]?.t !== 'str' || !b.punct(';')) return rejectReplay();
+        out.push({ kind: 'halt' });
+      }
       else if (b.word('IF')) {
         const start = b.pos;
         while (b.pos < b.tokens.length && kw(b.tokens, b.pos) !== 'THEN') b.pos += 1;
         const condition = guard(new ReplayCursor(b.tokens.slice(start, b.pos), b.schema), nativeCalls);
         b.require('THEN'); const children = statements(depth + 1); b.require('END', 'IF');
-        if (!children.length || !children.every(passive) || !b.punct(';')) return rejectReplay();
+        if (!children.length || !children.every(passive) || !b.punct(';') || (children.some(child => child.kind === 'halt') && children.length !== 1)) return rejectReplay();
         out.push({ kind: 'guard', condition, body: children });
       } else {
         const start = b.pos;

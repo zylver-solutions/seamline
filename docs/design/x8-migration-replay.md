@@ -49,6 +49,8 @@ Track table and column presence as known present, known absent or unknown. Recog
 
 Collect references from supported ALTER targets, index column lists and both inline and table-level foreign keys. Validate the grammar and all referenced columns, including composite foreign keys. A CREATE's own columns are available to its self-references. Distinguish a missing local table from a missing local column. Do not classify a missing unique constraint, index, function, type, row, permission or data value as a missing table or column. A later DROP must not retroactively make a valid earlier reference an orphan.
 
+Fully consumed ordinary row writes contribute no declarations or reference-validity facts. Their declared-membership footprint is closed for a present nonview table, or for a source-external target excluded from the complete group's declaration, relation and rename/schema-move footprint (including guarded bodies). This lookahead supplies only exclusion, never earlier existence. A dropped, conditionally created or otherwise uncertain local target is not external. Catalog writes, declared views and their aliases, unsupported rules, malformed tails and opaque history still withhold the complete certificate. Source-external runtime bindings and invocation effects of stored functions, triggers, policies, defaults or expressions are outside this declared-DDL claim for both admitted target classes; neither class is a runtime-purity or successful-execution certificate. Trusted native calls used as guard evidence retain their separate binding checks.
+
 Procedural support is a bounded parser and effect analysis, not an execution facility. Initially support only closed forms needed by the consumer:
 
 - Literal catalog-existence guards, including table guards used by the restored foreign key; branch analysis must preserve what each guard proves.
@@ -78,3 +80,105 @@ The implementation requires independently authored extraction fixture pairs for 
 Exercise the real sandbox and SQLite store: positive to valid fix; positive to unsupported input; deletion; same-run retry; tombstone and restoration; and group/path rename with the identities ADR-0016 allows. Compare byte output across repeated extractions and Node 22.13 and 24. Unknown, unavailable and resource-limited runs cannot sweep protected facts or produce a finding through the old routes.
 
 Keep any changed dogfood baseline in its own reviewed PR. Run the full verification, leak scans and recursive publish dry-run on the verification host. Require the six fresh review roles and a pinned signed-off squash after green CI. Implementation merge additionally requires the complete real-source parent/fix proof above. This engineering pair supplies no sealed partition credit, calibration sample, independent reviewer identity or proof that the original precision and recall bars have been reached.
+
+## Conditional stock-PG17 Source-local model (proof format 2)
+
+The ordinary ordering/configuration path selects
+`postgresql-17.12-stock-source-local-v1` only after the complete supported Supabase
+configuration positively parses `[db] major_version = 17`. This selects the
+canonical PostgreSQL 17.12 **analyzed language model**. It observes neither a
+deployed minor release nor installed extension membership. Missing, noninteger,
+conflicting, unsupported or other-major configuration supplies no PG17 rule.
+Otherwise supported no-extension histories use `declared-ddl-core-v2`.
+
+The extension catalog starts empty independently for each migration group,
+just like the declared table catalog. Externally preinstalled extensions,
+externally added members, arbitrary native libraries and runtime event triggers
+are outside this conditional Source-local premise. An unsupported Source member
+change or opaque history still withholds; repeated supported syntax cannot
+restore an invalidated instance. This premise is visible in model identifiers,
+this document, and each finding's claim. The model descriptor is hashed data,
+not an assertion that an actual provider is pristine.
+
+Only these exact stock installation routes are admitted:
+
+| Extension | Default | Executed installation/upgrade Source route |
+| --- | --- | --- |
+| pgcrypto | 1.3 | 1.3 |
+| uuid-ossp | 1.1 | 1.1 |
+| citext | 1.6 | 1.4, 1.4--1.5, 1.5--1.6 |
+| pg_trgm | 1.6 | 1.3, 1.3--1.4, 1.4--1.5, 1.5--1.6 |
+| btree_gist | 1.7 | 1.2, 1.2--1.3, 1.3--1.4, 1.4--1.5, 1.5--1.6, 1.6--1.7 |
+
+The checked descriptor binds official control, Makefile, every route body,
+whole-module inventory and the relevant `extension.c`, `pg_type.c` and
+`pg_type.h` Source hashes from the fixed PostgreSQL 17.12 Source archive.
+Routine basenames are inventoried from whole executed scripts, including
+`gbt_intv_decompress`; a short category list is not a completeness certificate.
+All five controls are relocatable, require no other extension, and fix no schema.
+Unused older scripts are never admitted as generic harmless updates.
+
+The first supported CREATE applies a nonempty negative native/type footprint.
+A later IF NOT EXISTS against that same proved local instance skips its body,
+including a different requested schema/version. It supplies no new body or
+members. Only a still-pristine local instance may SET SCHEMA. Relocation retains
+both old and new possible negative type footprints; it supplies no table,
+column, creation witness, valid reference or guard truth. Missing SCHEMA is a
+schema-parametric negative exposure, not a guess that installation used public.
+UPDATE, DROP, CASCADE, ADD/DROP member, unknown names/versions, repeated
+unconditional creation and unsupported tails withhold.
+
+Base types and generated array names share PostgreSQL's type namespace with
+relation row types. Exact base names and the conservative leading-underscore
+array-name class prevent invalid CREATE/rename/schema-move conclusions. This
+class covers truncation, numeric collision suffixes and automatic array-name
+movement from `pg_type.c`; it is not a fabricated exact array identity. Type
+exports never make `to_regclass` true. Existing Source custom types and relation
+collisions refuse rather than silently restoring stock membership. Native
+routine, relevant catalog and type-shadow changes anywhere in the complete group
+remain negative dependencies, including changes after a reference.
+
+The new bounded validation grammar admits fully consumed ALTER ADD CHECK forms
+`jsonb_typeof(column) = 'literal'`, `column = ANY(ARRAY[...literal strings]::text[])`
+and `column <@ ARRAY[...literal strings]::text[]`. The shared lexer remains
+unchanged; the validation reader consumes separate `<` and `@` tokens. These
+rules require the selected PG17 model, current ordinary local relation/column
+types and unshadowed native/catalog bindings. A top-level ALTER COLUMN TYPE
+updates the type premise in order. A wrong/custom/unknown type, view, routine or
+catalog shadow prevents the rule, even when superficially similar syntax parses.
+No SQL value is evaluated and no CHECK-success fact is manufactured.
+
+Ordinary validation SELECTs cover SELECT 1 FROM, explicit relation aliases,
+INNER/LEFT joins with qualified equality conditions, and qualified IS NULL
+predicates joined by AND. Every declared relation and alias is checked, including
+disconnected but syntactically valid joins. The Source-local no-runtime
+projection for stored routines, triggers and policies is the same as the
+existing ordinary row-effect model; this is no callee-purity theorem.
+Relations must have current ordinary local table state and referenced columns
+must have compatible known primitive types. The result truth remains unknown.
+A guarded literal RAISE EXCEPTION therefore records a possible abort, while
+later reference examination is explicitly conditional on live continuation.
+An unconditional abort makes the suffix terminal/unexamined and withholds the
+complete certificate. Unsupported RAISE tails, dynamic bodies, unknown bindings,
+opaque changes or resource exhaustion still withhold. This does not claim that
+a migration can complete on real rows or that an aborting history is a clean fix.
+
+Proof format 2 commits the approved model ID/digest/selector and config hash at
+group and migration level, in the full input hash and in the complete snapshot.
+The root binds the fixed model registry, full group-model/config mapping,
+profile schema/dialect, unread set and full ordered certificate bodies.
+The independent decoder imports no producer transition/parser. It rejects old
+format 1, unknown/model-shaped-only hashes, mixed model/config/epoch/profile
+joins, terminal bodies, invalid native-state structure, unmatched inventories
+and body changes under an old snapshot. It recomputes the streamed complete
+body commitment within the existing bounded decoder budget, then retains all
+existing fact/currentness/witness/row/count gates. The SQLite/store/node identity
+contract and package versions remain unchanged. Migration proof bodies remain
+confidential, including legacy format 1 and new format 2.
+
+All existing source, token, step, relation-work, reference, recursion and decoder
+limits remain. Descriptor/native/array-footprint operations charge existing
+bounded work; no larger sandbox, timeout, corpus subset, skip or new reader is
+introduced. Authored controls and Source review alone establish no runtime,
+full-CLI, parent/fix or M2 acceptance. The complete unchanged-source parent fire
+and examined compatible restored fix remain the acceptance requirement above.

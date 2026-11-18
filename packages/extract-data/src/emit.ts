@@ -107,7 +107,7 @@ function addNode(
     // Replay tuples copy data-model identifiers onto a history node. They
     // inherit the data surface's confidentiality instead of travelling under
     // Migration's older metadata-only internal classification.
-    sensitivity: kind === 'Migration' && body['replayVersion'] === 1
+    sensitivity: kind === 'Migration' && (body['replayVersion'] === 1 || body['replayVersion'] === 2)
       ? 'confidential' as const
       : DEFAULT_SENSITIVITY[kind],
     provenance: 'EXTRACTED' as const,

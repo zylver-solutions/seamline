@@ -48,6 +48,22 @@ test('the committed labels file is valid', async () => {
   );
 });
 
+test('the X8 accepted parent and fix remain exact development inputs', async () => {
+  const corpus = await loadCorpus(path.join(ROOT, 'eval', 'corpus.json'));
+  for (const [name, sha] of [
+    ['safesteps-x8-parent', '76506eaa966121ab74ac1faf964cf7df75bd07ee'],
+    ['safesteps-x8-fix', '5f2e6aa9648f1d52ed9f38d253e61aeeb0128f4e'],
+  ]) {
+    const entry = corpus.find(candidate => candidate.name === name);
+    assert.ok(entry !== undefined, `missing accepted X8 input ${name}`);
+    assert.equal(entry.url, 'https://github.com/kmwstudy88-ship-it/SafeStepsApp');
+    assert.equal(entry.sha, sha);
+    assert.equal(entry.partition, 'dev', 'the engineering pair must not become sealed evidence');
+    assert.equal(entry.license, 'MIT');
+    assert.ok(entry.stacks.includes('sql-migrations'));
+  }
+});
+
 test('every detector in the catalog has at least one mutant, so recall is never silently n/a', async () => {
   const corpus = await loadCorpus(path.join(ROOT, 'eval', 'corpus.json'));
   const mutants = parseMutants(await readJsonFile(path.join(ROOT, 'eval', 'mutants.json')), corpus);
@@ -121,6 +137,8 @@ test('the development comparisons stay outside the sealed partition', async () =
   assert.deepEqual(byPartition('dev'), [
     'dokploy',
     'reactive-resume',
+    'safesteps-x8-fix',
+    'safesteps-x8-parent',
     'saintandstory-fix',
     'saintandstory-parent',
     'umami',

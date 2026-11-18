@@ -54,9 +54,13 @@ export class ReplayCursor {
   done(): void { if (this.pos !== this.tokens.length) rejectReplay(); }
 }
 
-export function replayType(c: ReplayCursor): void {
+export interface ReplayTypeBinding { readonly name: readonly [string, string]; readonly qualified: boolean; readonly arrays: number; }
+export function replayType(c: ReplayCursor): ReplayTypeBinding {
+  const start = c.pos;
   const first = kw(c.tokens, c.pos);
-  c.name();
+  const name = c.name();
+  const qualified = c.tokens[start + 1]?.v === '.';
+  let arrays = 0;
   if (first === 'DOUBLE') c.require('PRECISION');
   else if (first === 'CHARACTER' || first === 'CHAR' || first === 'BIT') c.word('VARYING');
   if (group(c.tokens, c.pos, '(') !== null) {
@@ -68,7 +72,9 @@ export function replayType(c: ReplayCursor): void {
   while (group(c.tokens, c.pos, '[') !== null) {
     const bracket = c.tokens[c.pos++];
     if (bracket?.items.length !== 0) return rejectReplay();
+    arrays += 1;
   }
+  return { name, qualified, arrays };
 }
 const FORBIDDEN = new Set(['SELECT', 'WITH', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP', 'EXECUTE', 'DO', 'BEGIN', 'END', 'WHEN', 'THEN', 'ELSE', 'FROM', 'INTO', 'RETURNING', 'WHERE', 'GROUP', 'HAVING', 'ORDER', 'BY', 'LIMIT', 'OFFSET', 'UNION', 'INTERSECT', 'EXCEPT', 'JOIN', 'INNER', 'LEFT', 'RIGHT', 'FULL', 'CROSS', 'NATURAL', 'LATERAL', 'ON', 'USING', 'AS', 'SET', 'FOR', 'AND', 'OR', 'IS', 'IN', 'LIKE', 'ILIKE', 'BETWEEN', 'NULLS', 'FIRST', 'LAST', 'ASC', 'DESC']);
 const OPERATORS: Readonly<Record<string, number>> = { OR: 1, AND: 2, '=': 3, '<>': 3, '!=': 3, '<': 3, '>': 3, '<=': 3, '>=': 3, LIKE: 3, ILIKE: 3, '~': 3, '~*': 3, '!~': 3, '!~*': 3, '@>': 3, '<@': 3, '||': 4, '+': 5, '-': 5, '*': 6, '/': 6, '%': 6, '->': 7, '->>': 7, '#>': 7, '#>>': 7 };

@@ -34,7 +34,7 @@ test('a reference before local creation carries its point-state and creation wit
   });
   assert.equal(out.result.status, 'PASS');
   const ref = migration(out.nodes, '001_ref');
-  assert.equal(ref.props['replayVersion'], 1);
+  assert.equal(ref.props['replayVersion'], 2);
   assert.equal(ref.props['replayInventoryComplete'], true);
   assert.deepEqual(rows(ref, 'unresolvedRefs'), [['public', 'accounts', null, 0, 1, '002_create', 0, 1]]);
   const creation = migration(out.nodes, '002_create');
@@ -1153,15 +1153,17 @@ for (const [move, target] of [
   assert.equal(migration(out.nodes, '005_ref').props['unresolvedRefCount'], 0);
 });
 
-test('an external row-write target cannot establish a physical-table effect exemption', async (t) => {
+test('a source-external row write preserves membership without establishing its target', async (t) => {
   const out = await run(t, {
     '000_kept.sql': KEPT_SQL,
     '001_external.sql': 'UPDATE public.external_proxy SET id = 1;',
     '002_ref.sql': 'CREATE INDEX idx ON public.parent(id);',
     '003_parent.sql': 'CREATE TABLE public.parent (id integer);',
   });
-  assert.equal(out.result.status, 'UNAVAILABLE');
-  assert.equal(migration(out.nodes, '002_ref').props['unresolvedRefCount'], 0);
+  assert.equal(out.result.status, 'PASS');
+  assert.equal(migration(out.nodes, '001_external').props['replayDeclarationCount'], 0);
+  assert.equal(migration(out.nodes, '001_external').props['replayReferenceCount'], 0);
+  assert.equal(migration(out.nodes, '002_ref').props['unresolvedRefCount'], 2);
 });
 
 test('catalog writes remain unsupported after a conditional declaration establishes a target name', async (t) => {

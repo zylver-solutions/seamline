@@ -1,10 +1,12 @@
 /** Bounded validation of the data producer's versioned historical evidence. */
 import { parseNodeId, type GraphView, type SeamlineNode } from '@seamline/ontology';
 import { factNodes } from '../graph.ts';
+import { createHash } from 'node:crypto';
+import { approvedReplayModel, MODEL_REGISTRY_HASH, REPLAY_BODY_FIELDS } from './x8-replay-models.ts';
 
 type Row = readonly [string, string, string | null, number, number];
 type Missing = readonly [string, string, string | null, number, number, string, number, number];
-interface Group { readonly path: string; readonly policy: string | null; readonly config: string | null; readonly complete: boolean; readonly names: readonly string[]; readonly reason: string; readonly input: string; }
+interface Group { readonly path: string; readonly policy: string | null; readonly config: string | null; readonly complete: boolean; readonly names: readonly string[]; readonly reason: string; readonly input: string; readonly model: string; readonly modelHash: string; readonly selector: 17 | null; }
 interface MigrationProof {
   readonly node: SeamlineNode;
   readonly ordinal: number;
@@ -67,23 +69,26 @@ function groups(source: SeamlineNode, budget: Budget): readonly Group[] {
   const out: Group[] = [];
   let previous: string | undefined;
   for (const value of values) {
-    if (!Array.isArray(value) || value.length !== 7) return fail();
-    const [path, policy, config, complete, names, reason, input] = value;
+    if (!Array.isArray(value) || value.length !== 10) return fail();
+    const [path, policy, config, complete, names, reason, input, model, modelHash, selector] = value;
     if (!text(path) || path.startsWith('/') || path.includes('\\') || path.split('/').includes('..') || (previous !== undefined && previous >= path)) return fail();
     if (!(policy === null || policy === 'supabase-filename-v1') || !(config === null || (typeof config === 'string' && HASH.test(config))) || typeof complete !== 'boolean' || !Array.isArray(names) || names.length > MAX_ROWS || !names.every(text) || typeof reason !== 'string' || reason.length > 4096 || typeof input !== 'string' || !HASH.test(input)) return fail();
+    if (typeof model !== 'string' || typeof modelHash !== 'string' || (selector !== null && selector !== 17) || !approvedReplayModel(model, modelHash, selector)) return fail();
     if (complete && (policy !== 'supabase-filename-v1' || config === null || !/(?:^|\/)supabase\/migrations$/.test(path))) return fail();
     for (let i = 1; i < names.length; i += 1) {
       const before: unknown = names[i - 1], after: unknown = names[i];
       if (!text(before) || !text(after) || before >= after) return fail();
     }
-    previous = path; out.push({ path, policy, config, complete, names, reason, input });
+    previous = path; out.push({ path, policy, config, complete, names, reason, input, model, modelHash, selector });
   }
   return out;
 }
 function migration(node: SeamlineNode, source: SeamlineNode, group: Group, repo: string, budget: Budget): MigrationProof {
   const parsed = identity(node, 'Migration');
   const p = node.props;
-  if (parsed.repo !== repo || p['dataSource'] !== source.props['dataSource'] || node.lastSeenRun !== source.lastSeenRun || p['replayVersion'] !== 1 || p['replaySnapshotHash'] !== source.props['replaySnapshotHash'] || p['replayInputHash'] !== group.input || p['replayGroup'] !== group.path || p['replayOrderPolicy'] !== group.policy || p['replayConfigHash'] !== group.config || p['replayInventoryComplete'] !== true) return fail();
+  if (parsed.repo !== repo || p['dataSource'] !== source.props['dataSource'] || node.lastSeenRun !== source.lastSeenRun || p['replayVersion'] !== 2 || p['replaySnapshotHash'] !== source.props['replaySnapshotHash'] || p['replayInputHash'] !== group.input || p['replayGroup'] !== group.path || p['replayOrderPolicy'] !== group.policy || p['replayConfigHash'] !== group.config || p['replayInventoryComplete'] !== true) return fail();
+  if (p['replayModelId'] !== group.model || p['replayModelHash'] !== group.modelHash || p['replaySelector'] !== group.selector || !approvedReplayModel(p['replayModelId'], p['replayModelHash'], p['replaySelector']) || typeof p['replayAbortPossible'] !== 'boolean' || p['replayContinuation'] !== 'live') return fail();
+  nativeState(p['replayNativeState'], group, budget);
   const steps = p['replayStepCount'];
   const ordinal = p['replayOrdinal'];
   if (!count(ordinal) || !count(steps) || p['replayUnknownStepCount'] !== 0 || p['replayUnknownSteps'] !== '[]') return fail();
@@ -98,6 +103,45 @@ function migration(node: SeamlineNode, source: SeamlineNode, group: Group, repo:
   const keys = all.map((entry) => JSON.stringify(entry.slice(0, 5)));
   if (new Set(keys).size !== keys.length) return fail();
   return { node, ordinal, declarations, missing, external, unknown, valid, skipped };
+}
+// Independent structural admission; no producer transition, SQL parser or native code is called.
+function nativeState(value: unknown, group: Group, budget: Budget): void {
+  const state = json(value, budget);
+  if (state.length !== 5 || state[0] !== group.model || state[1] !== group.modelHash || state[2] !== false || !Array.isArray(state[3]) || !Array.isArray(state[4])) return fail();
+  const versions = new Map<string, string>([['pgcrypto', '1.3'], ['uuid-ossp', '1.1'], ['citext', '1.6'], ['pg_trgm', '1.6'], ['btree_gist', '1.7']]);
+  let previous: string | undefined;
+  for (const instance of state[3]) {
+    if (--budget.rows < 0 || group.selector !== 17 || !Array.isArray(instance) || instance.length !== 3 || !text(instance[0]) || versions.get(instance[0]) !== instance[1] || (previous !== undefined && previous >= instance[0]) || !Array.isArray(instance[2]) || !instance[2].length) return fail();
+    for (const schema of instance[2]) if (--budget.rows < 0 || !(schema === null || text(schema))) return fail();
+    previous = instance[0];
+  }
+  for (const exposure of state[4]) {
+    if (--budget.rows < 0 || !Array.isArray(exposure) || exposure.length !== 2 || !(exposure[0] === null || text(exposure[0])) || !Array.isArray(exposure[1])) return fail();
+    for (const type of exposure[1]) if (--budget.rows < 0 || !text(type)) return fail();
+  }
+}
+function verifySnapshot(source: SeamlineNode, inventory: readonly Group[], byName: ReadonlyMap<string, SeamlineNode>, budget: Budget): void {
+  const raw = source.props['replaySnapshotBasis'];
+  if (typeof raw !== 'string') return fail();
+  const basis = json(raw, budget);
+  if (basis.length !== 6 || basis[0] !== 2 || !text(basis[1]) || basis[2] !== 'postgres' || basis[1] !== source.props['defaultSchema'] || basis[2] !== source.props['dialect'] || !Array.isArray(basis[3]) || basis[3].length !== 0 || basis[5] !== false || JSON.stringify(basis[4]) !== source.props['replayGroups']) return fail();
+  const models = inventory.map(g => [g.path, g.config, g.selector, g.model, g.modelHash]);
+  if (source.props['replayNativeModels'] !== JSON.stringify(models)) return fail();
+  const allowed = new Set(['replayVersion', 'replayModelId', 'replayModelHash', 'replaySelector', 'replaySnapshotBasis', 'replayNativeModels', 'replaySnapshotHash', 'replayMembershipComplete', 'replayInventoryComplete', 'replayGroups', 'replayGroupCount']);
+  if (Object.keys(source.props).some(k => k.startsWith('replay') && !allowed.has(k))) return fail();
+  const digest = createHash('sha256').update(raw).update('\n');
+  for (const [name, node] of [...byName].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) {
+    if (Object.keys(node.props).some(k => k.startsWith('replay') && k !== 'replaySnapshotHash' && !REPLAY_BODY_FIELDS.includes(k))) return fail();
+    const fields = REPLAY_BODY_FIELDS.map(k => {
+      const value = node.props[k];
+      if (!(value === null || typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value))) return fail();
+      return [k, value];
+    });
+    const frame = JSON.stringify([name, fields]); budget.chars -= frame.length;
+    if (budget.chars < 0) return fail();
+    digest.update(frame).update('\n');
+  }
+  if (digest.digest('hex') !== source.props['replaySnapshotHash']) return fail();
 }
 const target = (value: readonly unknown[]): string => JSON.stringify(value.slice(0, 3));
 
@@ -136,19 +180,21 @@ export function readReplayEvidence(graph: GraphView): ReplayAnswer {
     try {
       const parsed = identity(source, 'DataSource');
       const p = source.props;
-      if (p['dataSource'] !== source.name || p['replayVersion'] !== 1 || !text(source.lastSeenRun) || typeof p['replaySnapshotHash'] !== 'string' || !HASH.test(p['replaySnapshotHash']) || p['replayInventoryComplete'] !== true || p['replayMembershipComplete'] !== true) return fail();
+      if (p['dataSource'] !== source.name || p['replayVersion'] !== 2 || p['replayModelId'] !== 'x8-group-models-v2' || p['replayModelHash'] !== MODEL_REGISTRY_HASH || p['replaySelector'] !== 0 || !text(source.lastSeenRun) || typeof p['replaySnapshotHash'] !== 'string' || !HASH.test(p['replaySnapshotHash']) || p['replayInventoryComplete'] !== true || p['replayMembershipComplete'] !== true) return fail();
       const realm = JSON.stringify([parsed.repo, source.name]);
       if (duplicateRealms.has(realm)) return fail();
       const inventory = groups(source, budget);
       const byName = new Map<string, SeamlineNode>();
       for (const node of candidatesByRealm.get(realm) ?? []) {
         if (node.lastSeenRun === source.lastSeenRun && node.props['replaySnapshotHash'] === undefined) return fail();
-        if (node.props['replaySnapshotHash'] !== p['replaySnapshotHash']) continue;
+        if (node.lastSeenRun !== source.lastSeenRun) continue;
+        if (node.props['replaySnapshotHash'] !== p['replaySnapshotHash']) return fail();
         if (byName.has(node.name)) return fail();
         byName.set(node.name, node);
       }
       const listed = new Set(inventory.flatMap((entry) => entry.names));
       if (listed.size !== inventory.reduce((n, entry) => n + entry.names.length, 0) || [...byName.keys()].some((name) => !listed.has(name))) return fail();
+      verifySnapshot(source, inventory, byName, budget);
       for (const entry of inventory) {
         if (!entry.complete) { withheld.push(`migration group ${entry.path}: ${entry.reason || 'replay order or source inventory is unknown'}`); continue; }
         try {

@@ -26,7 +26,7 @@ export const x8OrphanedMigration = defineDetector({
       return {
         left: reference.id,
         right: creation.id,
-        claim: `migration ${reference.name} requires ${target}, absent at step ${row[3]} in the declared migration replay`,
+        claim: `migration ${reference.name} requires ${target}, absent at step ${row[3]} in the declared migration replay under ${reference.props['replayModelId']} (Source-local model; conditional on live continuation, not deployed database state)`,
         leftFact: `${reference.name} records the required reference at line ${row[4]} (${whereFrom(reference)})`,
         rightFact: `${creation.name} declares the local object at step ${row[6]}, line ${row[7]}; the matching replay snapshot certifies its absence at the reference`,
         viaPath: [], confidence: 1,

@@ -9,7 +9,7 @@ const MAX_DEPTH = 16;
 const MAX_DIRECTORY_ENTRIES = 8192;
 
 export type MigrationOrder =
-  | { readonly group: string; readonly state: 'known'; readonly policy: 'supabase-filename-v1'; readonly configHash: string; readonly accepted: ReadonlySet<string> }
+  | { readonly group: string; readonly state: 'known'; readonly policy: 'supabase-filename-v1'; readonly configHash: string; readonly nativeMajor?: 17 | null; readonly accepted: ReadonlySet<string> }
   | { readonly group: string; readonly state: 'unknown'; readonly candidate: boolean; readonly reason: string };
 
 type Value = string | number | boolean | Value[];
@@ -126,6 +126,7 @@ class ConfigReader {
       this.namespaces.set(key, 'table');
     }
   }
+  nativeMajor(): 17 | null { return this.assignments.get(JSON.stringify(['db', 'major_version'])) === 17 ? 17 : null; }
   read(): boolean {
     while (this.pos < this.text.length) {
       this.space(true);
@@ -165,10 +166,11 @@ class ConfigReader {
   }
 }
 
-export function supportedSupabaseConfig(text: string): boolean {
-  if (Buffer.byteLength(text, 'utf8') > MAX_CONFIG_BYTES || /\r(?!\n)/.test(text)) return false;
-  try { return new ConfigReader(text).read(); } catch { return false; }
+function parsedSupabaseConfig(text: string): ConfigReader | undefined {
+  if (Buffer.byteLength(text, 'utf8') > MAX_CONFIG_BYTES || /\r(?!\n)/.test(text)) return undefined;
+  try { const reader = new ConfigReader(text); return reader.read() ? reader : undefined; } catch { return undefined; }
 }
+export function supportedSupabaseConfig(text: string): boolean { return parsedSupabaseConfig(text) !== undefined; }
 
 /** Called only for groups discovery reached through ordinary directory entries. */
 export async function migrationOrder(
@@ -189,7 +191,8 @@ export async function migrationOrder(
     const bytes = await readFile(config);
     if (bytes.length > Math.min(MAX_CONFIG_BYTES, maxFileBytes)) return unknown('configuration exceeds its source limit');
     const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
-    if (!supportedSupabaseConfig(text)) return unknown('unsupported or malformed migration configuration');
+    const parsedConfig = parsedSupabaseConfig(text);
+    if (parsedConfig === undefined) return unknown('unsupported or malformed migration configuration');
     const entries = await readdir(dir, { withFileTypes: true });
     if (entries.length > MAX_DIRECTORY_ENTRIES) return unknown('migration directory exceeds its ordering limit');
     entries.sort((a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name)));
@@ -211,7 +214,7 @@ export async function migrationOrder(
     // migration in it was read. Never certify only the observed subset.
     const observed = new Set(files.map((file) => file.path));
     if ([...accepted].some((file) => !observed.has(file))) return unknown('accepted migration was not read');
-    return { group, state: 'known', policy: 'supabase-filename-v1', configHash: createHash('sha256').update(bytes).digest('hex'), accepted };
+    return { group, state: 'known', policy: 'supabase-filename-v1', configHash: createHash('sha256').update(bytes).digest('hex'), nativeMajor: parsedConfig.nativeMajor(), accepted };
   } catch {
     return unknown('configuration or migration directory could not be read');
   }

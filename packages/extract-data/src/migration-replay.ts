@@ -7,6 +7,10 @@ import { parseReplayDdl, type AlterAction, type ColumnDefinition, type DdlStep, 
 import type { ReplayGuard } from './migration-replay-procedure.ts';
 import { completeReplaySource } from './migration-replay-source.ts';
 import { ImplicitRelations } from './migration-replay-relations.ts';
+import { RowExposure } from './migration-replay-row-effects.ts';
+import { NativeExtensions, nativeModelForMajor, PG17_NATIVE_MODEL, stockDescriptor, type ReplayNativeModel } from './migration-replay-native.ts';
+import type { ReplayTypeBinding } from './migration-replay-expression.ts';
+import type { ValidationCheck, ValidationRead, ReadColumn } from './migration-replay-validation.ts';
 
 type Scalar = string | number | boolean | null;
 /** Qualified target, logical step, source line. Arrays avoid ambiguous dotted names. */
@@ -21,7 +25,7 @@ export interface ReplayFacts {
 interface Site { readonly migration: string; readonly step: number; readonly line: number; }
 interface Observation { readonly target: Target; readonly site: Site; readonly state: Presence | 'skipped'; }
 type Presence = 'present' | 'absent' | 'unknown';
-interface TableState { readonly presence: Presence; readonly columns: Map<string, Presence>; readonly complete: boolean; readonly view?: true; }
+interface TableState { readonly presence: Presence; readonly columns: Map<string, Presence>; readonly complete: boolean; readonly view?: true; readonly types?: Map<string, ReplayTypeBinding>; }
 interface MigrationState {
   readonly name: string;
   readonly group: string;
@@ -29,6 +33,9 @@ interface MigrationState {
   readonly observations: Map<string, Observation>;
   readonly unknownSteps: number[];
   stepCount: number;
+  abortPossible: boolean;
+  continuation: 'live' | 'terminal';
+  nativeState: string;
 }
 const MAX_STEPS = 100_000;
 const MAX_REFERENCES = 100_000;
@@ -46,6 +53,7 @@ class Catalog {
   readonly uncertainCreations = new Set<string>();
   readonly nativeChanges = new Set<string>();
   readonly declaredViews = new Set<string>();
+  readonly rowExposure = new RowExposure();
   private opaque = false;
   private readonly tables = new Map<string, TableState>();
   private readonly indexes = new Map<string, number>();
@@ -53,8 +61,74 @@ class Catalog {
   private readonly implicit = new ImplicitRelations();
   private indexGeneration = 0;
   private relationWork = 0;
+  readonly native: NativeExtensions;
+  readonly model: ReplayNativeModel;
+  dead = false;
+  abortPossible = false;
+  constructor(model: ReplayNativeModel) {
+    this.model = model;
+    this.native = new NativeExtensions(model, () => this.spend());
+  }
+  private spend(): void { if (++this.relationWork > MAX_STEPS) throw new RangeError('migration native/type effect limit'); }
+  private nativeReadPoison(): boolean {
+    return ['pg_type', 'pg_proc', 'pg_operator', 'pg_cast', 'pg_namespace', 'pg_class', 'pg_attribute'].some(name =>
+      this.nativeChanges.has('pg_catalog.' + name) || this.rowExposure.has(['pg_catalog', name])) ||
+      ['uuid_eq', 'texteq', 'int4eq', 'int8eq', 'booleq', 'jsonb_eq', 'array_eq', 'arraycontained'].some(name => this.nativeChanges.has(name));
+  }
+  private typeClass(table: TableName, column: string): string | null {
+    this.spend();
+    const state = this.state(table), type = state.types?.get(column);
+    if (this.nativeReadPoison() || state.view || this.presence([...table, column]) !== 'present' || type === undefined ||
+        (type.qualified && type.name[0] !== 'pg_catalog') || this.nativeChanges.has('type.' + type.name[1]) ||
+        this.nativeChanges.has('pg_catalog.pg_type')) return null;
+    const canonical = new Map<string, string>([['text', 'text'], ['jsonb', 'jsonb'], ['uuid', 'uuid'], ['integer', 'integer'], ['int', 'integer'], ['int4', 'integer'], ['bigint', 'bigint'], ['int8', 'bigint'], ['boolean', 'boolean'], ['bool', 'boolean']]);
+    const base = canonical.get(type.name[1]);
+    if (base === undefined || type.arrays > 1) return null;
+    return type.arrays === 1 ? base + '[]' : base;
+  }
+  private validCheck(table: TableName, check: ValidationCheck): boolean {
+    if (this.model.id !== PG17_NATIVE_MODEL.id || this.model.hash !== PG17_NATIVE_MODEL.hash) return false;
+    if (check.kind === 'jsonb' && this.nativeChanges.has('jsonb_typeof')) return false;
+    const wanted = check.kind === 'jsonb' ? 'jsonb' : check.kind === 'text-any' ? 'text' : 'text[]';
+    if (this.nativeChanges.has('type.text')) return false;
+    return this.typeClass(table, check.column) === wanted;
+  }
+  private validRead(read: ValidationRead): boolean {
+    if (this.model.id !== PG17_NATIVE_MODEL.id || this.model.hash !== PG17_NATIVE_MODEL.hash || this.nativeReadPoison()) return false;
+    for (const relation of read.relations) {
+      this.spend();
+      const state = this.state(relation.table);
+      if (state.presence !== 'present' || state.view || this.declaredViews.has(key(relation.table))) return false;
+    }
+    const type = (column: ReadColumn): string | null => {
+      const relation = read.relations.find(r => r.alias === column[0]);
+      return relation === undefined ? null : this.typeClass(relation.table, column[1]);
+    };
+    return read.predicates.every(p => { const left = type(p.left); return left !== null && (p.right === null || type(p.right) === left); });
+  }
+  private validGuard(guard: ReplayGuard): boolean {
+    if (guard.kind === 'read') return this.validRead(guard.read);
+    return guard.kind !== 'and' || guard.terms.every(term => this.validGuard(term));
+  }
+  private typeConflict(schema: string | null, names: readonly string[]): boolean {
+    for (const [id, state] of this.tables) {
+      this.spend(); if (state.presence === 'absent') continue;
+      const parts: unknown = JSON.parse(id);
+      if (!Array.isArray(parts) || parts.length !== 2 || typeof parts[0] !== 'string' || typeof parts[1] !== 'string') throw new Error('invalid local type footprint');
+      if ((schema === null || schema === parts[0]) && names.length > 0 && (names.includes(parts[1]) || parts[1].startsWith('_'))) return true;
+    }
+    return false;
+  }
   readonly creations = new Map<string, Site[]>();
   references = 0;
+  private rowEffect(name: TableName): 'declared-table' | 'source-external' | 'unknown' {
+    const id = key(name), current = this.tables.get(id);
+    if (current?.view === true || this.declaredViews.has(id)) return 'unknown';
+    if (current?.presence === 'present') return 'declared-table';
+    if (!this.opaque && current === undefined && !this.rowExposure.has(name) &&
+        !this.uncertainCreations.has(id) && this.otherRelation(name) === 'absent') return 'source-external';
+    return 'unknown';
+  }
   state(table: TableName): TableState {
     return this.tables.get(key(table)) ?? { presence: this.opaque ? 'unknown' : 'absent', columns: new Map(), complete: !this.opaque };
   }
@@ -117,7 +191,7 @@ class Catalog {
       put([...step.table, null]);
       for (const action of step.actions) {
         const at = this.sites.get(action) ?? site;
-        if (action.kind === 'drop') put([...step.table, action.column], at);
+        if (action.kind === 'drop' || action.kind === 'alter-type') put([...step.table, action.column], at);
         else if (action.kind === 'reference') for (const column of action.columns) put([...step.table, column], at);
         else if (action.kind === 'foreign') foreign(step.table, action.reference, at);
         else if (action.kind === 'add') {
@@ -133,7 +207,7 @@ class Catalog {
     values.push(site); this.creations.set(key(target), values);
     migration.declarations.push([...target, site.step, site.line]);
   }
-  unknown(): void { this.opaque = true; this.tables.clear(); this.indexes.clear(); this.sequences.clear(); }
+  unknown(): void { this.opaque = true; this.native.poison(); this.tables.clear(); this.indexes.clear(); this.sequences.clear(); }
   private foreign(table: TableName, reference: ForeignReference, site: Site, migration: MigrationState, lineOf: (pos: number) => number): void {
     const at = { ...site, line: lineOf(reference.pos) };
     for (const name of reference.columns) this.observe([...table, name], at, migration);
@@ -142,20 +216,21 @@ class Catalog {
   }
   private added(table: TableName, column: ColumnDefinition, site: Site, migration: MigrationState, lineOf: (pos: number) => number, recordDeclaration = true): void {
     const at = { ...site, line: lineOf(column.pos) };
+    if (column.type !== undefined) this.state(table).types?.set(column.name, column.type);
     if (recordDeclaration) this.declare([...table, column.name], at, migration);
     this.implicit.note(table[0], column.implicit);
     for (const name of column.local) this.observe([...table, name], at, migration);
     for (const reference of column.references) this.foreign(table, reference, site, migration, lineOf);
   }
   private condition(condition: ReplayGuard): boolean | null {
-    if (condition.kind === 'unknown') return null;
+    if (condition.kind === 'unknown' || condition.kind === 'read') return null;
     if (condition.kind === 'table') {
       // An undeclared external relation may exist. Empty local history is not
       // evidence that to_regclass on that relation returns NULL.
       const other = this.otherRelation(condition.table);
       const table = this.state(condition.table).presence;
       if (table === 'present' || other === 'present') return condition.exists;
-      if (other === 'unknown') return null;
+      if (other === 'unknown' || this.native.collides(condition.table)) return null;
       if (!this.opaque && !this.tables.has(key(condition.table)) && !this.localTables.has(key(condition.table))) return null;
       return table === 'unknown' ? null : !condition.exists;
     }
@@ -163,20 +238,36 @@ class Catalog {
     return answers.includes(false) ? false : answers.includes(null) ? null : true;
   }
   apply(step: DdlStep, site: Site, migration: MigrationState, lineOf: (pos: number) => number): void {
-    // Writes through views can rewrite to catalog metadata or invoke rules.
-    // A checked target spelling alone cannot certify a row-only footprint.
-    if (step.kind === 'rows' && step.targets.some((name) => {
-      const current = this.tables.get(key(name));
-      return current?.presence !== 'present' || current.view === true || this.declaredViews.has(key(name));
-    })) {
+    if (this.dead) { migration.continuation = 'terminal'; migration.unknownSteps.push(site.step); this.inventory(step, site, migration, lineOf, 'unknown'); return; }
+    if ((step.kind === 'guard' && !this.validGuard(step.condition)) ||
+        (step.kind === 'alter' && step.actions.some(action => action.validation !== undefined && !this.validCheck(step.table, action.validation)))) {
+      migration.unknownSteps.push(site.step); this.unknown(); this.inventory(step, site, migration, lineOf, 'unknown'); return;
+    }
+    if (step.kind === 'extension' || step.kind === 'extension-move') {
+      if (!this.native.apply(step, (schema, names) => this.typeConflict(schema, names))) { migration.unknownSteps.push(site.step); this.unknown(); }
+      return;
+    }
+    if (step.kind === 'type') {
+      const collision = this.native.collides(step.name) || this.state(step.name).presence !== 'absent' || this.otherRelation(step.name) !== 'absent';
+      this.native.noteType(step.name);
+      if (collision) { migration.unknownSteps.push(site.step); this.unknown(); }
+      return;
+    }
+    if (step.kind === 'halt') { this.dead = true; migration.continuation = 'terminal'; migration.unknownSteps.push(site.step); return; }
+    // Views/aliases can redirect writes to metadata. Only a declared table or
+    // a proven source-external target has a closed declared-membership effect.
+    // This says nothing about runtime binding, invocation effects or success.
+    if (step.kind === 'rows' && step.targets.some((name) => this.rowEffect(name) === 'unknown')) {
       migration.unknownSteps.push(site.step); this.unknown(); return;
     }
-    if (step.nativeCalls?.some((name) => this.nativeChanges.has(name))) {
+    if (step.nativeCalls?.some((name) => this.nativeChanges.has(name) ||
+      (name.startsWith('pg_catalog.') && this.rowExposure.has(['pg_catalog', name.slice('pg_catalog.'.length)])))) {
       migration.unknownSteps.push(site.step); this.unknown(); return;
     }
     if (step.kind === 'guard') {
       const answer = this.condition(step.condition);
       if (answer === false) { this.inventory(step, site, migration, lineOf, 'skipped'); return; }
+      if (answer === null && step.body.length === 1 && step.body[0]?.kind === 'halt') { this.abortPossible = true; migration.abortPossible = true; return; }
       const prior = new Map(migration.observations);
       for (const child of step.body) this.apply(child, this.sites.get(child) ?? site, migration, lineOf);
       if (answer === null) for (const [id, observation] of migration.observations) {
@@ -201,7 +292,9 @@ class Catalog {
       }
       const other = this.otherRelation(step.table);
       if (other === 'present') return;
-      if (prior.presence === 'unknown' || other === 'unknown' || step.columns === null) {
+      const nativeCollision = this.native.collides(step.table);
+      if (nativeCollision) migration.unknownSteps.push(site.step);
+      if (prior.presence === 'unknown' || other === 'unknown' || step.columns === null || nativeCollision) {
         this.uncertainCreations.add(key(step.table));
         this.tables.set(key(step.table), { presence: 'unknown', columns: new Map(), complete: false, view: true }); return;
       }
@@ -229,9 +322,12 @@ class Catalog {
         migration.unknownSteps.push(site.step);
         this.tables.set(key(step.table), { presence: 'unknown', columns: new Map(), complete: false }); return;
       }
+      if (this.native.collides(step.table)) { migration.unknownSteps.push(site.step); this.tables.set(key(step.table), { presence: 'unknown', columns: new Map(), complete: false }); return; }
       const columns = new Map(step.columns.map((column) => [column.name, 'present' as const]));
+      const types = new Map<string, ReplayTypeBinding>();
+      for (const column of step.columns) if (column.type !== undefined) types.set(column.name, column.type);
       this.indexGeneration += 1;
-      this.tables.set(key(step.table), { presence: 'present', columns, complete: true });
+      this.tables.set(key(step.table), { presence: 'present', columns, types, complete: true });
       this.implicit.note(step.table[0], step.implicit);
       this.declare([...step.table, null], site, migration);
       // All columns are declared before self-references are resolved.
@@ -329,6 +425,9 @@ class Catalog {
         if (!action.conditional || this.presence([...table, action.column]) === 'present') this.observe([...table, action.column], at, migration);
         else if (this.presence([...table, action.column]) === 'absent') this.record([...table, action.column], at, migration, 'skipped');
         current.columns.set(action.column, 'absent');
+      } else if (action.kind === 'alter-type') {
+        this.observe([...table, action.column], at, migration);
+        if (this.presence([...table, action.column]) === 'present') current.types?.set(action.column, action.type);
       } else if (action.kind === 'reference') {
         this.implicit.note(table[0], action.implicit ?? []);
         for (const name of action.columns) this.observe([...table, name], at, migration);
@@ -339,6 +438,7 @@ class Catalog {
         const destination = this.presence([...table, action.to]);
         if (prior === 'present' && destination === 'absent') {
           current.columns.set(action.from, 'absent'); current.columns.set(action.to, 'present');
+          const type = current.types?.get(action.from); current.types?.delete(action.from); if (type !== undefined) current.types?.set(action.to, type);
           this.declare([...table, action.to], at, migration);
         } else {
           migration.unknownSteps.push(at.step);
@@ -347,7 +447,7 @@ class Catalog {
       } else if (action.kind === 'rename-table' || action.kind === 'set-schema') {
         const next: TableName = action.kind === 'rename-table' ? [table[0], action.to] : [action.to, table[1]];
         const destination = this.state(next);
-        if (destination.presence === 'absent' && this.otherRelation(next) === 'absent') {
+        if (destination.presence === 'absent' && this.otherRelation(next) === 'absent' && !this.native.collides(next)) {
           this.tables.set(key(table), { presence: 'absent', columns: new Map(), complete: true });
           this.tables.set(key(next), current);
           this.declare([...next, null], at, migration);
@@ -399,13 +499,15 @@ export function replayMigrations(
       const sorted = [...members].sort((a, b) => Buffer.compare(Buffer.from(a.path), Buffer.from(b.path)));
       if (sorted.some((file, index) => members[index]?.path !== file.path)) { complete = false; reason = 'replay order disagrees with the recorded policy'; }
     }
+    const selector = order?.state === 'known' ? order.nativeMajor ?? null : null;
+    const model = nativeModelForMajor(selector);
     const inputHash = createHash('sha256').update(JSON.stringify([
-      1, group, options.schema, options.dialect,
-      order?.state === 'known' ? [order.policy, order.configHash] : null,
+      2, group, options.schema, options.dialect,
+      order?.state === 'known' ? [order.policy, order.configHash, selector, model.id, model.hash] : null,
       [...options.unread].sort(),
       members.map((file) => [file.path, createHash('sha256').update(file.text).digest('hex')]),
     ])).digest('hex');
-    const catalog = new Catalog();
+    const catalog = new Catalog(model);
     const migrations: MigrationState[] = [];
     let steps = 0;
     let tokens = 0;
@@ -419,7 +521,7 @@ export function replayMigrations(
         tokens += tokenCount(lexed);
         if (tokens > MAX_TOKENS) throw new RangeError('migration group token limit');
         const statements = splitStatements(lexed);
-        const migration: MigrationState = { name, group, declarations: [], observations: new Map(), unknownSteps: [], stepCount: statements.length };
+        const migration: MigrationState = { name, group, declarations: [], observations: new Map(), unknownSteps: [], stepCount: statements.length, abortPossible: false, continuation: 'live', nativeState: '' };
         migrations.push(migration);
         if (!complete) {
           steps += statements.length;
@@ -436,7 +538,13 @@ export function replayMigrations(
           // A declared native-name change anywhere in this bounded group
           // withholds call semantics; it never supplies a positive binding.
           for (const name of step.routineChanges ?? []) catalog.nativeChanges.add(name[1]);
+          if (step.kind === 'type') catalog.nativeChanges.add('type.' + step.name[1]);
+          if (step.kind === 'extension') {
+            const descriptor = stockDescriptor(step.name, step.version, model);
+            for (const name of descriptor?.routines ?? []) { if (++steps > MAX_STEPS) throw new RangeError('migration native export work limit'); catalog.nativeChanges.add(name); }
+          }
           if (step.kind === 'view') catalog.declaredViews.add(key(step.table));
+          catalog.rowExposure.note(step);
           // Catalog reads have native semantics only while their source names
           // are untouched by declared relation changes in this group.
           const relations = step.kind === 'drop' ? step.tables : 'table' in step ? [step.table] : step.kind === 'relation' ? [step.name] : [];
@@ -456,6 +564,8 @@ export function replayMigrations(
         for (const step of program.statements) {
           catalog.apply(step, catalog.sites.get(step)!, program.migration, program.lineOf);
         }
+        program.migration.abortPossible = catalog.abortPossible;
+        program.migration.nativeState = catalog.native.snapshot();
       }
     } catch {
       complete = false; reason = 'replay analysis failed or reached a resource limit';
@@ -464,7 +574,7 @@ export function replayMigrations(
     const referencesComplete = complete && migrations.every((migration) => migration.unknownSteps.length === 0);
     const referenceReason = complete && !referencesComplete ? 'unsupported or uncertain membership step' : reason;
     const groupNames = members.map((file) => names.get(file.path)).filter((name): name is string => name !== undefined).sort();
-    groupRows.push([group, order?.state === 'known' ? order.policy : null, order?.state === 'known' ? order.configHash : null, referencesComplete, groupNames, referenceReason, inputHash]);
+    groupRows.push([group, order?.state === 'known' ? order.policy : null, order?.state === 'known' ? order.configHash : null, referencesComplete, groupNames, referenceReason, inputHash, model.id, model.hash, selector]);
     const ordinal = new Map(migrations.map((migration, index) => [migration.name, index]));
     for (const file of members) {
       const name = names.get(file.path);
@@ -496,7 +606,10 @@ export function replayMigrations(
       const unknownSteps = [...new Set(migration?.unknownSteps ?? [])].sort((a, b) => a - b);
       const unresolvedRows = sortRows(unresolved), externalRows = sortRows(external), unknownRows = sortRows(unknown), validRows = sortRows(valid), skippedRows = sortRows(skipped);
       output.set(name, {
-        replayVersion: 1,
+        replayVersion: 2,
+        replayModelId: model.id, replayModelHash: model.hash, replaySelector: selector,
+        replayNativeState: migration?.nativeState || '',
+        replayAbortPossible: migration?.abortPossible ?? false, replayContinuation: migration?.continuation ?? 'terminal',
         replayInputHash: inputHash,
         replayGroup: group,
         replayOrdinal: ordinal.get(name) ?? -1,
@@ -517,9 +630,8 @@ export function replayMigrations(
       });
     }
   }
-  const snapshot = createHash('sha256').update(JSON.stringify([
-    1, options.schema, options.dialect, [...options.unread].sort(), groupRows, unavailable,
-  ])).update('\n');
+  const snapshotBasis = JSON.stringify([2, options.schema, options.dialect, [...options.unread].sort(), groupRows, unavailable]);
+  const snapshot = createHash('sha256').update(snapshotBasis).update('\n');
   // Inputs alone do not bind a corrected analysis under a reused run id.
   // Stamp the complete certificate bodies too, so an interrupted write cannot
   // mix a current root with an older interpretation of those same inputs.
@@ -534,7 +646,7 @@ export function replayMigrations(
   for (const [name, props] of output) output.set(name, { ...props, replaySnapshotHash: snapshotHash });
   return {
     unavailable,
-    dataSource: { replayVersion: 1, replaySnapshotHash: snapshotHash, replayMembershipComplete: !unavailable, replayInventoryComplete: inventoryRead, replayGroups: JSON.stringify(groupRows), replayGroupCount: groupRows.length },
+    dataSource: { replayVersion: 2, replayModelId: 'x8-group-models-v2', replayModelHash: '8b936bdb4e8522c83c01ec0aae7584a60dcaba33870d6603ac36a1d76e9dbba5', replaySelector: 0, replaySnapshotBasis: snapshotBasis, replayNativeModels: JSON.stringify(groupRows.map(row => [row[0], row[2], row[9], row[7], row[8]])), replaySnapshotHash: snapshotHash, replayMembershipComplete: !unavailable, replayInventoryComplete: inventoryRead, replayGroups: JSON.stringify(groupRows), replayGroupCount: groupRows.length },
     migrations: output,
   };
 }
