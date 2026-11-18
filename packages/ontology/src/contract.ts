@@ -16,8 +16,8 @@
 
 /**
  * A node id is a path-free natural key, `{repo}:{kind}:{canonicalName}`.
- * The one exception is `File`, whose canonical name is its repo-relative path
- * (ADR-0016).
+ * The exceptions are `File`, whose canonical name is its repo-relative path,
+ * and an `Alias` retiring a `File`, which carries that retired path (ADR-0016).
  *
  * It is deliberately NOT a synthetic UUID/ULID. An id minted at first sight is
  * not stable across a rebuild-from-scratch, and rebuild-from-scratch is the
@@ -26,7 +26,10 @@
  */
 export type NodeId = string & { readonly __brand: 'NodeId' };
 
-/** Construct a NodeId. `canonicalName` must already be path-free, except for a `File` (ADR-0016). */
+/**
+ * Construct a NodeId. `canonicalName` is path-free except for `File` and an
+ * `Alias` retiring a `File` (ADR-0016).
+ */
 export function nodeId(repo: string, kind: NodeKind, canonicalName: string): NodeId {
   if (repo.includes(':')) throw new Error(`repo must not contain ':': ${repo}`);
   if (canonicalName.length === 0) throw new Error('canonicalName must not be empty');
