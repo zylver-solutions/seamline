@@ -34,7 +34,6 @@ test('missing versions, counts, snapshots and unknown inventory fail closed', ()
     { unresolvedRefCount: 0 },
     { replayInputHash: 'd'.repeat(64) },
     { replaySnapshotHash: 'd'.repeat(64) },
-    { replayEpoch: 'old-run' },
     { replayInventoryComplete: false },
     { replayStepCount: 0 },
     { replayOrdinal: 1 },
@@ -44,11 +43,21 @@ test('missing versions, counts, snapshots and unknown inventory fail closed', ()
   withheld(withProps('default', { replayGroupCount: 0 }));
 });
 
+test('evidence last observed by another run than its data source is withheld', () => {
+  // The run that wrote a certificate is the node's lastSeenRun, never a body prop.
+  for (const name of ['001_ref', '002_create']) {
+    withheld(replayFixtureNodes().map((node) => node.name === name ? { ...node, lastSeenRun: 'old-run' } : node));
+  }
+  // No recorded run on any node is not agreement: an empty stamp never proves one write.
+  withheld(replayFixtureNodes().map((node) => ({ ...node, lastSeenRun: '' })));
+  const g = graph({ nodes: replayFixtureNodes().map((node) => ({ ...node, lastSeenRun: 'later-run' })) });
+  assert.equal(x8OrphanedMigration.detect(g).length, 1);
+});
+
 test('a creation witness must be live, factual, current and agree on the exact target', () => {
   for (const patch of [
     { replayInputHash: 'd'.repeat(64) },
     { replaySnapshotHash: 'd'.repeat(64) },
-    { replayEpoch: 'old-run' },
     { replayDeclarations: JSON.stringify([['other', 'users', 'id', 0, 1], ['other', 'users', null, 0, 1]]) },
   ]) withheld(withProps('002_create', patch));
   for (const provenance of ['INFERRED', 'LLM_SUGGESTED'] as const) {

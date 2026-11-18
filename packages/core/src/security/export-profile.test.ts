@@ -7,7 +7,7 @@
  *    rejected with a precise message (the corpus in `__fixtures__`);
  * 2. the JSON Schema file under `docs/reference/` and the parser agree on the
  *    whole corpus, and the schema's vocabulary is the live vocabulary, so a new
- *    node kind in the contract fails here until the schema file is regenerated;
+ *    node kind in the contract fails here until the schema file is updated by hand;
  * 3. the shipped profiles are parsed by the same parser and keep releasing what
  *    they released before provenance and untrusted text became profile fields.
  */
@@ -424,7 +424,7 @@ describe('export profile / the JSON Schema file and the parser agree', () => {
     );
   });
 
-  it('carries the live vocabulary, so a new kind in the contract fails here until the schema is regenerated', () => {
+  it('carries the live vocabulary, so a new kind in the contract fails here until the schema is updated', () => {
     const defs = schema['$defs'] as Record<string, { enum?: string[] }>;
     deepStrictEqual(defs['nodeKind']?.enum, [...NODE_KINDS]);
     deepStrictEqual(defs['edgeKind']?.enum, [...EDGE_KINDS]);
