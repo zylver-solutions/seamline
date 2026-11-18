@@ -32,6 +32,11 @@ import { resolveStoreDir } from '../store-dir.ts';
 
 export type CheckOutcome = 'clean' | 'unknown' | 'findings';
 
+export interface ExtractionDiagnostic {
+  readonly extractor: string;
+  readonly diagnostics: readonly string[];
+}
+
 export interface CheckReport {
   /** `clean` only when every detector ran and found nothing. */
   readonly outcome: CheckOutcome;
@@ -44,6 +49,8 @@ export interface CheckReport {
    * the same as clean for the inputs named: they were not checked. The exit code ignores them.
    */
   readonly detectorNotes: readonly DetectorNotes[];
+  /** Latest-run PASS messages, including withheld producer proofs; not detector findings or scope failures. */
+  readonly extractionDiagnostics?: readonly ExtractionDiagnostic[];
   /** Scopes that passed on a narrower claim; preserved independently of detector notes. */
   readonly narrowedClaims?: readonly NarrowedClaim[];
   readonly exitCode: number;
@@ -89,7 +96,10 @@ export async function checkCommand(deps: CliDeps, argv: readonly string[]): Prom
       );
 
     const scopes = degradedScopes(workspace.store, latest);
-    report = buildReport(contradictions, detection.unknown, scopes, narrowedClaims(workspace.store, latest), detection.notes ?? []);
+    const diagnostics = (latest?.results ?? [])
+      .filter(result => result.status === 'PASS' && result.diagnostics.length > 0)
+      .map(result => ({ extractor: result.extractor, diagnostics: result.diagnostics }));
+    report = buildReport(contradictions, detection.unknown, scopes, narrowedClaims(workspace.store, latest), detection.notes ?? [], diagnostics);
   } finally {
     await workspace.store.close();
   }
@@ -109,6 +119,7 @@ export function buildReport(
   scopes: readonly DegradedScope[],
   narrowed: readonly NarrowedClaim[] = [],
   detectorNotes: readonly DetectorNotes[] = [],
+  extractionDiagnostics: readonly ExtractionDiagnostic[] = [],
 ): CheckReport {
   const counts: Record<Severity, number> = { critical: 0, high: 0, medium: 0, low: 0 };
   for (const c of contradictions) counts[c.severity] += 1;
@@ -128,6 +139,7 @@ export function buildReport(
     unknownDetectors,
     degradedScopes: scopes,
     detectorNotes,
+    ...(extractionDiagnostics.length > 0 ? { extractionDiagnostics } : {}),
     ...(narrowed.length > 0 ? { narrowedClaims: narrowed } : {}),
     exitCode: blocking ? EXIT_FINDINGS : EXIT_OK,
   };
@@ -171,6 +183,15 @@ function renderCheck(style: Style, report: CheckReport): string {
     lines.push(style.yellow('NOT EVALUATED: no finding here is not the same as clean'));
     for (const d of report.detectorNotes) {
       for (const note of d.notes) lines.push(`  ${style.bold(d.code)}  ${printable(note)}`);
+    }
+  }
+
+  if ((report.extractionDiagnostics?.length ?? 0) > 0) {
+    lines.push('');
+    lines.push('EXTRACTION DIAGNOSTICS');
+    for (const result of report.extractionDiagnostics ?? []) {
+      lines.push(`  ${printable(result.extractor)} (PASS in the latest extraction run)`);
+      for (const diagnostic of result.diagnostics) lines.push(`      ${printable(diagnostic)}`);
     }
   }
 

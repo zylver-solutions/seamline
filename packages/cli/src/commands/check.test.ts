@@ -104,6 +104,53 @@ test('UNKNOWN is reported distinctly from clean and never claims CLEAN', async (
   assert.match(out, /data/);
 });
 
+test('check preserves PASS producer refusals beside X7 UNKNOWN in text and JSON', async () => {
+  const dir = await repoWithConfig();
+  const message = 'WRITE_EXECUTION_ORIGIN_UNKNOWN: tools/package.json: nonempty scripts have no invocation/emitter proof';
+  const unknown: UnknownDetection = { code: 'X7_VALIDATOR_DIVERGENCE', severity: 'high',
+    reason: 'X7_NO_OBSERVABLE_LENGTH_PAIR: no current pair', scopes: [], scopeStatus: {} };
+  const graph = memoryGraph({ scopeStatus: { contracts: 'PASS' },
+    runs: [makeRun('run-current', [makeResult('extract-contracts', 'PASS', ['contracts'], [message])])] });
+  const text = deps(dir, { contradictions: [], unknown: [unknown] }, graph);
+  assert.equal(await runCli(text, ['check']), EXIT_OK);
+  assert.match(text.io.stdout(), /X7_NO_OBSERVABLE_LENGTH_PAIR/);
+  assert.match(text.io.stdout(), /EXTRACTION DIAGNOSTICS/);
+  assert.ok(text.io.stdout().includes(message));
+  assert.doesNotMatch(text.io.stdout(), /CLEAN/);
+  const json = deps(dir, { contradictions: [], unknown: [unknown] }, graph);
+  assert.equal(await runCli(json, ['check', '--json']), EXIT_OK);
+  const report = JSON.parse(json.io.stdout()) as CheckReport;
+  assert.deepEqual(report.extractionDiagnostics, [{ extractor: 'extract-contracts', diagnostics: [message] }]);
+  assert.equal(report.outcome, 'unknown');
+  assert.deepEqual(report.contradictions, []);
+});
+
+test('PASS diagnostics do not change a clean verdict and do not include old run messages', async () => {
+  const dir = await repoWithConfig();
+  const graph = memoryGraph({ scopeStatus: { contracts: 'PASS' }, runs: [
+    makeRun('run-old', [makeResult('extract-contracts', 'PASS', ['contracts'], ['old refusal'])]),
+    makeRun('run-current', [makeResult('extract-contracts', 'PASS', ['contracts'], ['current note'])]),
+  ] });
+  const d = deps(dir, { contradictions: [], unknown: [] }, graph);
+  assert.equal(await runCli(d, ['check', '--json']), EXIT_OK);
+  const report = JSON.parse(d.io.stdout()) as CheckReport;
+  assert.equal(report.outcome, 'clean');
+  assert.deepEqual(report.extractionDiagnostics, [{ extractor: 'extract-contracts', diagnostics: ['current note'] }]);
+});
+
+test('failed extractor messages retain their existing degraded-scope channel and finding exit', async () => {
+  const dir = await repoWithConfig();
+  const graph = memoryGraph({ scopeStatus: { contracts: 'FAIL' },
+    runs: [makeRun('run-current', [makeResult('extract-contracts', 'FAIL', ['contracts'], ['failed metadata read'])])] });
+  const d = deps(dir, { contradictions: [contradiction('high')], unknown: [] }, graph);
+  assert.equal(await runCli(d, ['check', '--json']), EXIT_FINDINGS);
+  const report = JSON.parse(d.io.stdout()) as CheckReport;
+  assert.equal(report.outcome, 'findings');
+  assert.equal(report.extractionDiagnostics, undefined);
+  assert.deepEqual(report.degradedScopes[0]?.diagnostics, ['failed metadata read']);
+  assert.equal(report.contradictions.length, 1);
+});
+
 test('a degraded scope on the run record makes the outcome UNKNOWN even with no unknown detectors', async () => {
   const dir = await repoWithConfig();
   const graph = memoryGraph({
