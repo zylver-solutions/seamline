@@ -63,7 +63,7 @@ function extractor(
           ...makeNode({
             kind: 'DataSource', canonicalName: 'default',
             props: {
-              dataSource: 'default', replayVersion: 1, replayEpoch: ctx.runId,
+              dataSource: 'default', replayVersion: 1,
               replaySnapshotHash: 'a'.repeat(64), replayMembershipComplete: true,
               replayInventoryComplete: true, replayGroups: '[]', replayGroupCount: 0,
             },
