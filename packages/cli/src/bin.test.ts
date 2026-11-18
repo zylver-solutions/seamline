@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -21,12 +21,17 @@ function seamline(args: readonly string[]): {
   stdout: string;
   stderr: string;
 } {
-  const result = spawnSync(process.execPath, [binary, ...args], {
-    cwd: mkdtempSync(join(tmpdir(), 'seamline-preflight-')),
-    encoding: 'utf8',
-    env: { PATH: process.env['PATH'] ?? '' },
-  });
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  const cwd = mkdtempSync(join(tmpdir(), 'seamline-preflight-'));
+  try {
+    const result = spawnSync(process.execPath, [binary, ...args], {
+      cwd,
+      encoding: 'utf8',
+      env: { PATH: process.env['PATH'] ?? '' },
+    });
+    return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
 }
 
 test('the built CLI prints the version with an empty stderr', () => {

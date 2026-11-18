@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -52,17 +52,21 @@ const GLOBAL_ARGUMENTS: Readonly<Record<string, readonly string[]>> = {
 
 async function rejects(command: Command, option: string): Promise<boolean> {
   const cwd = await mkdtemp(path.join(tmpdir(), 'seamline-globals-'));
-  const io = bufferIo({ cwd, env: {} });
-  const code = await runCli({ io, clock: { now: () => 'now', runId: () => 'run' } }, [
-    command,
-    ...(GLOBAL_ARGUMENTS[option] ?? []),
-  ]);
-  const refused = io.stderr().includes(`\`seamline ${command}\` does not take --${option}`);
-  if (refused) {
-    assert.equal(code, EXIT_USAGE, `${command} --${option}`);
-    assert.equal(io.stdout(), '', `${command} --${option} did nothing`);
+  try {
+    const io = bufferIo({ cwd, env: {} });
+    const code = await runCli({ io, clock: { now: () => 'now', runId: () => 'run' } }, [
+      command,
+      ...(GLOBAL_ARGUMENTS[option] ?? []),
+    ]);
+    const refused = io.stderr().includes(`\`seamline ${command}\` does not take --${option}`);
+    if (refused) {
+      assert.equal(code, EXIT_USAGE, `${command} --${option}`);
+      assert.equal(io.stdout(), '', `${command} --${option} did nothing`);
+    }
+    return refused;
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
   }
-  return refused;
 }
 
 test('a global option is a usage error on exactly the commands the help says do not accept it', async () => {
@@ -89,8 +93,10 @@ test('a global option is a usage error on exactly the commands the help says do 
   });
 });
 
-test('mcp --json says why it is refused and serves nothing', async () => {
-  const io = bufferIo({ cwd: await mkdtemp(path.join(tmpdir(), 'seamline-mcp-json-')), env: {} });
+test('mcp --json says why it is refused and serves nothing', async (t) => {
+  const cwd = await mkdtemp(path.join(tmpdir(), 'seamline-mcp-json-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const io = bufferIo({ cwd, env: {} });
   const code = await runCli({ io, clock: { now: () => 'now', runId: () => 'run' } }, [
     'mcp',
     '--profile',
