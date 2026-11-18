@@ -53,8 +53,10 @@
  * A package that cannot be packed is a failure, never a skip: "could not check"
  * must not look like "checked and clean" (AGENTS.md invariant 3).
  *
- * Plain Node, zero dependencies, by design (v3 §2.7, §10). The tarball reader
- * below is about forty lines so the gate does not depend on a system `tar`.
+ * Runs on Node with the workspace TypeScript development compiler already
+ * required by the build. It parses comment boundaries without executing package
+ * code; no published runtime dependency is added. The tarball reader below does
+ * not depend on a system `tar`.
  *
  * Usage:
  *   node scripts/pack-check.mjs                 human-readable report; exit 1 on any violation
@@ -69,6 +71,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve, dirname, posix, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
+import ts from 'typescript';
 import { gunzipSync } from 'node:zlib';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -172,10 +175,67 @@ const ANY_SPECIFIER =
 /**
  * A `sourceMappingURL` comment as compilers write it: alone on its line, in the
  * `//#` form, the older `//@` form, or the block form. A mention inside a string
- * or in the middle of a line is not a reference and is not matched.
+ * or in the middle of a line is not a reference. Actual comment trivia filters
+ * these raw candidates below, so template data cannot become a directive.
  */
 const SOURCE_MAP_REFERENCE =
   /^[ \t]*(?:\/\/[#@][ \t]*sourceMappingURL=(\S+)|\/\*[#@][ \t]*sourceMappingURL=(\S+?)[ \t]*\*\/)[ \t\r]*$/gm;
+
+/**
+ * Source-map directives at real comment boundaries. The raw spelling remains
+ * deliberately narrow; the build's TypeScript compiler supplies lexical context
+ * for JavaScript and declarations without executing or resolving their code.
+ * A candidate in syntactically unreadable input is unavailable, never clean.
+ */
+export function sourceMapReferences(text, path) {
+  const candidates = [...text.matchAll(SOURCE_MAP_REFERENCE)];
+  if (candidates.length === 0) return [];
+  try {
+    const sf = ts.createSourceFile(
+      path,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      path.endsWith('.d.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    );
+    if (!Array.isArray(sf.parseDiagnostics) || sf.parseDiagnostics.length !== 0) return null;
+    const comments = new Map();
+    const pending = [sf];
+    while (pending.length > 0) {
+      const node = pending.pop();
+      if (node.kind >= ts.SyntaxKind.FirstJSDocNode && node.kind <= ts.SyntaxKind.LastJSDocNode)
+        continue;
+      // EOF and other tokens can have attached JSDoc children. Their trivia still
+      // needs checking, including genuine directives following the JSDoc.
+      if (!ts.isToken(node)) {
+        pending.push(...node.getChildren(sf));
+        continue;
+      }
+      // JSX text is literal content, not JavaScript trivia.
+      if (node.kind === ts.SyntaxKind.JsxText || node.kind === ts.SyntaxKind.JsxTextAllWhiteSpaces)
+        continue;
+      for (const range of [
+        ...(ts.getLeadingCommentRanges(text, node.getFullStart()) ?? []),
+        ...(ts.getTrailingCommentRanges(text, node.end) ?? []),
+      ])
+        comments.set(range.pos, range);
+    }
+    return candidates
+      .filter((match) => {
+        const offset = match.index + match[0].search(/\S/);
+        const comment = comments.get(offset);
+        if (comment === undefined) return false;
+        if (match[1] !== undefined) return comment.kind === ts.SyntaxKind.SingleLineCommentTrivia;
+        return (
+          comment.kind === ts.SyntaxKind.MultiLineCommentTrivia &&
+          comment.end === match.index + match[0].trimEnd().length
+        );
+      })
+      .map((match) => match[1] ?? match[2]);
+  } catch {
+    return null;
+  }
+}
 
 const BUILTINS = new Set(builtinModules);
 
@@ -545,8 +605,16 @@ export function checkPackage({
   // or bundler follows the comment and warns or fails on a file that is not there.
   for (const [path, entry] of files) {
     if (!/\.js$/.test(path) && !/\.d\.ts$/.test(path)) continue;
-    for (const m of entry.content.toString('utf8').matchAll(SOURCE_MAP_REFERENCE)) {
-      const url = m[1] ?? m[2];
+    const references = sourceMapReferences(entry.content.toString('utf8'), path);
+    if (references === null) {
+      add(
+        'SOURCE_MAP_UNREADABLE',
+        path +
+          ' has a source-map-shaped line whose syntax could not be read by the development compiler',
+      );
+      continue;
+    }
+    for (const url of references) {
       if (url.startsWith('data:')) continue;
       const target = sourceMapTarget(path, url);
       if (target === null || !files.has(target)) {

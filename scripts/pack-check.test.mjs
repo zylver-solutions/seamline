@@ -44,6 +44,7 @@ import {
   checkPrivatePackage,
   checkWorkspace,
   readTarball,
+  sourceMapReferences,
   workspaceDirs,
 } from './pack-check.mjs';
 
@@ -317,6 +318,88 @@ test('a sourceMappingURL comment must name a file in the same tarball', () => {
     [],
     'a string that mentions the comment is not a reference',
   );
+});
+
+test('source-map references follow actual parser comment boundaries', async (t) => {
+  const pragma = '//# sourceMappingURL=missing.map';
+  const prefix = "export * from './contract.js';\n";
+  const slash = String.fromCharCode(92);
+  const template = 'export const text = `raw\n' + pragma + '\n`;\n';
+  const cases = [
+    ['baseline', prefix, []],
+    ['real', prefix + pragma, ['DANGLING_SOURCE_MAP']],
+    ['template', prefix + template, []],
+    ['template-then-real', prefix + template + pragma, ['DANGLING_SOURCE_MAP']],
+    [
+      'nested-template',
+      prefix + 'export const text=`${`raw\n' + pragma + '\n`} tail`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'interpolation',
+      prefix + 'export const text=`raw\n' + pragma + '\n${(()=>{\n' + pragma + '\nreturn 1;})()}`;',
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'escaped-backtick',
+      prefix + 'export const text=`escaped ' + slash + '`\n' + pragma + '\n`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'escaped-interpolation',
+      prefix + 'export const text=`escaped ' + slash + '${ raw\n' + pragma + '\n`;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    [
+      'string-continuation',
+      prefix + "export const text='continued" + slash + '\n' + pragma + slash + "\n';\n" + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['outer-doc-comment', prefix + '/** outer\n' + pragma + '\n */', []],
+    [
+      'outer-doc-then-real',
+      prefix + '/** outer\n' + pragma + '\n */\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['empty-block', prefix + 'function f(){\n' + pragma + '\n}', ['DANGLING_SOURCE_MAP']],
+    ['empty-arguments', prefix + 'Math.max(\n' + pragma + '\n);', ['DANGLING_SOURCE_MAP']],
+    [
+      'before-closing-punctuation',
+      prefix + 'export const x={a:1\n' + pragma + '\n};',
+      ['DANGLING_SOURCE_MAP'],
+    ],
+    ['eof', prefix + pragma, ['DANGLING_SOURCE_MAP']],
+    ['regexp', prefix + 'export const r=/[\'"`]/;\n' + pragma, ['DANGLING_SOURCE_MAP']],
+    ['control-regexp', prefix + "if(true) /['\"`]/.test('x');\n" + pragma, ['DANGLING_SOURCE_MAP']],
+    ['division', prefix + 'export const x=4/2;\n' + pragma, ['DANGLING_SOURCE_MAP']],
+    [
+      'declaration-template',
+      "export * from './contract.ts';\nexport declare const text:`raw\n" +
+        pragma +
+        '\n`;\n' +
+        pragma,
+      ['DANGLING_SOURCE_MAP'],
+      'dist/index.d.ts',
+    ],
+    [
+      'unreadable',
+      prefix + 'export const text=`unterminated\n' + pragma,
+      ['SOURCE_MAP_UNREADABLE'],
+    ],
+    [
+      'jsx-raw',
+      prefix + 'export const x=<p>\n' + pragma + '\n</p>;\n' + pragma,
+      ['DANGLING_SOURCE_MAP'],
+    ],
+  ];
+  for (const [id, body, expected, path = 'dist/index.js'] of cases) {
+    await t.test(id, () => {
+      assert.deepEqual(
+        codesAfter((_m, files) => files.set(path, file(body))),
+        expected,
+      );
+    });
+  }
 });
 
 test('engines.node must be present and equal to the root range', () => {
@@ -963,9 +1046,9 @@ test('the built output of every publishable package carries no sourceMappingURL 
     const emitted = readdirSync(dist, { recursive: true }).filter((f) => /\.(js|d\.ts)$/.test(f));
     assert.ok(emitted.length > 0, `${manifest.name}: run \`pnpm build\` before this test`);
     for (const f of emitted) {
-      assert.doesNotMatch(
-        readFileSync(join(dist, f), 'utf8'),
-        /^\/\/# sourceMappingURL=/m,
+      assert.deepEqual(
+        sourceMapReferences(readFileSync(join(dist, f), 'utf8'), f),
+        [],
         `${manifest.name}: dist/${f}`,
       );
     }
