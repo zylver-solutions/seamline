@@ -43,6 +43,7 @@
     "!dist/fixtures.*",
     "!dist/graph-memory.*",
     "README.md",
+    "LICENSE",
     "NOTICE"
   ],
   "publishConfig": {

@@ -43,6 +43,7 @@ Node's type stripping does not rewrite specifiers, so `./contract.js` resolves t
 packages/<name>/
 ├─ package.json     name "@seamline/<name>", "type": "module", license Apache-2.0
 ├─ README.md        shipped in the tarball
+├─ LICENSE          byte-for-byte copy of the root LICENSE, shipped in the tarball
 ├─ NOTICE           byte-for-byte copy of the root NOTICE, shipped in the tarball
 ├─ tsconfig.json    extends ../../tsconfig.base.json, rootDir src, outDir dist
 └─ src/
@@ -78,6 +79,7 @@ packages/<name>/
     "!dist/**/__fixtures__/**",
     "!dist/**/*.map",
     "README.md",
+    "LICENSE",
     "NOTICE"
   ],
   "publishConfig": { "access": "public" },
@@ -92,8 +94,10 @@ Notes on the template. Everything in this list is enforced by `pnpm gate:pack` (
 - `exports` lists only reviewed entry points: a new subpath, or a new package, is added to `PUBLIC_ENTRY_POINTS` in that script in the same review.
 - The only top-level entries are `dist/`, `package.json`, `README.md`, `LICENSE` and `NOTICE`, plus a `.json`-only data directory for a package named in `DATA_DIRECTORIES` in that script (today `@seamline/security`'s `corpus/`). Add the directory to the package's `files` and to that table in the same review.
 - No test, fixture, source map or TypeScript source ships, and every shipped `dist/*.js` is reachable from `main`, `exports` or `bin` through relative imports (a module that compiles to nothing is allowed). A test-support module under `src/` (a double or fixture builder that tests import) compiles into `dist/` but must not ship: add a `!dist/<file>.*` line to `files` for it, and keep it out of `index.ts`.
+- No shipped file carries a `sourceMappingURL` comment whose target is not in the same tarball. `tsconfig.base.json` leaves `sourceMap` and `declarationMap` off, so `tsc` writes no such comment and no `.map` file: a map points at `src/*.ts`, which is not published, and a comment without its map makes a consumer's debugger or bundler warn or fail. For a local debugging build, pass the flags on the command line (`./node_modules/.bin/tsc --build --force --sourceMap --declarationMap`); the gate rejects a tarball packed from that build, so run `pnpm typecheck` (a forced rebuild from the committed configuration) before packing. The `!dist/**/*.map` line in `files` keeps the maps of such a build out of a tarball.
+- Source-map comment boundaries are read with the workspace TypeScript development compiler already used by the build. The gate parses JavaScript and declarations without resolving imports or executing package code. It refuses candidate-bearing output with unreadable syntax as `SOURCE_MAP_UNREADABLE`; text inside a string or template is not a directive.
 - Every bare import in shipped code is a declared dependency, and every `dependencies` entry is imported by shipped code. A package that only the test doubles import belongs in `devDependencies`. Static imports, `export ... from` and literal `import()` are read; `require()` and computed specifiers are not, so review those by hand.
-- `NOTICE` is copied into each package from the root (`cp NOTICE packages/<name>/NOTICE`) because `pnpm pack` copies the root `LICENSE` by itself but not `NOTICE`, and Apache-2.0 section 4(d) asks redistributions to carry it. The gate fails if a copy is missing, not listed in `files`, or differs from the root file.
+- `LICENSE` and `NOTICE` are copied into each package from the root (`cp LICENSE NOTICE packages/<name>/`), because Apache-2.0 section 4 asks redistributions to carry both. The gate fails if the `NOTICE` copy is missing, not listed in `files`, or differs from the root file, and if the `LICENSE` copy is missing from the package directory or differs from the root file. The `LICENSE` copy is checked in the directory as well as in the tarball: `pnpm pack` and `pnpm publish` add the root `LICENSE` to a package that has none, and `npm pack` and `npm publish` do not, so a tarball packed by pnpm cannot show that the copy is absent. npm ships a package's `LICENSE` whether or not `files` lists it; the `files` entry records the intent.
 - A package that is not meant to be published (`@seamline/integration`) sets `"private": true`, and every private package declares no `exports`, `files` or `publishConfig`.
 
 Reviewed by hand, not enforced: `"sideEffects": false` is only true when no module has top-level effects beyond declarations and pure builders, so check the new module's top-level statements before copying the line.

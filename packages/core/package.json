@@ -55,6 +55,7 @@
     "!dist/sif/test-fixtures.*",
     "!dist/store/testing.*",
     "README.md",
+    "LICENSE",
     "NOTICE"
   ],
   "publishConfig": {

@@ -16,17 +16,22 @@
  *    `.d.ts`, and the only top-level entries are `dist/`, `package.json`,
  *    `README.md`, `LICENSE` and `NOTICE`, plus a data directory of `.json` files
  *    for the one package that is named in DATA_DIRECTORIES (the injection corpus).
+ *  - Every `sourceMappingURL` comment in shipped code names a file in the same
+ *    tarball (a `data:` URL carries its own map). Source maps are not shipped, so
+ *    the build must not emit the comment.
  *  - `main`, `types`, every `bin` target and every `exports` target exists in
  *    the tarball, and a `bin` target starts with a shebang.
  *  - `exports` lists exactly the reviewed entry points in PUBLIC_ENTRY_POINTS
  *    (no wildcards, no unreviewed subpath), and `types` comes first in every
  *    conditional block so TypeScript resolves it.
  *  - `engines.node` is present and equals the root manifest's.
- *  - `license` is Apache-2.0 and the tarball carries `LICENSE` and `README.md`.
- *  - The tarball carries `NOTICE`, byte-equal to the repository root's
- *    (Apache-2.0 section 4(d)). `pnpm pack` copies the root `LICENSE` into each
- *    tarball by itself but not `NOTICE`, so each package keeps a committed copy,
- *    listed in its `files`, and this check fails if a copy is missing or drifts.
+ *  - `license` is Apache-2.0 and the tarball carries `README.md`.
+ *  - The tarball carries `LICENSE` and `NOTICE`, each byte-equal to the
+ *    repository root's (Apache-2.0 section 4(a) and 4(d)). Each package keeps a
+ *    committed copy of both, listed in its `files`, and this check fails if a
+ *    copy is missing or drifts. `pnpm pack` adds the root `LICENSE` to a package
+ *    that has none, and `npm pack` does not, so the `LICENSE` copy is also
+ *    looked for in the package directory, not only in the tarball.
  *  - No `workspace:` specifier survives into the packed manifest, and no
  *    published package depends on a private workspace package.
  *  - Internal packages (INTERNAL_PACKAGES) stay `"private": true`, and every
@@ -48,8 +53,10 @@
  * A package that cannot be packed is a failure, never a skip: "could not check"
  * must not look like "checked and clean" (AGENTS.md invariant 3).
  *
- * Plain Node, zero dependencies, by design (v3 §2.7, §10). The tarball reader
- * below is about forty lines so the gate does not depend on a system `tar`.
+ * Runs on Node with the workspace TypeScript development compiler already
+ * required by the build. It parses comment boundaries without executing package
+ * code; no published runtime dependency is added. The tarball reader below does
+ * not depend on a system `tar`.
  *
  * Usage:
  *   node scripts/pack-check.mjs                 human-readable report; exit 1 on any violation
@@ -64,6 +71,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, resolve, dirname, posix, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
+import ts from 'typescript';
 import { gunzipSync } from 'node:zlib';
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -163,6 +171,71 @@ const RELATIVE_SPECIFIER =
  */
 const ANY_SPECIFIER =
   /^\s*(?:import|export)\s[^;'"`]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)|^\s*import\s+['"]([^'"]+)['"]/gm;
+
+/**
+ * A `sourceMappingURL` comment as compilers write it: alone on its line, in the
+ * `//#` form, the older `//@` form, or the block form. A mention inside a string
+ * or in the middle of a line is not a reference. Actual comment trivia filters
+ * these raw candidates below, so template data cannot become a directive.
+ */
+const SOURCE_MAP_REFERENCE =
+  /^[ \t]*(?:\/\/[#@][ \t]*sourceMappingURL=(\S+)|\/\*[#@][ \t]*sourceMappingURL=(\S+?)[ \t]*\*\/)[ \t\r]*$/gm;
+
+/**
+ * Source-map directives at real comment boundaries. The raw spelling remains
+ * deliberately narrow; the build's TypeScript compiler supplies lexical context
+ * for JavaScript and declarations without executing or resolving their code.
+ * A candidate in syntactically unreadable input is unavailable, never clean.
+ */
+export function sourceMapReferences(text, path) {
+  const candidates = [...text.matchAll(SOURCE_MAP_REFERENCE)];
+  if (candidates.length === 0) return [];
+  try {
+    const sf = ts.createSourceFile(
+      path,
+      text,
+      ts.ScriptTarget.Latest,
+      true,
+      path.endsWith('.d.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS,
+    );
+    if (!Array.isArray(sf.parseDiagnostics) || sf.parseDiagnostics.length !== 0) return null;
+    const comments = new Map();
+    const pending = [sf];
+    while (pending.length > 0) {
+      const node = pending.pop();
+      if (node.kind >= ts.SyntaxKind.FirstJSDocNode && node.kind <= ts.SyntaxKind.LastJSDocNode)
+        continue;
+      // EOF and other tokens can have attached JSDoc children. Their trivia still
+      // needs checking, including genuine directives following the JSDoc.
+      if (!ts.isToken(node)) {
+        pending.push(...node.getChildren(sf));
+        continue;
+      }
+      // JSX text is literal content, not JavaScript trivia.
+      if (node.kind === ts.SyntaxKind.JsxText || node.kind === ts.SyntaxKind.JsxTextAllWhiteSpaces)
+        continue;
+      for (const range of [
+        ...(ts.getLeadingCommentRanges(text, node.getFullStart()) ?? []),
+        ...(ts.getTrailingCommentRanges(text, node.end) ?? []),
+      ])
+        comments.set(range.pos, range);
+    }
+    return candidates
+      .filter((match) => {
+        const offset = match.index + match[0].search(/\S/);
+        const comment = comments.get(offset);
+        if (comment === undefined) return false;
+        if (match[1] !== undefined) return comment.kind === ts.SyntaxKind.SingleLineCommentTrivia;
+        return (
+          comment.kind === ts.SyntaxKind.MultiLineCommentTrivia &&
+          comment.end === match.index + match[0].trimEnd().length
+        );
+      })
+      .map((match) => match[1] ?? match[2]);
+  } catch {
+    return null;
+  }
+}
 
 const BUILTINS = new Set(builtinModules);
 
@@ -305,6 +378,21 @@ const firstLine = (text) => {
 
 const normalize = (target) => target.replace(/^\.\//, '');
 
+/**
+ * The tarball path a `sourceMappingURL` in `fromPath` points at, or `null` when
+ * the URL cannot name a file in the tarball (another scheme, or an absolute path).
+ */
+function sourceMapTarget(fromPath, url) {
+  if (/^[A-Za-z][A-Za-z0-9+.-]*:/.test(url) || url.startsWith('/')) return null;
+  let relativePath = url.replace(/[?#].*$/, '');
+  try {
+    relativePath = decodeURIComponent(relativePath);
+  } catch {
+    return null;
+  }
+  return posix.normalize(posix.join(posix.dirname(fromPath), relativePath));
+}
+
 /** Every string leaf of an `exports` value, with its dotted path. `null` targets are legal blockers. */
 function exportLeaves(value, path, out, problems) {
   if (typeof value === 'string') {
@@ -336,6 +424,8 @@ function exportLeaves(value, path, out, problems) {
  * @param {Map<string, {content: Buffer, underPackageDir?: boolean, type?: string}>} input.files
  * @param {string} input.expectedNode  the root manifest's engines.node
  * @param {Buffer} input.rootNotice    the repository root's NOTICE file
+ * @param {Buffer} input.rootLicense   the repository root's LICENSE file
+ * @param {Buffer | undefined} input.packageLicense the LICENSE file in the package directory, if any
  * @param {string} input.rootRepositoryUrl the root manifest's repository.url
  * @param {string} input.relDir        this package's directory relative to the root, with "/"
  * @param {ReadonlySet<string>} input.privateNames names of private workspace packages
@@ -346,6 +436,8 @@ export function checkPackage({
   files,
   expectedNode,
   rootNotice,
+  rootLicense,
+  packageLicense,
   rootRepositoryUrl,
   relDir,
   privateNames,
@@ -423,7 +515,22 @@ export function checkPackage({
   }
 
   // Files that must be present.
-  if (!files.has('LICENSE')) add('LICENSE_MISSING', 'LICENSE is not in the tarball');
+  const license = files.get('LICENSE');
+  if (license === undefined) {
+    add('LICENSE_MISSING', 'LICENSE is not in the tarball');
+  } else if (!license.content.equals(rootLicense)) {
+    add(
+      'LICENSE_DRIFT',
+      'LICENSE differs from the repository root LICENSE; copy the root file over it',
+    );
+  }
+  // `pnpm pack` puts the root LICENSE into a package that has none; `npm pack` does not.
+  if (packageLicense === undefined) {
+    add(
+      'LICENSE_COPY_MISSING',
+      'the package directory has no LICENSE, so only `pnpm pack` would ship one; copy the root LICENSE into the package',
+    );
+  }
   if (!files.has('README.md')) add('README_MISSING', 'README.md is not in the tarball');
   const notice = files.get('NOTICE');
   if (notice === undefined) {
@@ -490,6 +597,31 @@ export function checkPackage({
       const candidates = [target, target.replace(/\.(js|ts)$/, '.d.ts')];
       if (!candidates.some((c) => files.has(c))) {
         add('DANGLING_IMPORT', `${path} imports "${spec}", which is not in the tarball`);
+      }
+    }
+  }
+
+  // A source map reference must resolve inside the tarball. A consumer's debugger
+  // or bundler follows the comment and warns or fails on a file that is not there.
+  for (const [path, entry] of files) {
+    if (!/\.js$/.test(path) && !/\.d\.ts$/.test(path)) continue;
+    const references = sourceMapReferences(entry.content.toString('utf8'), path);
+    if (references === null) {
+      add(
+        'SOURCE_MAP_UNREADABLE',
+        path +
+          ' has a source-map-shaped line whose syntax could not be read by the development compiler',
+      );
+      continue;
+    }
+    for (const url of references) {
+      if (url.startsWith('data:')) continue;
+      const target = sourceMapTarget(path, url);
+      if (target === null || !files.has(target)) {
+        add(
+          'DANGLING_SOURCE_MAP',
+          `${path} has a sourceMappingURL comment for "${url}", which is not in the tarball; build without sourceMap and declarationMap`,
+        );
       }
     }
   }
@@ -646,8 +778,9 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
   const rootManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
   const expectedNode = rootManifest.engines?.node;
   const rootRepositoryUrl = rootManifest.repository?.url;
-  const noticePath = join(root, 'NOTICE');
-  const rootNotice = existsSync(noticePath) ? readFileSync(noticePath) : undefined;
+  const readIfPresent = (path) => (existsSync(path) ? readFileSync(path) : undefined);
+  const rootNotice = readIfPresent(join(root, 'NOTICE'));
+  const rootLicense = readIfPresent(join(root, 'LICENSE'));
   const manifests = workspaceDirs(root).map((dir) => ({
     dir,
     manifest: JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')),
@@ -661,6 +794,12 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
     workspaceLevel.push({
       code: 'ROOT_NOTICE_MISSING',
       message: 'the repository root has no NOTICE file to compare the packages against',
+    });
+  }
+  if (rootLicense === undefined) {
+    workspaceLevel.push({
+      code: 'ROOT_LICENSE_MISSING',
+      message: 'the repository root has no LICENSE file to compare the packages against',
     });
   }
   if (typeof rootRepositoryUrl !== 'string' || rootRepositoryUrl === '') {
@@ -713,6 +852,8 @@ export function checkWorkspace(root, { pack = packPackage } = {}) {
               files,
               expectedNode,
               rootNotice: rootNotice ?? Buffer.alloc(0),
+              rootLicense: rootLicense ?? Buffer.alloc(0),
+              packageLicense: readIfPresent(join(dir, 'LICENSE')),
               rootRepositoryUrl,
               relDir: relative(root, dir).split(sep).join('/'),
               privateNames,
