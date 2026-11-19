@@ -43,6 +43,6 @@ These each fix a confirmed CRITICAL and are unretrofittable. All have conformanc
 
 - Work from the repository's GitHub Issues (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 - Tests assert authoritative outcomes. A test that asserts a function exists is not a test — this project's own design rejects presence-checking as a gate, and the suite is held to the same standard.
-- Before saying done: `pnpm build` and `pnpm test` both green. Before opening a pull request: `pnpm verify` (typecheck, lint, tests and the local gates) and `node scripts/internal-leak-scan.mjs`, which CI runs and `pnpm verify` does not. [CONTRIBUTING.md](CONTRIBUTING.md) says what each gate asserts.
+- Before saying done: `pnpm build` and `pnpm test` both green. Before opening a pull request: `pnpm verify` (typecheck, lint, tests and the gates, the internal leak scan included), which is the list CI runs. [CONTRIBUTING.md](CONTRIBUTING.md) says what each gate asserts.
 - New runtime dependencies are a supply-chain liability this project publicly commits to minimizing. Prefer the standard library; a new dependency needs its license named and must pass `node scripts/license-gate.mjs`.
 - `docs/PUBLIC-RELEASE-CHECKLIST.md` is the record of what was checked before and after the first release, including the items still open. How a release is cut and verified is in `docs/RELEASING.md`.

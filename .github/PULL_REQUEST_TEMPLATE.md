@@ -14,8 +14,8 @@ one, say why not. "Ran it locally and it looked right" is not verification;
 this project's entire thesis is that presence is not proof.
 -->
 
-- [ ] `pnpm verify` passes locally (typecheck, lint, test, and the license, ontology, ontology reference, determinism, versions, pack and dogfood gates)
-- [ ] `node scripts/internal-leak-scan.mjs` exits 0 (CI runs it; `pnpm verify` does not)
+- [ ] `pnpm verify` passes locally (typecheck, lint, test, and the license, ontology, ontology reference, determinism, versions, pack and dogfood gates and the internal leak scan; CI runs the same list)
+- [ ] If the dependency tree changed: `THIRD-PARTY-NOTICES.txt` is regenerated (`node scripts/license-gate.mjs --write-third-party-notices`)
 - [ ] A test asserts the **outcome**, not that a function exists
 - [ ] If this adds or changes a detector: a fixture pair (one that fires, one that does not) plus the meta-test
 - [ ] If this touches extraction or serialization: `pnpm gate:determinism` passes

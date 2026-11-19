@@ -57,7 +57,7 @@ packages/<name>/
 ```json
 {
   "name": "@seamline/<name>",
-  "version": "0.0.1",
+  "version": "<the version of the other published packages>",
   "description": "One sentence on what the package is for.",
   "type": "module",
   "license": "Apache-2.0",
@@ -87,7 +87,7 @@ packages/<name>/
 }
 ```
 
-Notes on the template. Everything in this list is enforced by `pnpm gate:pack` (`scripts/pack-check.mjs`), which packs each package with `pnpm pack` and checks the tarball, except the `author` convention in the second item, which is reviewed by hand:
+Notes on the template. `version` is the one version all published packages carry (the `version` in `packages/cli/package.json`, which `scripts/version-check.mjs` compares every other published package with): `pnpm gate:versions` fails when a published package has any other, a new package's `0.0.1` included. Everything in this list is enforced by `pnpm gate:pack` (`scripts/pack-check.mjs`), which packs each package with `pnpm pack` and checks the tarball, except the `author` convention in the second item, which is reviewed by hand:
 
 - `engines.node` equals the root `package.json`'s. `sideEffects`, if present, is `false`, and a package that ships a `bin` leaves it out.
 - `repository.url` equals the root's and `repository.directory` is the package's path; `description`, `homepage` and `bugs.url` are present. The published packages also carry an `author` naming the organisation (`Zylver Solutions`, `seamline@zylver.com`); keep it identical to the other packages and do not add an individual's name or address.
@@ -112,7 +112,7 @@ Cross-package imports use the workspace protocol: `"@seamline/ontology": "worksp
 
 - Permissive licenses only: MIT, Apache-2.0, BSD-2/3, ISC, CC0, Unlicense, 0BSD, Zlib, PostgreSQL, BlueOak-1.0.0, Python-2.0, MPL-2.0 (unmodified dependency only). This is enforced by `pnpm gate:license` and is a release gate, not a guideline.
 - **Prefer the standard library.** Every runtime dependency is a supply-chain liability this project has publicly committed to minimizing.
-- Adding a runtime dependency requires naming it and its license in the pull request description, and regenerating `THIRD-PARTY-NOTICES.txt` ([CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-dependency)).
+- Adding a runtime dependency requires naming it and its license in the pull request description, and regenerating `THIRD-PARTY-NOTICES.txt` ([CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-dependency)); `pnpm gate:license` fails while that file does not list the installed tree.
 
 ## Determinism is a gate
 
@@ -165,7 +165,7 @@ deliberate friction on exactly the changes that most need review (ADR-0009).
 | test               | `pnpm test`                                                                                                 |
 | single test file   | `node --experimental-strip-types --test --experimental-test-module-mocks packages/<pkg>/src/<file>.test.ts` |
 | every local gate   | `pnpm verify`                                                                                               |
-| internal leak scan | `node scripts/internal-leak-scan.mjs` (CI runs it; `pnpm verify` does not)                                  |
+| internal leak scan | `pnpm gate:leaks` (part of `pnpm verify`; the release workflow runs the stricter `--publish` mode)          |
 
 What `pnpm verify` runs, what CI runs and what the release workflow runs again are listed in [CONTRIBUTING.md](../CONTRIBUTING.md#verification-is-local-first-ci-second).
 

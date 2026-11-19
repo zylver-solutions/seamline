@@ -15,8 +15,18 @@
  * Plain Node, zero dependencies, by design: a supply-chain gate that itself
  * pulls in supply chain is not a gate (v3 §2.7, §10).
  *
+ * Every run except --write-third-party-notices also compares the committed
+ * THIRD-PARTY-NOTICES.txt with the installed tree and fails when they differ.
+ * The comparison is by entry (name, version, licence), not by byte, so it does
+ * not depend on line order. Two kinds of package are left out of it, because
+ * the installed tree legitimately differs between machines for them: a package
+ * pnpm-lock.yaml restricts by os, cpu or libc, and a package the lockfile
+ * marks optional that is not installed on this machine. An optional package
+ * that is installed is compared like any other.
+ *
  * Usage:
  *   node scripts/license-gate.mjs                          human-readable report; exit 1 on violation
+ *                                                          or on a stale THIRD-PARTY-NOTICES.txt
  *   node scripts/license-gate.mjs --json                   machine-readable report
  *   node scripts/license-gate.mjs --notices                also list NOTICE-propagation obligations
  *   node scripts/license-gate.mjs --write-third-party-notices
@@ -98,7 +108,17 @@ const ALIASES = new Map(
 );
 
 /** Directories that never contain an installed dependency. */
-const SKIP_DIRS = new Set(['.git', '.bin', '.vite', '.cache', '.store', 'dist', 'coverage', '.github', 'docs']);
+const SKIP_DIRS = new Set([
+  '.git',
+  '.bin',
+  '.vite',
+  '.cache',
+  '.store',
+  'dist',
+  'coverage',
+  '.github',
+  'docs',
+]);
 
 /** drvfs and other network-ish mounts make each syscall expensive; overlap them. */
 const CONCURRENCY = 48;
@@ -138,7 +158,11 @@ function evaluate(expr) {
   // and would tokenise into two atoms, so resolve the whole string first.
   const whole = ALIASES.get(expr.trim().toLowerCase());
   if (whole !== undefined) {
-    return { allowed: ALLOWED.has(whole), ids: [whole], reason: ALLOWED.has(whole) ? undefined : `"${whole}" is not on the allow-list` };
+    return {
+      allowed: ALLOWED.has(whole),
+      ids: [whole],
+      reason: ALLOWED.has(whole) ? undefined : `"${whole}" is not on the allow-list`,
+    };
   }
   const tokens = tokenize(expr);
   if (tokens.length === 0) return { allowed: false, ids: [], reason: 'empty expression' };
@@ -286,7 +310,13 @@ async function discoverPackageDirs() {
   const rootEntries = await safeReaddir(REPO_ROOT);
   const frontier = [join(REPO_ROOT, 'node_modules')];
   for (const e of rootEntries) {
-    if (!e.isDirectory() || e.name.startsWith('.') || SKIP_DIRS.has(e.name) || e.name === 'node_modules') continue;
+    if (
+      !e.isDirectory() ||
+      e.name.startsWith('.') ||
+      SKIP_DIRS.has(e.name) ||
+      e.name === 'node_modules'
+    )
+      continue;
     for (const sub of await safeReaddir(join(REPO_ROOT, e.name))) {
       if (sub.isDirectory()) frontier.push(join(REPO_ROOT, e.name, sub.name, 'node_modules'));
     }
@@ -344,6 +374,177 @@ async function shipsNoticeFile(dir) {
 }
 
 // ---------------------------------------------------------------------------
+// THIRD-PARTY-NOTICES.txt
+// ---------------------------------------------------------------------------
+
+const NOTICES_FILE = 'THIRD-PARTY-NOTICES.txt';
+const NOTICES_REGENERATE = 'node scripts/license-gate.mjs --write-third-party-notices';
+
+/** Code-unit order: the same on every Node version, platform and locale. */
+function byCodeUnit(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** The file's full text for `rows` of `{name, version, license}`. */
+function renderThirdPartyNotices(rows) {
+  const sorted = [...rows].sort(
+    (a, b) => byCodeUnit(a.name, b.name) || byCodeUnit(a.version, b.version),
+  );
+  const lines = [
+    'Seamline — Third-Party Notices',
+    '',
+    "Every dependency installed in this project's tree at the time this file was",
+    'generated, with its version and SPDX licence identifier. Regenerate with:',
+    '',
+    `    ${NOTICES_REGENERATE}`,
+    '',
+    `${sorted.length} packages.`,
+    '',
+    '-'.repeat(80),
+    '',
+  ];
+  for (const r of sorted) {
+    lines.push(`${r.name}@${r.version}`);
+    lines.push(`  License: ${r.license}`);
+    lines.push(`  ${licenseUrl(r.license)}`);
+    lines.push('');
+  }
+  return lines.join('\n').trimEnd() + '\n';
+}
+
+/**
+ * Read the entries back out of the file's text.
+ * @returns {{entries: Map<string, string>, declaredCount: number | null, listedCount: number}}
+ *   `entries` maps `name@version` to the licence; `listedCount` counts entry
+ *   blocks, so a duplicated block shows up against `declaredCount`.
+ */
+function parseThirdPartyNotices(text) {
+  const lines = text.split(/\r?\n/);
+  const entries = new Map();
+  let declaredCount = null;
+  let listedCount = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const count = /^(\d+) packages\.$/.exec(lines[i]);
+    if (count && declaredCount === null) declaredCount = Number(count[1]);
+    const license = /^ {2}License: (.+)$/.exec(lines[i + 1] ?? '');
+    // The version may be empty: the writer emits `name@` for a manifest with
+    // no version field.
+    if (license && /^\S+@\S*$/.test(lines[i])) {
+      entries.set(lines[i], license[1]);
+      listedCount++;
+    }
+  }
+  return { entries, declaredCount, listedCount };
+}
+
+/**
+ * What pnpm-lock.yaml says about each package, as sets of `name@version`:
+ * `packages` and `snapshots` hold every entry of those two sections,
+ * `restricted` the packages limited by os, cpu or libc (pnpm skips those on
+ * other platforms), and `optional` the packages reached only through optional
+ * dependencies (pnpm continues when one of those fails to install).
+ *
+ * Reads the two lockfile sections line by line instead of parsing YAML: the
+ * gate has no dependencies, and the lockfile is machine-written with fixed
+ * indentation (package key at two spaces, its fields at four).
+ */
+function readLockfile(lockText) {
+  const found = {
+    packages: new Set(),
+    snapshots: new Set(),
+    restricted: new Set(),
+    optional: new Set(),
+  };
+  let section = null;
+  let current = null;
+  for (const line of lockText.split(/\r?\n/)) {
+    const top = /^([A-Za-z]+):/.exec(line);
+    if (top) {
+      section = top[1];
+      current = null;
+      continue;
+    }
+    if (section !== 'packages' && section !== 'snapshots') continue;
+    const key = /^ {2}(['"]?)(\S.*?)\1:(?: \{\})?$/.exec(line);
+    if (key) {
+      // A snapshot key carries its peer set in parentheses after the version.
+      current = key[2].replace(/\(.*$/, '');
+      found[section].add(current);
+      continue;
+    }
+    if (current === null) continue;
+    if (/^ {4}(?:os|cpu|libc):/.test(line)) found.restricted.add(current);
+    if (/^ {4}optional: true$/.test(line)) found.optional.add(current);
+  }
+  return found;
+}
+
+/**
+ * Compare the committed file with the packages the gate resolved.
+ * @returns {{current: boolean, problems: string[], compared: number, ignored: string[],
+ *   lockfile: {packages: number, snapshots: number} | null}}
+ *   `lockfile` counts the entries read from pnpm-lock.yaml, null without one.
+ */
+async function checkThirdPartyNotices(resolvedRows) {
+  let text;
+  try {
+    text = await readFile(join(REPO_ROOT, NOTICES_FILE), 'utf8');
+  } catch {
+    return {
+      current: false,
+      problems: [`${NOTICES_FILE} does not exist`],
+      compared: 0,
+      ignored: [],
+      lockfile: null,
+    };
+  }
+  let lock = null;
+  try {
+    lock = readLockfile(await readFile(join(REPO_ROOT, 'pnpm-lock.yaml'), 'utf8'));
+  } catch {
+    // No lockfile: no package is known to differ between machines, so every
+    // package is compared.
+  }
+
+  const { entries: listed, declaredCount, listedCount } = parseThirdPartyNotices(text);
+  const installed = new Map(resolvedRows.map((r) => [`${r.name}@${r.version}`, r.license]));
+  const problems = [];
+  const ignored = new Set();
+  let compared = 0;
+
+  for (const key of [...new Set([...installed.keys(), ...listed.keys()])].sort(byCodeUnit)) {
+    if (
+      lock !== null &&
+      (lock.restricted.has(key) || (lock.optional.has(key) && !installed.has(key)))
+    ) {
+      ignored.add(key);
+      continue;
+    }
+    compared++;
+    if (!listed.has(key)) problems.push(`installed, not listed: ${key} (${installed.get(key)})`);
+    else if (!installed.has(key)) problems.push(`listed, not installed: ${key}`);
+    else if (listed.get(key) !== installed.get(key)) {
+      problems.push(
+        `licence differs: ${key} is listed as ${listed.get(key)}, installed as ${installed.get(key)}`,
+      );
+    }
+  }
+  if (declaredCount !== listedCount) {
+    problems.push(
+      `the count line says ${declaredCount === null ? 'nothing' : `${declaredCount} packages`}, the file lists ${listedCount}`,
+    );
+  }
+  return {
+    current: problems.length === 0,
+    problems,
+    compared,
+    ignored: [...ignored],
+    lockfile:
+      lock === null ? null : { packages: lock.packages.size, snapshots: lock.snapshots.size },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -370,7 +571,11 @@ const resolved = [];
 
 for (const p of manifests) {
   if (p.expression === null) {
-    violations.push({ ...p, license: null, reason: 'no license field (not permissive by default)' });
+    violations.push({
+      ...p,
+      license: null,
+      reason: 'no license field (not permissive by default)',
+    });
     continue;
   }
   const raw = p.expression;
@@ -391,11 +596,17 @@ for (const p of manifests) {
   }
   resolved.push({ name: p.name, version: p.version, license: key });
   const noticeId = verdict.ids.find((id) => NOTICE_REQUIRED.has(id));
-  if (noticeId) noticeCandidates.push({ name: p.name, version: p.version, license: noticeId, dir: p.dir });
+  if (noticeId)
+    noticeCandidates.push({ name: p.name, version: p.version, license: noticeId, dir: p.dir });
 }
 
 const noticeObligations = withNotices
-  ? (await mapPool(noticeCandidates, async (c) => ({ ...c, hasNoticeFile: await shipsNoticeFile(c.dir) }))).filter(Boolean)
+  ? (
+      await mapPool(noticeCandidates, async (c) => ({
+        ...c,
+        hasNoticeFile: await shipsNoticeFile(c.dir),
+      }))
+    ).filter(Boolean)
   : noticeCandidates;
 
 if (writeThirdPartyNotices) {
@@ -406,33 +617,13 @@ if (writeThirdPartyNotices) {
     );
     process.exit(1);
   }
-  const rows = [...resolved].sort(
-    (a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version),
-  );
-  const lines = [
-    'Seamline — Third-Party Notices',
-    '',
-    "Every dependency installed in this project's tree at the time this file was",
-    'generated, with its version and SPDX licence identifier. Regenerate with:',
-    '',
-    '    node scripts/license-gate.mjs --write-third-party-notices',
-    '',
-    `${rows.length} packages.`,
-    '',
-    '-'.repeat(80),
-    '',
-  ];
-  for (const r of rows) {
-    lines.push(`${r.name}@${r.version}`);
-    lines.push(`  License: ${r.license}`);
-    lines.push(`  ${licenseUrl(r.license)}`);
-    lines.push('');
-  }
-  const outPath = join(REPO_ROOT, 'THIRD-PARTY-NOTICES.txt');
-  await writeFile(outPath, lines.join('\n').trimEnd() + '\n', 'utf8');
-  process.stdout.write(`license-gate: wrote ${outPath} (${rows.length} packages)\n`);
+  const outPath = join(REPO_ROOT, NOTICES_FILE);
+  await writeFile(outPath, renderThirdPartyNotices(resolved), 'utf8');
+  process.stdout.write(`license-gate: wrote ${outPath} (${resolved.length} packages)\n`);
   process.exit(0);
 }
+
+const notices = await checkThirdPartyNotices(resolved);
 
 if (asJson) {
   process.stdout.write(
@@ -442,8 +633,14 @@ if (asJson) {
         allowList: [...ALLOWED].sort(),
         byLicense: Object.fromEntries([...byLicense].sort((a, b) => b[1] - a[1])),
         noticeObligations: noticeObligations.map(({ dir: _dir, ...rest }) => rest),
-        violations: violations.map((v) => ({ name: v.name, version: v.version, license: v.license, reason: v.reason })),
-        pass: violations.length === 0,
+        violations: violations.map((v) => ({
+          name: v.name,
+          version: v.version,
+          license: v.license,
+          reason: v.reason,
+        })),
+        thirdPartyNotices: notices,
+        pass: violations.length === 0 && notices.current,
       },
       null,
       2,
@@ -453,7 +650,8 @@ if (asJson) {
   process.stdout.write(`license-gate: scanned ${manifests.length} installed packages\n\n`);
   const rows = [...byLicense].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const width = Math.max(...rows.map(([l]) => l.length), 8);
-  for (const [lic, n] of rows) process.stdout.write(`  ${lic.padEnd(width)}  ${String(n).padStart(4)}\n`);
+  for (const [lic, n] of rows)
+    process.stdout.write(`  ${lic.padEnd(width)}  ${String(n).padStart(4)}\n`);
 
   if (withNotices) {
     process.stdout.write(`\nNOTICE-propagation obligations (${noticeObligations.length}):\n`);
@@ -482,4 +680,24 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-if (!asJson) process.stdout.write('\nlicense-gate PASSED\n');
+if (!notices.current) {
+  process.stderr.write(
+    `\nlicense-gate FAILED: ${NOTICES_FILE} does not match the installed dependency tree.\n` +
+      notices.problems.map((p) => `  ${p}\n`).join('') +
+      'If node_modules is out of date, run `pnpm install --frozen-lockfile` and run the gate again.\n' +
+      'Otherwise regenerate the file and commit the result:\n\n' +
+      `    ${NOTICES_REGENERATE}\n`,
+  );
+  process.exit(1);
+}
+
+if (!asJson) {
+  const skipped =
+    notices.ignored.length > 0
+      ? `, ${notices.ignored.length} machine-dependent package(s) not compared`
+      : '';
+  process.stdout.write(
+    `\n${NOTICES_FILE} matches the installed tree (${notices.compared} packages${skipped})\n`,
+  );
+  process.stdout.write('\nlicense-gate PASSED\n');
+}
