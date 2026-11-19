@@ -26,12 +26,14 @@
     "scripts/internal-leak-scan.mjs",
     "scripts/internal-leak-scan.test.mjs",
     "scripts/license-gate.mjs",
+    "scripts/license-gate.test.mjs",
     "scripts/outside-install.mjs",
     "scripts/outside-install.test.mjs",
     "scripts/pack-check.mjs",
     "scripts/pack-check.test.mjs",
     "scripts/version-check.mjs",
     "scripts/version-check.test.mjs",
+    "scripts/workflow-gates.test.mjs",
     "scripts/zod-oracle.mjs"
   ]
 }
